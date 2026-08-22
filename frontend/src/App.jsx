@@ -7,6 +7,9 @@ import Attendance from './pages/Attendance.jsx';
 import TimeOff from './pages/TimeOff.jsx';
 import EmployeeProfile from './pages/EmployeeProfile.jsx';
 import ChangePassword from './pages/ChangePassword.jsx';
+import SalaryCalculatorPage from './pages/SalaryCalculatorPage.jsx';
+import PayrollGeneratorPage from './pages/PayrollGeneratorPage.jsx';
+import PayrollReportsPage from './pages/PayrollReportsPage.jsx';
 import Login from './pages/Login.jsx';
 
 function Protected({ children }) {
@@ -58,6 +61,9 @@ export default function App() {
         <Route path="employees/:id" element={<EmployeeProfile />} />
         <Route path="attendance" element={<Attendance />} />
         <Route path="time-off" element={<TimeOff />} />
+        <Route path="salary-calculator" element={<SalaryCalculatorPage />} />
+        <Route path="payroll-generator" element={<PayrollGeneratorPage />} />
+        <Route path="payroll-reports" element={<PayrollReportsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

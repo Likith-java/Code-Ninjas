@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../components/Avatar.jsx';
+import SalaryCalculator from '../components/SalaryCalculator.jsx';
+import PayrollGenerator from '../components/PayrollGenerator.jsx';
+import PayrollReports from '../components/PayrollReports.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { api } from '../api/client.js';
 import { departmentChipClass } from '../utils/employees.js';
@@ -127,6 +130,18 @@ export default function Dashboard() {
               </p>
             )}
           </div>
+        </div>
+
+        <div className="col-span-12">
+          <SalaryCalculator />
+        </div>
+
+        <div className="col-span-12">
+          <PayrollGenerator />
+        </div>
+
+        <div className="col-span-12">
+          <PayrollReports />
         </div>
 
         <div className="col-span-12 grid grid-cols-1 gap-4 md:grid-cols-2">

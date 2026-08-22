@@ -17,9 +17,20 @@ npm-debug.log*
 
 # SQLite database
 backend/data/
+*.db
+*.sqlite3
 
 # OS / Editor
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+

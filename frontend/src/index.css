@@ -24,3 +24,27 @@ body {
         @apply w-full rounded-lg border border-outline-variant bg-surface px-3.5 py-2.5 text-sm text-on-surface transition-colors placeholder:text-on-surface-variant/60 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary;
     }
 }
+
+/* Remove up/down marks (stepper/spin buttons) in number inputs */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.no-spinners::-webkit-outer-spin-button,
+.no-spinners::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.no-spinners {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
