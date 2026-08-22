@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HR Management System - Azure Horizon</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'azure-navy': '#0d3b7a',
+            'azure-light': '#f4f7fb',
+            'azure-card': '#ffffff',
+            'azure-text': '#1e293b',
+            'azure-text-muted': '#64748b',
+            'azure-accent': '#3b82f6',
+          },
+          fontFamily: {
+            sans: ['Manrope', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-styles">
+    body {
+      background-color: #f4f7fb;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* Hide scrollbar for clean UI */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="text-azure-text font-sans pb-20">
+<!-- BEGIN: Top Navigation -->
+<nav class="sticky top-0 z-50 bg-azure-light/90 backdrop-blur-md px-6 py-4 flex justify-between items-center border-b border-gray-200">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 bg-azure-navy text-white rounded-lg flex items-center justify-center font-bold">HR</div>
+<span class="font-bold text-lg text-azure-navy">HRMS</span>
+</div>
+<div class="relative">
+<img alt="Profile" class="w-10 h-10 rounded-full border-2 border-white shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGwl1vH6k4crNgxbm51ZUVdgd1lC5biqovEgb64U_geJFvEF1kzbwkkEv8QYSk4HvZuFNFKOPjpztidjU_3OwhTmFKCZ6Wv7Mz_YOp4xGX3i4XiMOVNpGBQVHSRbKxBEmsZNJw9ZoeCzBobeEbUM0pv9xJeE7AGDOImzrUAdL9uHDzm6FQe0Otv8I1V2k0hXA5RM4yA1mNG9zb8xPB2GrAxVP7ioICW6zofBMdWQuuT4avp5TZzJ0"/>
+<div class="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></div>
+</div>
+</nav>
+<!-- END: Top Navigation -->
+<!-- BEGIN: Dashboard Section -->
+<main class="p-6 space-y-6">
+<!-- Welcome Header -->
+<header>
+<h1 class="text-3xl font-extrabold text-azure-navy">Hi Jenifer!</h1>
+<p class="text-azure-text-muted mt-1">Good Morning, here's your overview.</p>
+</header>
+<!-- Search Bar -->
+<div class="relative">
+<svg class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<input class="w-full pl-12 pr-4 py-3 rounded-xl border-none bg-white shadow-sm focus:ring-2 focus:ring-azure-navy outline-none placeholder-gray-400" placeholder="Search employee, project..." type="text"/>
+</div>
+<!-- Schedule Card -->
+<section class="bg-azure-card p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+<div>
+<h3 class="font-bold text-azure-navy mb-1 text-lg">Welcome!</h3>
+<p class="text-sm text-azure-text-muted mb-3">Let's schedule your projects</p>
+<button class="bg-azure-navy text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md hover:bg-opacity-90 transition">Schedule Now</button>
+</div>
+<div class="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center">
+<!-- Placeholder for illustration -->
+<svg class="w-12 h-12 text-azure-accent" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path></svg>
+</div>
+</section>
+<!-- Ongoing Projects -->
+<section>
+<div class="flex justify-between items-end mb-4">
+<h2 class="font-bold text-azure-navy text-xl">Ongoing Projects</h2>
+<a class="text-sm text-azure-text-muted hover:text-azure-navy font-medium" href="insightlancer.html">view all</a>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<!-- Project Card 1 (Dark Theme) -->
+<article class="bg-azure-navy p-4 rounded-2xl shadow-md text-white">
+<div class="flex justify-between items-start mb-4">
+<span class="text-xs text-blue-200">May 30, 2022</span>
+<button class="text-white hover:text-blue-200"><svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg></button>
+</div>
+<h3 class="font-bold mb-1">Mobile App</h3>
+<p class="text-xs text-blue-200 mb-4">E - Commerce</p>
+<div>
+<div class="flex justify-between text-xs mb-1">
+<span>Progress</span>
+<span>50%</span>
+</div>
+<div class="w-full bg-blue-900 rounded-full h-1.5">
+<div class="bg-white h-1.5 rounded-full" style="width: 50%"></div>
+</div>
+</div>
+</article>
+<!-- Project Card 2 (Light Theme) -->
+<article class="bg-azure-card p-4 rounded-2xl shadow-sm border border-gray-100">
+<div class="flex justify-between items-start mb-4">
+<span class="text-xs text-azure-text-muted">May 30, 2022</span>
+<button class="text-gray-400 hover:text-azure-navy"><svg class="w-4 h-4" fill="currentColor" viewbox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg></button>
+</div>
+<h3 class="font-bold text-azure-navy mb-1">Dashboard</h3>
+<p class="text-xs text-azure-text-muted mb-4">Internal Tool</p>
+<div>
+<div class="flex justify-between text-xs text-azure-text-muted mb-1">
+<span>Progress</span>
+<span>80%</span>
+</div>
+<div class="w-full bg-gray-100 rounded-full h-1.5">
+<div class="bg-azure-navy h-1.5 rounded-full" style="width: 80%"></div>
+</div>
+</div>
+</article>
+</div>
+</section>
+<!-- Employee Directory Preview -->
+<section>
+<div class="flex justify-between items-end mb-4">
+<h2 class="font-bold text-azure-navy text-xl">Top Employees</h2>
+<a class="text-sm text-azure-text-muted hover:text-azure-navy font-medium" href="employee-directory.html">view all</a>
+</div>
+<div class="bg-azure-card rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
+<!-- Employee 1 -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<img alt="Richard A. Bachmann" class="w-12 h-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQf_s2PT50e34EaKw86R1JPilHLdoyFJnw300IOJgQin7jurwZMI0TcsuTMP3ikDBd6Jgre3gD6IduHh54vWYl--XLK46FmWm-CR4go23nkS2SI_gN6H-P7tyw1n_0OZ7NIIwFtQPTMnlb0wSUCEXGiGdJT-qy74Kg7Nycu8uofRUO19pILFdgOodTcVKj3IlrYQbac6fK1TMh6Nj9M2v3iVbbk0ux9wZ3ju8dCkawPIE8LFOR9yA"/>
+<div>
+<h4 class="font-bold text-azure-navy text-sm">Richard A. Bachmann</h4>
+<p class="text-xs text-azure-text-muted">UI/UX Designer</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-full bg-blue-50 text-azure-accent flex items-center justify-center hover:bg-blue-100 transition">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<hr class="border-gray-100"/>
+<!-- Employee 2 -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<img alt="Sarah Johnson" class="w-12 h-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKevV59aS7Z3jkKAQi2OagE-pSVRCZyHa6C6JfgDz1lVigPHBqxd7-vLV4bBh9OCR_qyOPizsJeV8tlTTb9jmOLUWgRu7V9xQvll2u2xgS-BZxO4B2TrOM9MhmzKR-JzUyNGy4fpaXlbnkjcGYM9nAFzJPNRsnEUxqCxHxlSs772AqZHtCzEu47MEs1auYBGagedKhHDQoWbJTqcBYrHEcPVJ8vwAkyUFEgqViXDuz4AF8wJx666Q"/>
+<div>
+<h4 class="font-bold text-azure-navy text-sm">Sarah Johnson</h4>
+<p class="text-xs text-azure-text-muted">Frontend Developer</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-full bg-blue-50 text-azure-accent flex items-center justify-center hover:bg-blue-100 transition">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Payroll Summary -->
+<section>
+<h2 class="font-bold text-azure-navy text-xl mb-4">Payroll Summary</h2>
+<div class="bg-azure-card rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center justify-between">
+<div>
+<p class="text-sm text-azure-text-muted mb-1">Next Payout (Oct 15)</p>
+<h3 class="text-2xl font-extrabold text-azure-navy">$45,200.00</h3>
+</div>
+<a href="payroll-management.html" class="px-4 py-2 bg-gray-50 border border-gray-200 text-azure-navy rounded-lg text-sm font-semibold hover:bg-gray-100 transition">
+          View Details
+        </a>
+</div>
+</section>
+</main>
+<!-- END: Dashboard Section -->
+<!-- BEGIN: Bottom Navigation -->
+<nav class="fixed bottom-0 w-full bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-50 rounded-t-3xl shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
+<a class="flex flex-col items-center text-azure-navy" href="hrms-overview.html">
+<svg class="w-6 h-6 mb-1" fill="currentColor" viewbox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg>
+<span class="text-[10px] font-bold">Home</span>
+</a>
+<a class="flex flex-col items-center text-gray-400 hover:text-azure-navy transition" href="employee-directory.html">
+<svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-[10px] font-medium">Team</span>
+</a>
+<!-- FAB Style Central Button -->
+<div class="-mt-8">
+<button class="w-14 h-14 bg-azure-navy text-white rounded-full flex items-center justify-center shadow-lg shadow-azure-navy/30 hover:scale-105 transition-transform">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+<a class="flex flex-col items-center text-gray-400 hover:text-azure-navy transition" href="insightlancer.html">
+<svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-[10px] font-medium">Projects</span>
+</a>
+<a class="flex flex-col items-center text-gray-400 hover:text-azure-navy transition" href="join-room.html">
+<svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</nav>
+<!-- END: Bottom Navigation -->
+</body>
+</html>

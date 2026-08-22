@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HR Dashboard - Insightlancer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#f7f9fb",
+                        "on-tertiary-fixed": "#151c27",
+                        "on-primary-fixed": "#001a40",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-variant": "#e0e3e5",
+                        "outline-variant": "#c3c6d2",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed": "#dae3f1",
+                        "surface-container": "#eceef0",
+                        "on-secondary-fixed-variant": "#3f4853",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-tertiary-container": "#a1a8b7",
+                        "on-primary-fixed-variant": "#1d4585",
+                        "tertiary-container": "#363d4a",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#202733",
+                        "inverse-primary": "#acc7ff",
+                        "surface-dim": "#d8dadc",
+                        "on-secondary-container": "#5c6571",
+                        "error-container": "#ffdad6",
+                        "background": "#f7f9fb",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-container-low": "#f2f4f6",
+                        "tertiary-fixed": "#dce2f3",
+                        "on-secondary-fixed": "#131c26",
+                        "on-surface-variant": "#434750",
+                        "on-surface": "#191c1e",
+                        "primary-container": "#0d3b7a",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#f7f9fb",
+                        "surface-tint": "#395d9e",
+                        "secondary-container": "#dae3f1",
+                        "on-primary-container": "#84a7ed",
+                        "primary-fixed-dim": "#acc7ff",
+                        "secondary": "#565f6b",
+                        "on-error-container": "#93000a",
+                        "on-background": "#191c1e",
+                        "inverse-surface": "#2d3133",
+                        "primary": "#002556",
+                        "on-tertiary-fixed-variant": "#404754",
+                        "secondary-fixed-dim": "#bec7d5",
+                        "outline": "#747781",
+                        "inverse-on-surface": "#eff1f3",
+                        "tertiary-fixed-dim": "#c0c7d6"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        "container-max-width": "1280px",
+                        "gutter": "24px",
+                        "margin-desktop": "40px",
+                        "unit": "8px",
+                        "margin-mobile": "16px",
+                        "card-padding": "24px"
+                    },
+                    fontFamily: {
+                        "headline-md": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "display-lg": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "label-md": ["Manrope"]
+                    },
+                    fontSize: {
+                        "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "display-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "700" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "headline-lg-mobile": ["24px", { lineHeight: "32px", fontWeight: "700" }],
+                        "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen pb-24 md:pb-0 md:pl-80 pt-16 md:pt-0">
+<!-- TopAppBar (Mobile Only) -->
+<header class="md:hidden flex justify-between items-center px-4 h-16 w-full fixed top-0 z-50 bg-surface/80 backdrop-blur-md shadow-sm">
+<button class="text-on-surface-variant hover:bg-surface-container-high transition-colors p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+</button>
+<span class="text-headline-md font-headline-md font-bold text-on-surface">Insightlancer</span>
+<button class="text-on-surface-variant hover:bg-surface-container-high transition-colors p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<!-- NavigationDrawer (Desktop Only) -->
+<nav class="hidden md:flex fixed inset-y-0 left-0 z-[60] flex-col py-6 h-full w-80 rounded-r-xl bg-surface shadow-xl">
+<div class="px-6 mb-8 flex items-center gap-4">
+<img alt="Jenifer Profile" class="w-12 h-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6Zs1HRRqK-dGjeO6PKdZyM2UMAHdYuANcuoIN2JtwQCsFVXVEagvX9l9XmZQ96h34_3FT58R4hc_dfleFtBaZQL9hV6m_ms2DyTffk8IjAwVUBol4EET0em_SxbWe2zDQCS8iKjSYvl9n-dI48zIPq3rVuNWrKAG73lEkOuVJGmPjClNAaG1pflqEWtjpnyr9Q4A9yHNtxlyrD69dn0sBnHdvx86mUZzzk25l5kmn5RLrs_G5PS8"/>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Jenifer</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">HR Manager</p>
+<p class="font-label-md text-label-md text-primary mt-1">Admin Access</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto space-y-2 px-4">
+<a class="flex items-center gap-3 px-4 py-3 bg-primary-container text-on-primary-container rounded-lg mx-2 hover:bg-surface-container-highest transition-colors font-body-md text-body-md font-bold" href="insightlancer.html">
+<span class="material-symbols-outlined" data-icon="dashboard" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant mx-2 hover:bg-surface-container-highest transition-colors font-body-md text-body-md" href="employee-directory.html">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+                Employee Directory
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant mx-2 hover:bg-surface-container-highest transition-colors font-body-md text-body-md" href="payroll-management.html">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+                Payroll
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant mx-2 hover:bg-surface-container-highest transition-colors font-body-md text-body-md" href="design-system.html">
+<span class="material-symbols-outlined" data-icon="event_busy">event_busy</span>
+                Leave Management
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-outline-variant mx-2 hover:bg-surface-container-highest transition-colors font-body-md text-body-md" href="azure-horizon-desktop.html">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+</div>
+<div class="px-6 mt-auto pt-6 border-t border-outline-variant/30">
+<span class="font-headline-lg text-headline-lg text-primary">Insightlancer</span>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="max-w-[container-max-width] mx-auto p-margin-mobile md:p-margin-desktop space-y-8">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Hi Jenifer!</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Good Morning</p>
+</div>
+<div class="w-full md:w-96 relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary transition-all font-body-md text-body-md placeholder-on-surface-variant/70 shadow-sm" placeholder="Search" type="text"/>
+</div>
+</div>
+<!-- Welcome Banner -->
+<div class="bg-surface-container-lowest rounded-2xl p-6 md:p-card-padding shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-surface-variant/50 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
+<div class="relative z-10 w-full md:w-1/2">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">Welcome!</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Let's schedule your projects and manage tasks efficiently.</p>
+<button class="bg-primary-container text-on-primary-container px-6 py-2 rounded-lg font-label-md text-label-md hover:bg-primary transition-colors hover:text-white shadow-sm">
+                    View Schedule
+                </button>
+</div>
+<div class="w-full md:w-1/2 flex justify-center md:justify-end">
+<img alt="Illustration of person working at desk" class="h-32 md:h-48 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQTmgN6P5kvl50h6F4uk9--R_akMFkUEjLJp2Vr7hd0RWIfS7XJwFDkSmM3gI7A4XyAhTsMo6Kvg9VrIqkovLeAOD9tuvUROIl0mu4pq-KOhPUD_f8RdCrocZ2hhcOpuTaYgTMsKnNpHXHA5q44mHdcosMnV5i3gyktZAJ3eIliw1h4r3U_04uZ-nT7OLOJJ_Ggkmo0g3z5nccYFzHUfACfcdlEeHgIzaP_efXBQakKZUlu5-7ono"/>
+</div>
+</div>
+<!-- Ongoing Projects Section -->
+<div>
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-headline-md text-headline-md text-on-surface">Ongoing Projects</h2>
+<button class="font-label-md text-label-md text-primary hover:text-primary-container transition-colors">view all</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+<!-- Project Card 1 (Active/Primary Style) -->
+<div class="bg-primary text-on-primary rounded-2xl p-5 shadow-[0_12px_32px_rgba(13,59,122,0.12)] relative overflow-hidden flex flex-col h-40">
+<div class="flex justify-between items-start mb-auto">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-on-primary/10 rounded-lg backdrop-blur-sm">
+<span class="material-symbols-outlined text-white" data-icon="smartphone">smartphone</span>
+</div>
+<div>
+<h3 class="font-headline-md text-body-lg font-bold text-white leading-tight">Mobile App</h3>
+<p class="font-label-md text-[10px] text-primary-fixed opacity-80">E - Commerce</p>
+</div>
+</div>
+<button class="text-on-primary opacity-70 hover:opacity-100">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="mt-4">
+<div class="flex justify-between text-[10px] mb-1 font-label-md">
+<span class="opacity-80">Progress</span>
+<span class="font-bold">50%</span>
+</div>
+<div class="w-full bg-on-primary/20 rounded-full h-1.5 overflow-hidden">
+<div class="bg-white h-1.5 rounded-full" style="width: 50%"></div>
+</div>
+</div>
+<div class="absolute top-4 right-4 text-[10px] font-label-md opacity-70">May 30, 2022</div>
+</div>
+<!-- Project Card 2 (Secondary Style) -->
+<div class="bg-surface-container-low rounded-2xl p-5 shadow-sm border border-surface-variant flex flex-col h-40 hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-auto">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-secondary-container text-on-secondary-container rounded-lg">
+<span class="material-symbols-outlined" data-icon="space_dashboard">space_dashboard</span>
+</div>
+<div>
+<h3 class="font-headline-md text-body-lg font-bold text-on-surface leading-tight">Dashboard</h3>
+<p class="font-label-md text-[10px] text-on-surface-variant">Admin</p>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="mt-4">
+<div class="flex justify-between text-[10px] mb-1 font-label-md text-on-surface-variant">
+<span>Progress</span>
+<span class="text-on-surface font-bold">80%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary h-1.5 rounded-full" style="width: 80%"></div>
+</div>
+</div>
+<div class="absolute top-4 right-4 text-[10px] font-label-md text-on-surface-variant">May 30, 2022</div>
+</div>
+<!-- Project Card 3 -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 shadow-sm border border-outline-variant/30 flex flex-col h-40 hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-auto">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-surface-variant text-on-surface rounded-lg">
+<span class="material-symbols-outlined" data-icon="campaign">campaign</span>
+</div>
+<div>
+<h3 class="font-headline-md text-body-lg font-bold text-on-surface leading-tight">Banner</h3>
+<p class="font-label-md text-[10px] text-on-surface-variant">Marketing</p>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="mt-4">
+<div class="flex justify-between text-[10px] mb-1 font-label-md text-on-surface-variant">
+<span>Progress</span>
+<span class="text-on-surface font-bold">40%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary h-1.5 rounded-full" style="width: 40%"></div>
+</div>
+</div>
+<div class="absolute top-4 right-4 text-[10px] font-label-md text-on-surface-variant">May 30, 2022</div>
+</div>
+<!-- Project Card 4 -->
+<div class="bg-surface-container-lowest rounded-2xl p-5 shadow-sm border border-outline-variant/30 flex flex-col h-40 hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-auto">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-surface-variant text-on-surface rounded-lg">
+<span class="material-symbols-outlined" data-icon="design_services">design_services</span>
+</div>
+<div>
+<h3 class="font-headline-md text-body-lg font-bold text-on-surface leading-tight">UI/UX</h3>
+<p class="font-label-md text-[10px] text-on-surface-variant">Task Manager</p>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<div class="mt-4">
+<div class="flex justify-between text-[10px] mb-1 font-label-md text-on-surface-variant">
+<span>Progress</span>
+<span class="text-on-surface font-bold">80%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-1.5 overflow-hidden">
+<div class="bg-primary h-1.5 rounded-full" style="width: 80%"></div>
+</div>
+</div>
+<div class="absolute top-4 right-4 text-[10px] font-label-md text-on-surface-variant">May 30, 2022</div>
+</div>
+</div>
+</div>
+<!-- FAB for Mobile (Centered, slightly offset upwards due to Bottom Nav) -->
+<button class="md:hidden fixed bottom-20 left-1/2 -translate-x-1/2 w-14 h-14 bg-primary text-on-primary rounded-full shadow-[0_8px_16px_rgba(0,37,86,0.3)] flex items-center justify-center z-[60] hover:scale-105 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-2xl" data-icon="add">add</span>
+</button>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-4 pt-2 bg-surface rounded-t-xl border-t border-outline-variant/30 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+<a class="flex flex-col items-center justify-center text-primary font-bold bg-primary-container/20 rounded-xl px-3 py-1 scale-90 transition-transform" href="insightlancer.html">
+<span class="material-symbols-outlined" data-icon="home_app_logo" style="font-variation-settings: 'FILL' 1;">home_app_logo</span>
+<span class="font-label-md text-label-md mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors px-3 py-1 rounded-xl" href="employee-directory.html">
+<span class="material-symbols-outlined" data-icon="assignment">assignment</span>
+<span class="font-label-md text-label-md mt-1">My task</span>
+</a>
+<!-- Empty space for FAB -->
+<div class="w-12"></div>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors px-3 py-1 rounded-xl" href="payroll-management.html">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-label-md text-label-md mt-1">Payment</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors px-3 py-1 rounded-xl" href="join-room.html">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-1">Profile</span>
+</a>
+</nav>
+</body>
+</html>
