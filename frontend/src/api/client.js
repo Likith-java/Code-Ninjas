@@ -21,6 +21,11 @@ export async function api(path, { method = 'GET', body } = {}) {
     payload = null;
   }
   if (!res.ok) {
+    // Session expired or revoked mid-use: broadcast so AuthContext can drop
+    // the local session and the router can bounce back to sign-in.
+    if (res.status === 401) {
+      window.dispatchEvent(new Event('auth:session-expired'));
+    }
     throw new ApiError(
       res.status,
       payload?.error?.message || `Request failed (${res.status})`,

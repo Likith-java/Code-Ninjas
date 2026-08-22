@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -19,15 +19,25 @@ export default function ChangePassword() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [confirmError, setConfirmError] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const redirectTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(redirectTimer.current), []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    setConfirmError('');
 
+    if (!currentPassword) {
+      setError('Enter your current or temporary password.');
+      return;
+    }
     if (newPassword !== confirmPassword) {
-      setError('New passwords do not match');
+      setConfirmError('New passwords do not match');
       return;
     }
     const policy = clientPolicyErrors(newPassword);
@@ -43,7 +53,11 @@ export default function ChangePassword() {
         body: { current_password: currentPassword, new_password: newPassword },
       });
       await refreshUser();
-      navigate(isManager ? '/employees' : '/', { replace: true });
+      setSuccess(true);
+      redirectTimer.current = setTimeout(
+        () => navigate(isManager ? '/employees' : '/', { replace: true }),
+        250
+      );
     } catch (err) {
       setError(
         err.details?.map((d) => d.message).join('. ') || err.message || 'Could not change password'
@@ -65,18 +79,26 @@ export default function ChangePassword() {
           </p>
         </div>
 
-        {mustChangePassword && (
+        {mustChangePassword && !success && (
           <div className="mb-4 rounded-xl border border-error/30 bg-error-container p-4 font-body-md text-on-error-container">
             Your account uses a temporary password. Choose a new one to continue.
           </div>
         )}
 
+        {success && (
+          <div
+            role="status"
+            className="mb-4 rounded-xl border border-primary/20 bg-primary-fixed p-4 font-body-md text-on-primary-fixed-variant"
+          >
+            Password updated. Redirecting…
+          </div>
+        )}
+
         <div className="rounded-[24px] bg-secondary-container p-8 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <FormField label="Current or temporary password">
               <input
                 type="password"
-                required
                 autoComplete="current-password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
@@ -93,26 +115,34 @@ export default function ChangePassword() {
                 className="input"
               />
             </FormField>
-            <FormField label="Confirm new password">
+            <FormField label="Confirm new password" error={confirmError}>
               <input
                 type="password"
-                required
                 autoComplete="new-password"
+                aria-invalid={Boolean(confirmError)}
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setConfirmError('');
+                }}
                 className="input"
               />
             </FormField>
             <p className="text-xs text-on-surface-variant">
               Minimum 8 characters with an uppercase letter, a lowercase letter and a digit.
             </p>
-            {error && <p className="font-body-md text-error">{error}</p>}
+            {error && (
+              <p role="alert" className="font-body-md text-error">
+                {error}
+              </p>
+            )}
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || success}
+              aria-busy={submitting}
               className="font-headline-md w-full rounded-lg bg-primary py-3 px-4 text-on-primary transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? 'Saving…' : 'Save password'}
+              {success ? 'Saved' : submitting ? 'Saving…' : 'Save password'}
             </button>
           </form>
         </div>

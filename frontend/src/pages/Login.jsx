@@ -15,27 +15,42 @@ function destinationFor(user) {
 }
 
 export default function Login() {
-  const { user, loading, login } = useAuth();
+  const { user, loading, sessionExpired, login } = useAuth();
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && user) return <Navigate to={destinationFor(user)} replace />;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError('');
+    setFormError('');
+
+    const errors = {};
+    if (!identifier.trim()) errors.identifier = 'Enter your email or login ID';
+    if (!password) errors.password = 'Enter your password';
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     setSubmitting(true);
     try {
       const signedIn = await login(identifier.trim(), password);
       navigate(destinationFor(signedIn), { replace: true });
     } catch (err) {
-      setError(err.message || 'Sign in failed');
+      setFormError(
+        err.status === 401 ? 'Invalid email or password' : err.message || 'Sign in failed'
+      );
       setSubmitting(false);
     }
   };
+
+  const inputClass = (hasError) =>
+    `font-body-lg w-full rounded-lg border bg-surface px-4 py-3 text-on-surface focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary ${
+      hasError ? 'border-error' : 'border-outline-variant'
+    }`;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -49,41 +64,78 @@ export default function Login() {
         </div>
 
         <div className="rounded-[24px] bg-secondary-container p-8 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {sessionExpired && (
+            <div
+              role="status"
+              className="mb-4 rounded-xl border border-primary/20 bg-primary-fixed p-4 font-body-md text-on-primary-fixed-variant"
+            >
+              Your session has expired. Please sign in again.
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
               <label htmlFor="identifier" className="font-label-md mb-1 block text-on-surface-variant">
                 Email or Login ID
               </label>
               <input
                 id="identifier"
+                name="identifier"
                 type="text"
                 autoComplete="username"
-                required
                 value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  setFieldErrors((prev) => ({ ...prev, identifier: undefined }));
+                }}
                 placeholder="you@company.com or JODO20220001"
-                className="font-body-lg w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 text-on-surface focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-invalid={Boolean(fieldErrors.identifier)}
+                aria-describedby={fieldErrors.identifier ? 'identifier-error' : undefined}
+                className={inputClass(Boolean(fieldErrors.identifier))}
               />
+              {fieldErrors.identifier && (
+                <p id="identifier-error" role="alert" className="font-body-md mt-1 text-error">
+                  {fieldErrors.identifier}
+                </p>
+              )}
             </div>
+
             <div>
               <label htmlFor="password" className="font-label-md mb-1 block text-on-surface-variant">
                 Password
               </label>
               <input
                 id="password"
+                name="password"
                 type="password"
                 autoComplete="current-password"
-                required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                }}
                 placeholder="••••••••"
-                className="font-body-lg w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 text-on-surface focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-invalid={Boolean(fieldErrors.password)}
+                aria-describedby={fieldErrors.password ? 'password-error' : undefined}
+                className={inputClass(Boolean(fieldErrors.password))}
               />
+              {fieldErrors.password && (
+                <p id="password-error" role="alert" className="font-body-md mt-1 text-error">
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
-            {error && <p className="font-body-md text-error">{error}</p>}
+
+            {formError && (
+              <p role="alert" className="font-body-md text-error">
+                {formError}
+              </p>
+            )}
+
             <button
               type="submit"
               disabled={submitting}
+              aria-busy={submitting}
               className="font-headline-md w-full rounded-lg bg-primary py-3 px-4 text-on-primary transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? 'Signing in…' : 'Sign in'}
@@ -103,6 +155,7 @@ export default function Login() {
                   onClick={() => {
                     setIdentifier(account.email);
                     setPassword(account.password);
+                    setFieldErrors({});
                   }}
                   className="text-left hover:text-primary hover:underline"
                 >
