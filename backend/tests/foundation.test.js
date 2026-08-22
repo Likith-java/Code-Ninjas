@@ -44,8 +44,6 @@ test('all migrations are recorded as applied', () => {
   ]);
 });
 
-
-
 test('employees table carries job fields', () => {
   const dbFile = new Database(dbPath, { readonly: true });
   const columns = columnNames(dbFile, 'employees');
