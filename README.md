@@ -37,7 +37,8 @@ code-ninjas/
 2. Install dependencies for both frontend and backend:
 
    ```bash
-   npm run install:all
+   npm install --prefix frontend
+   npm install --prefix backend
    ```
 
 3. Seed demo data (employees + accounts):
@@ -54,10 +55,11 @@ code-ninjas/
 
 ### Running the Application
 
-Start both the frontend and backend in development mode:
+Start the backend and frontend in development mode (in separate terminals):
 
 ```bash
-npm run dev
+npm run dev --prefix backend    # API on http://localhost:4000
+npm run dev --prefix frontend   # React app with HMR
 ```
 
 - **React app (Vite, HMR):** http://localhost:5173 — proxies `/api` to the backend
