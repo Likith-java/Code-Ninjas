@@ -111,6 +111,34 @@ const MIGRATIONS = [
 
         CREATE INDEX IF NOT EXISTS idx_time_off_employee ON time_off_requests(employee_id);
         CREATE INDEX IF NOT EXISTS idx_time_off_status ON time_off_requests(status);
+    name: '002_add_users_token_version',
+    up: (db) => {
+      const userColumns = columnNames(db, 'users');
+      if (!userColumns.includes('token_version')) {
+        db.exec('ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0');
+      }
+    },
+  },
+  {
+    name: '003_add_directory_indexes',
+    // Directory endpoint indexes.
+    //
+    // - idx_employees_directory_order matches the directory listing's default
+    //   ORDER BY (last_name/first_name, NOCASE) so pagination via LIMIT/OFFSET
+    //   walks a pre-sorted index instead of building a temp b-tree per page.
+    //
+    // Other search/filter fields are already covered:
+    //   department, status, position -> migration 001
+    //   skills(name) + skills(employee_id) -> migration 001
+    //   users.employee_id (account-status derivation join) -> UNIQUE constraint
+    //
+    // Deliberately NOT indexed: employees.email and users.login_id. They were
+    // removed from directory search because they are sensitive/non-directory
+    // fields; an index would only encourage reintroducing them.
+    up: (db) => {
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_employees_directory_order
+          ON employees(last_name COLLATE NOCASE, first_name COLLATE NOCASE);
       `);
     },
   },

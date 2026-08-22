@@ -63,7 +63,12 @@ export async function changePassword(req, res, next) {
       throw new AppError(400, 'Validation failed', 'VALIDATION_FAILED', policyErrors);
     }
 
-    const fullUser = findUserByIdentifier(req.user.login_id);
+    const fullUser = db
+      .prepare('SELECT * FROM users WHERE id = ?')
+      .get(req.user.id);
+    if (!fullUser) {
+      throw new AppError(401, 'Invalid or expired session', 'UNAUTHENTICATED');
+    }
     const matches = await verifyPassword(currentPassword, fullUser.password_hash);
     if (!matches) {
       throw new AppError(400, 'Current password is incorrect', 'INVALID_CREDENTIALS');
@@ -74,12 +79,18 @@ export async function changePassword(req, res, next) {
       ]);
     }
 
+    // Bumping token_version revokes every session issued before this change;
+    // a fresh cookie keeps the current client signed in seamlessly.
     db.prepare(
-      `UPDATE users SET password_hash = ?, must_change_password = 0, updated_at = datetime('now')
+      `UPDATE users
+       SET password_hash = ?, must_change_password = 0,
+           token_version = token_version + 1,
+           updated_at = datetime('now')
        WHERE id = ?`
     ).run(hashPassword(newPassword), req.user.id);
 
-    const updated = findUserByIdentifier(req.user.login_id);
+    const updated = findUserByIdentifier(fullUser.login_id);
+    res.cookie('token', signToken(updated), cookieOptions());
     return res.json({ data: toSessionPayload(updated) });
   } catch (err) {
     return next(err);

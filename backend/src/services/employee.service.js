@@ -7,6 +7,9 @@ import {
 } from '../utils/errors.js';
 import { generateTempPassword, hashPassword } from '../utils/password.js';
 import { generateLoginId } from './login-id.service.js';
+import { getEmployeeStatusProvider } from './directory/status.service.js';
+import { projectDirectoryCard } from './directory/directory.service.js';
+import { ROLES, isManagerRole, ownsEmployeeRecord } from '../middleware/permissions.js';
 import {
   validateEmployee,
   validateProfileFields,
@@ -14,18 +17,6 @@ import {
   validateCertificationsPayload,
   validateResumePayload,
 } from '../validators/employee.validator.js';
-
-const MANAGER_ROLES = ['admin', 'hr'];
-
-const CARD_FIELDS = 'id, first_name, last_name, position, department, avatar_url, status';
-
-function isManager(user) {
-  return MANAGER_ROLES.includes(user?.role);
-}
-
-function fullName(row) {
-  return `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim();
-}
 
 export function getProfileRow(employeeId) {
   return db.prepare('SELECT * FROM employee_profiles WHERE employee_id = ?').get(employeeId);
@@ -47,29 +38,22 @@ function getCertifications(employeeId) {
     .all(employeeId);
 }
 
-function toCard(row) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    first_name: row.first_name,
-    last_name: row.last_name,
-    full_name: fullName(row),
-    position: row.position,
-    department: row.department,
-    avatar_url: row.avatar_url,
-    status: row.status,
-  };
+function relationOf(actor, employeeId) {
+  if (isManagerRole(actor?.role)) return 'manager';
+  if (ownsEmployeeRecord(actor, employeeId)) return 'self';
+  return 'other';
 }
 
-function relationOf(actor, employeeId) {
-  if (isManager(actor)) return 'manager';
-  if (Number(actor?.employee_id) === Number(employeeId)) return 'self';
-  return 'other';
+// Status shown on any profile/card view is always the derived value from the
+// status provider (see services/directory/status.service.js) — never read
+// straight off an employees.status-style column here.
+function derivedStatusFor(employeeId) {
+  return getEmployeeStatusProvider().resolveStatuses([employeeId]).get(employeeId);
 }
 
 function serializeDetail(actor, employee) {
   const relation = relationOf(actor, employee.id);
-  const card = toCard(employee);
+  const card = projectDirectoryCard(employee, derivedStatusFor(employee.id));
 
   if (relation === 'other') {
     const profile = getProfileRow(employee.id);
@@ -89,7 +73,6 @@ function serializeDetail(actor, employee) {
     ...card,
     email: employee.email,
     phone: employee.phone,
-    status: employee.status,
     hired_at: employee.hired_at,
     created_at: employee.created_at,
     updated_at: employee.updated_at,
@@ -109,53 +92,30 @@ function serializeDetail(actor, employee) {
   };
 }
 
-export function listEmployees({ q = '', department = null, status = null, page = 1, limit = 50 }) {
-  const conditions = [];
-  const params = [];
-  if (q) {
-    const like = `%${q}%`;
-    conditions.push(
-      `(first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR position LIKE ?
-        OR EXISTS (SELECT 1 FROM users u WHERE u.employee_id = employees.id AND u.login_id LIKE ?)
-        OR EXISTS (SELECT 1 FROM skills s WHERE s.employee_id = employees.id AND s.name LIKE ?))`
-    );
-    params.push(like, like, like, like, like, like);
-  }
-  if (department) {
-    conditions.push('department = ?');
-    params.push(department);
-  }
-  if (status) {
-    conditions.push('status = ?');
-    params.push(status);
-  }
-  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  const offset = (page - 1) * limit;
-
-  const total = db
-    .prepare(`SELECT COUNT(*) AS count FROM employees ${where}`)
-    .get(...params).count;
-  const rows = db
-    .prepare(
-      `SELECT ${CARD_FIELDS} FROM employees ${where}
-       ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE LIMIT ? OFFSET ?`
-    )
-    .all(...params, limit, offset);
-
-  return { rows: rows.map(toCard), total };
-}
-
-export function getEmployeeCard(id) {
-  const row = db.prepare(`SELECT ${CARD_FIELDS} FROM employees WHERE id = ?`).get(id);
-  if (!row) throw notFoundError('Employee not found');
-  return toCard(row);
-}
-
 export function getEmployeeDetail(actor, id) {
   const row = db.prepare('SELECT * FROM employees WHERE id = ?').get(id);
   if (!row) throw notFoundError('Employee not found');
   return serializeDetail(actor, row);
 }
+
+// The pre-insert duplicate checks run outside the transaction, so concurrent
+// writers (or stale account rows) can still trip the UNIQUE constraints. When
+// that happens we translate the raw SQLite error into the same field-shaped
+// validation error the pre-check produces instead of leaking a 500.
+function duplicateEmailError() {
+  return validationError('Validation failed', [
+    { field: 'email', message: 'Email is already in use' },
+  ]);
+}
+
+function isUniqueViolation(err, table, column) {
+  return (
+    err?.code === 'SQLITE_CONSTRAINT_UNIQUE' &&
+    String(err.message).toLowerCase().includes(`.${column}`.toLowerCase())
+  );
+}
+
+const MAX_LOGIN_ID_ATTEMPTS = 3;
 
 export function provisionEmployee(payload) {
   const { errors, fields } = validateEmployee(payload || {});
@@ -188,23 +148,47 @@ export function provisionEmployee(payload) {
 
     db.prepare('INSERT INTO employee_profiles (employee_id) VALUES (?)').run(employeeId);
 
-    const loginId = generateLoginId(db, {
-      firstName: fields.first_name,
-      lastName: fields.last_name,
-      hiredAt: fields.hired_at,
-    });
     const tempPassword = generateTempPassword();
-    db.prepare(
+    const passwordHash = hashPassword(tempPassword);
+    const insertUser = db.prepare(
       `INSERT INTO users (login_id, email, password_hash, role, employee_id, must_change_password)
        VALUES (?, ?, ?, 'employee', ?, 1)`
-    ).run(loginId, fields.email.toLowerCase(), hashPassword(tempPassword), employeeId);
+    );
 
-    return { employeeId, loginId, tempPassword };
+    // A lost cross-process race can hand us a Login ID that a UNIQUE
+    // constraint rejects; regenerate and retry within the same transaction.
+    for (let attempt = 0; attempt < MAX_LOGIN_ID_ATTEMPTS; attempt += 1) {
+      const loginId = generateLoginId(db, {
+        firstName: fields.first_name,
+        lastName: fields.last_name,
+        hiredAt: fields.hired_at,
+      });
+      try {
+        insertUser.run(loginId, fields.email.toLowerCase(), passwordHash, employeeId);
+        return { employeeId, loginId, tempPassword };
+      } catch (err) {
+        if (isUniqueViolation(err, 'users', 'login_id')) {
+          continue;
+        }
+        if (
+          isUniqueViolation(err, 'users', 'email') ||
+          isUniqueViolation(err, 'employees', 'email')
+        ) {
+          throw duplicateEmailError();
+        }
+        throw err;
+      }
+    }
+    throw new AppError(
+      409,
+      'Could not allocate a unique Login ID for this name and joining year',
+      'LOGIN_ID_EXHAUSTED'
+    );
   })();
 
   const employee = db.prepare('SELECT * FROM employees WHERE id = ?').get(created.employeeId);
   return {
-    ...serializeDetail({ role: 'hr' }, employee),
+    ...serializeDetail({ role: ROLES.ADMIN }, employee),
     account: { login_id: created.loginId, temp_password: created.tempPassword },
   };
 }
@@ -237,8 +221,8 @@ export function updateEmployee(actor, id, body) {
   const existing = db.prepare('SELECT * FROM employees WHERE id = ?').get(id);
   if (!existing) throw notFoundError('Employee not found');
 
-  const manager = isManager(actor);
-  const self = Number(actor.employee_id) === Number(existing.id);
+  const manager = isManagerRole(actor?.role);
+  const self = ownsEmployeeRecord(actor, existing.id);
   if (!manager && !self) throw forbiddenError();
 
   const input = body || {};
@@ -411,7 +395,7 @@ export function setAccountStatus(actor, id, accountStatus) {
     ]);
   }
   const employee = getEmployeeOr404(id);
-  if (Number(actor.employee_id) === Number(employee.id)) {
+  if (ownsEmployeeRecord(actor, employee.id)) {
     throw new AppError(400, 'You cannot change your own account status', 'VALIDATION_FAILED');
   }
   const user = db.prepare('SELECT id FROM users WHERE employee_id = ?').get(employee.id);
@@ -430,6 +414,7 @@ export function resetPassword(actor, id) {
   db.prepare(
     `UPDATE users
      SET password_hash = ?, must_change_password = 1, account_status = 'active',
+         token_version = token_version + 1,
          updated_at = datetime('now')
      WHERE id = ?`
   ).run(hashPassword(tempPassword), user.id);
