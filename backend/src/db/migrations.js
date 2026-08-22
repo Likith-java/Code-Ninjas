@@ -72,6 +72,45 @@ const MIGRATIONS = [
     },
   },
   {
+    name: '002_add_attendance_and_time_off',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS attendance_records (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+          date TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'PRESENT' CHECK (status IN ('PRESENT', 'ABSENT', 'HALF_DAY', 'ON_LEAVE')),
+          check_in_time TEXT,
+          check_out_time TEXT,
+          work_hours REAL DEFAULT 0,
+          extra_hours REAL DEFAULT 0,
+          notes TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+          UNIQUE (employee_id, date)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_attendance_employee_date ON attendance_records(employee_id, date);
+        CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance_records(date);
+
+        CREATE TABLE IF NOT EXISTS time_off_requests (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+          type TEXT NOT NULL CHECK (type IN ('PAID', 'SICK', 'UNPAID')),
+          start_date TEXT NOT NULL,
+          end_date TEXT NOT NULL,
+          days INTEGER NOT NULL,
+          reason TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
+          reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          reviewed_at TEXT,
+          rejection_reason TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_time_off_employee ON time_off_requests(employee_id);
+        CREATE INDEX IF NOT EXISTS idx_time_off_status ON time_off_requests(status);
     name: '002_add_users_token_version',
     up: (db) => {
       const userColumns = columnNames(db, 'users');

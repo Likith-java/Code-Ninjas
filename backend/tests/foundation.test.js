@@ -34,6 +34,7 @@ test('all migrations are recorded as applied', () => {
     .all()
     .map((r) => r.name);
   dbFile.close();
+  assert.ok(row.includes('001_add_employee_domain_fields'));
   assert.deepEqual(row, [
     '001_add_employee_domain_fields',
     '002_add_users_token_version',
