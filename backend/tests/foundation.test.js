@@ -39,8 +39,10 @@ test('all migrations are recorded as applied', () => {
     '001_add_employee_domain_fields',
     '002_add_users_token_version',
     '003_add_directory_indexes',
+    '004_add_attendance_and_time_off',
   ]);
 });
+
 
 test('employees table carries job fields', () => {
   const dbFile = new Database(dbPath, { readonly: true });
