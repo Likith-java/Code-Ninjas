@@ -34,7 +34,10 @@ test('migration 001 is recorded as applied', () => {
     .all()
     .map((r) => r.name);
   dbFile.close();
-  assert.deepEqual(row, ['001_add_employee_domain_fields']);
+  assert.deepEqual(row, [
+    '001_add_employee_domain_fields',
+    '002_add_users_token_version',
+  ]);
 });
 
 test('employees table carries job fields', () => {
@@ -97,6 +100,7 @@ test('users table keeps authentication state intact', () => {
     'employee_id',
     'must_change_password',
     'account_status',
+    'token_version',
     'created_at',
     'updated_at',
   ]) {

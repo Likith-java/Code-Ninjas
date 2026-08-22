@@ -71,6 +71,15 @@ const MIGRATIONS = [
       `);
     },
   },
+  {
+    name: '002_add_users_token_version',
+    up: (db) => {
+      const userColumns = columnNames(db, 'users');
+      if (!userColumns.includes('token_version')) {
+        db.exec('ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0');
+      }
+    },
+  },
 ];
 
 function columnNames(db, table) {

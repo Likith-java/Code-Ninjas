@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS users (
   employee_id INTEGER UNIQUE REFERENCES employees(id) ON DELETE SET NULL,
   must_change_password INTEGER NOT NULL DEFAULT 0,
   account_status TEXT NOT NULL DEFAULT 'active' CHECK (account_status IN ('active', 'disabled')),
+  token_version INTEGER NOT NULL DEFAULT 0,
   last_login_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))

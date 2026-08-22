@@ -430,6 +430,7 @@ export function resetPassword(actor, id) {
   db.prepare(
     `UPDATE users
      SET password_hash = ?, must_change_password = 1, account_status = 'active',
+         token_version = token_version + 1,
          updated_at = datetime('now')
      WHERE id = ?`
   ).run(hashPassword(tempPassword), user.id);
