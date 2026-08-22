@@ -1,51 +1,42 @@
-# Frontend - Human Resource Management System (HRMS)
+# Frontend — Dayflow HRMS (React)
 
-This directory contains the responsive UI screens and dashboard views for the Human Resource Management System:
+The interactive app is a **React 18 + Vite SPA** in `src/`, styled with **Tailwind CSS 3** using the Azure Horizon design tokens consolidated in `tailwind.config.js`.
 
-## Available Pages
+## App Structure
 
-1. **`index.html`** / **`azure-horizon-desktop.html`**
-   - Main Azure Horizon Desktop Dashboard (Light Mode)
-   - Features quick access bar, sidebar navigation, top app bar with search, welcome banner, payroll summary card, ongoing projects bento grid, and top employees list.
+```
+frontend/
+├── index.html              # React entry
+├── vite.config.js          # dev server on :5173, proxies /api → :4000
+├── tailwind.config.js      # design tokens (Azure Horizon M3 palette + typography)
+├── src/
+│   ├── main.jsx            # router + auth provider bootstrap
+│   ├── App.jsx             # routes: /login, / (dashboard), /employees
+│   ├── api/client.js       # fetch wrapper (httpOnly cookie sessions)
+│   ├── auth/AuthContext.jsx# session state, login/logout, role helpers
+│   ├── components/         # Layout (sidebar+topbar shell), Avatar
+│   ├── pages/              # Login, Dashboard, Employees (search/filter/CRUD modal)
+│   └── utils/employees.js  # department chip colors, initials helper
+```
 
-2. **`azure-horizon-dark.html`**
-   - Azure Horizon Desktop Dashboard (Dark Mode)
-   - Features dark palette tokens, JetBrains Mono accents, and full bento layout.
+## Pages
 
-3. **`azure-horizon-dashboard.html`**
-   - Unified Azure Horizon dashboard with responsive container queries.
-
-4. **`insightlancer.html`**
-   - Insightlancer HR Dashboard
-   - Features mobile top bar, desktop drawer, ongoing projects cards with custom progress indicators, and mobile floating action button (FAB) + bottom navigation.
-
-5. **`design-system.html`**
-   - HR Management System Dashboard (Design System view)
-   - Includes employee profile stats card (Richard A. Bachmann: 75k followers, 16k followings, 600 projects), folder document manager, project cards, and team directory list.
-
-6. **`hrms-overview.html`**
-   - Mobile-first HRMS Overview screen
-   - Features sticky navigation, schedule card, dark & light theme project cards, employee directory preview, and mobile bottom navigation with central action button.
-
-7. **`employee-directory.html`**
-   - Dedicated Employee Directory screen
-   - Includes search bar, filter action, categorized employee cards with department tags (Design, Product, Engineering, HR, Marketing), and FAB.
-
-8. **`payroll-management.html`**
-   - Dedicated Payroll Management screen
-   - Includes total payroll overview ($124,500), pending payments ($12,300), completed payouts (42 employees), and detailed payment transaction records.
-
-9. **`join-room.html`**
-   - Join Room & Invitation Screen
-   - HR meeting guest room access with invitation details and guest entry form.
+1. **`/login`** — sign-in screen wired to `POST /api/auth/login`; demo accounts listed on the page. All other routes redirect here when signed out.
+2. **`/`** — dashboard: workforce stats from the API, payroll summary card, top employees, project cards.
+3. **`/employees`** — employee directory: live search, department filter chips, add/edit/delete via modal (HR/Admin only; Employee role is read-only).
 
 ## Running Locally
 
-To serve the frontend:
+Recommended (backend serves the built app):
 
 ```bash
-cd frontend
-npx -y serve .
-# or
-npm install && npm run dev
+cd backend && npm run seed && npm run dev   # API on http://localhost:4000
+cd ../frontend && npm install && npm run build
+# open http://localhost:4000
+```
+
+Development with hot reload:
+
+```bash
+npm install && npm run dev                  # http://localhost:5173 (API must run on :4000)
 ```
