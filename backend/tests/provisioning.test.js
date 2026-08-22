@@ -1,7 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
-import { bootstrap, cleanup } from './helpers.js';
+import { bootstrap, cleanup, login } from './helpers.js';
 
 let request;
 let dbPath;
@@ -104,4 +104,155 @@ test('provisioned accounts can log in by login ID and by email', async () => {
   assert.equal(byId.status, 200);
   assert.equal(byEmail.status, 200);
   assert.equal(byId.body.data.id, byEmail.body.data.id);
+});
+
+// ---------------------------------------------------------------------------
+// Access control on the provisioning endpoint
+// ---------------------------------------------------------------------------
+
+test('unauthenticated callers cannot provision employees', async () => {
+  const res = await request.post('/api/employees').send({
+    first_name: 'Sneaky',
+    last_name: 'Anonymous',
+    email: 'sneaky.anonymous@dayflow.io',
+    position: 'Engineer',
+    department: 'Engineering',
+  });
+  assert.equal(res.status, 401);
+  assert.equal(res.body.error.code, 'UNAUTHENTICATED');
+});
+
+test('non-admin roles cannot provision employees', async () => {
+  const employee = await login(request, 'employee@dayflow.com', 'Employee@123');
+  const res = await request
+    .post('/api/employees')
+    .set('Cookie', employee.cookie)
+    .send({
+      first_name: 'Escalated',
+      last_name: 'Peer',
+      email: 'escalated.peer@dayflow.io',
+      position: 'Engineer',
+      department: 'Engineering',
+    });
+  assert.equal(res.status, 403);
+  assert.equal(res.body.error.code, 'FORBIDDEN');
+});
+
+// ---------------------------------------------------------------------------
+// Duplicate email handling
+// ---------------------------------------------------------------------------
+
+test('duplicate email is rejected without creating partial records', async () => {
+  const first = await provision({ first_name: 'Dup', last_name: 'Origin' });
+  assert.equal(first.status, 201);
+  const duplicateEmail = first.body.data.email;
+
+  const listBefore = await request.get('/api/employees?limit=1').set('Cookie', hr.cookie);
+  const totalBefore = listBefore.body.meta.total;
+
+  const second = await provision({
+    first_name: 'Dup',
+    last_name: 'Clash',
+    email: duplicateEmail.toUpperCase(), // uniqueness is case-insensitive
+  });
+  assert.equal(second.status, 400);
+  assert.equal(second.body.error.code, 'VALIDATION_FAILED');
+  assert.ok(
+    second.body.error.details.some(
+      (d) => d.field === 'email' && /already in use/i.test(d.message)
+    )
+  );
+
+  const listAfter = await request.get('/api/employees?limit=1').set('Cookie', hr.cookie);
+  assert.equal(listAfter.body.meta.total, totalBefore);
+
+  // Exactly one account may exist for the email: the original, not a second
+  // row slipped in by the rejected attempt.
+  const dbFile = new Database(dbPath, { readonly: true });
+  const accountCount = dbFile
+    .prepare('SELECT COUNT(*) AS count FROM users WHERE email = ?')
+    .get(duplicateEmail).count;
+  dbFile.close();
+  assert.equal(accountCount, 1);
+});
+
+// ---------------------------------------------------------------------------
+// Transaction rollback on mid-flight constraint failure
+// ---------------------------------------------------------------------------
+
+test('a constraint failure after the employee insert rolls everything back', async () => {
+  // Simulate a stale/legacy account row that owns the target email while the
+  // employees table does not: the employee INSERT succeeds, then the user
+  // INSERT hits the UNIQUE constraint on users.email mid-transaction.
+  const staleEmail = `stale.account.${Math.random().toString(36).slice(2)}@dayflow.io`;
+  const seed = new Database(dbPath);
+  seed.prepare(
+    `INSERT INTO users (login_id, email, password_hash, role, must_change_password)
+     VALUES (?, ?, '$2a$10$notarealhashnotarealhashnotarealhashnotarealhash', 'employee', 0)`
+  ).run(`STALE${Date.now()}`.slice(0, 16), staleEmail);
+  seed.close();
+
+  const listBefore = await request.get('/api/employees?limit=1').set('Cookie', hr.cookie);
+  const totalBefore = listBefore.body.meta.total;
+
+  const res = await provision({ email: staleEmail, first_name: 'Roll', last_name: 'Back' });
+  assert.equal(res.status, 400); // handled error, never a 500
+  assert.equal(res.body.error.code, 'VALIDATION_FAILED');
+  assert.ok(
+    res.body.error.details.some((d) => d.field === 'email' && /already in use/i.test(d.message))
+  );
+
+  // Full rollback: neither the employee row nor its profile may survive.
+  const dbFile = new Database(dbPath, { readonly: true });
+  const orphanEmployees = dbFile
+    .prepare('SELECT COUNT(*) AS count FROM employees WHERE email = ?')
+    .get(staleEmail).count;
+  const orphanProfiles = dbFile
+    .prepare(
+      `SELECT COUNT(*) AS count FROM employee_profiles
+       WHERE employee_id NOT IN (SELECT id FROM employees)`
+    )
+    .get().count;
+  dbFile.close();
+
+  assert.equal(orphanEmployees, 0);
+  assert.equal(orphanProfiles, 0);
+
+  const listAfter = await request.get('/api/employees?limit=1').set('Cookie', hr.cookie);
+  assert.equal(listAfter.body.meta.total, totalBefore);
+});
+
+// ---------------------------------------------------------------------------
+// Login ID collision handling through the API
+// ---------------------------------------------------------------------------
+
+test('same-name collisions are scoped per joining year', async () => {
+  const currentYearHire = await provision({ first_name: 'Iris', last_name: 'Nyx' });
+  assert.equal(currentYearHire.status, 201);
+  assert.equal(currentYearHire.body.data.account.login_id, `IRNY${year}0001`);
+
+  const pastYearHire = await provision({
+    first_name: 'IRIS',
+    last_name: 'nyx',
+    hired_at: '2015-06-15',
+  });
+  assert.equal(pastYearHire.status, 201);
+  assert.equal(pastYearHire.body.data.account.login_id, 'IRNY20150001');
+});
+
+// ---------------------------------------------------------------------------
+// Safe response shape
+// ---------------------------------------------------------------------------
+
+test('the provisioning response exposes credentials but never hash material', async () => {
+  const created = await provision({ first_name: 'Safe', last_name: 'Shape' });
+  assert.equal(created.status, 201);
+
+  const body = JSON.stringify(created.body);
+  assert.ok(!/\$2[aby]\$/.test(body), 'response must not contain bcrypt material');
+  assert.ok(!body.includes('password_hash'));
+  assert.deepEqual(Object.keys(created.body.data.account).sort(), [
+    'login_id',
+    'temp_password',
+  ]);
 });

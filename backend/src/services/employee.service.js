@@ -152,6 +152,25 @@ export function getEmployeeDetail(actor, id) {
   return serializeDetail(actor, row);
 }
 
+// The pre-insert duplicate checks run outside the transaction, so concurrent
+// writers (or stale account rows) can still trip the UNIQUE constraints. When
+// that happens we translate the raw SQLite error into the same field-shaped
+// validation error the pre-check produces instead of leaking a 500.
+function duplicateEmailError() {
+  return validationError('Validation failed', [
+    { field: 'email', message: 'Email is already in use' },
+  ]);
+}
+
+function isUniqueViolation(err, table, column) {
+  return (
+    err?.code === 'SQLITE_CONSTRAINT_UNIQUE' &&
+    String(err.message).toLowerCase().includes(`.${column}`.toLowerCase())
+  );
+}
+
+const MAX_LOGIN_ID_ATTEMPTS = 3;
+
 export function provisionEmployee(payload) {
   const { errors, fields } = validateEmployee(payload || {});
   if (!errors.some((e) => e.field === 'email')) {
@@ -183,18 +202,42 @@ export function provisionEmployee(payload) {
 
     db.prepare('INSERT INTO employee_profiles (employee_id) VALUES (?)').run(employeeId);
 
-    const loginId = generateLoginId(db, {
-      firstName: fields.first_name,
-      lastName: fields.last_name,
-      hiredAt: fields.hired_at,
-    });
     const tempPassword = generateTempPassword();
-    db.prepare(
+    const passwordHash = hashPassword(tempPassword);
+    const insertUser = db.prepare(
       `INSERT INTO users (login_id, email, password_hash, role, employee_id, must_change_password)
        VALUES (?, ?, ?, 'employee', ?, 1)`
-    ).run(loginId, fields.email.toLowerCase(), hashPassword(tempPassword), employeeId);
+    );
 
-    return { employeeId, loginId, tempPassword };
+    // A lost cross-process race can hand us a Login ID that a UNIQUE
+    // constraint rejects; regenerate and retry within the same transaction.
+    for (let attempt = 0; attempt < MAX_LOGIN_ID_ATTEMPTS; attempt += 1) {
+      const loginId = generateLoginId(db, {
+        firstName: fields.first_name,
+        lastName: fields.last_name,
+        hiredAt: fields.hired_at,
+      });
+      try {
+        insertUser.run(loginId, fields.email.toLowerCase(), passwordHash, employeeId);
+        return { employeeId, loginId, tempPassword };
+      } catch (err) {
+        if (isUniqueViolation(err, 'users', 'login_id')) {
+          continue;
+        }
+        if (
+          isUniqueViolation(err, 'users', 'email') ||
+          isUniqueViolation(err, 'employees', 'email')
+        ) {
+          throw duplicateEmailError();
+        }
+        throw err;
+      }
+    }
+    throw new AppError(
+      409,
+      'Could not allocate a unique Login ID for this name and joining year',
+      'LOGIN_ID_EXHAUSTED'
+    );
   })();
 
   const employee = db.prepare('SELECT * FROM employees WHERE id = ?').get(created.employeeId);
