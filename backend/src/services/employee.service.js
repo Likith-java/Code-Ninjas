@@ -7,6 +7,7 @@ import {
 } from '../utils/errors.js';
 import { generateTempPassword, hashPassword } from '../utils/password.js';
 import { generateLoginId } from './login-id.service.js';
+import { ROLES, isManagerRole, ownsEmployeeRecord } from '../middleware/permissions.js';
 import {
   validateEmployee,
   validateProfileFields,
@@ -15,13 +16,7 @@ import {
   validateResumePayload,
 } from '../validators/employee.validator.js';
 
-const MANAGER_ROLES = ['admin', 'hr'];
-
 const CARD_FIELDS = 'id, first_name, last_name, position, department, avatar_url, status';
-
-function isManager(user) {
-  return MANAGER_ROLES.includes(user?.role);
-}
 
 function fullName(row) {
   return `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim();
@@ -62,8 +57,8 @@ function toCard(row) {
 }
 
 function relationOf(actor, employeeId) {
-  if (isManager(actor)) return 'manager';
-  if (Number(actor?.employee_id) === Number(employeeId)) return 'self';
+  if (isManagerRole(actor?.role)) return 'manager';
+  if (ownsEmployeeRecord(actor, employeeId)) return 'self';
   return 'other';
 }
 
@@ -204,7 +199,7 @@ export function provisionEmployee(payload) {
 
   const employee = db.prepare('SELECT * FROM employees WHERE id = ?').get(created.employeeId);
   return {
-    ...serializeDetail({ role: 'hr' }, employee),
+    ...serializeDetail({ role: ROLES.ADMIN }, employee),
     account: { login_id: created.loginId, temp_password: created.tempPassword },
   };
 }
@@ -237,8 +232,8 @@ export function updateEmployee(actor, id, body) {
   const existing = db.prepare('SELECT * FROM employees WHERE id = ?').get(id);
   if (!existing) throw notFoundError('Employee not found');
 
-  const manager = isManager(actor);
-  const self = Number(actor.employee_id) === Number(existing.id);
+  const manager = isManagerRole(actor?.role);
+  const self = ownsEmployeeRecord(actor, existing.id);
   if (!manager && !self) throw forbiddenError();
 
   const input = body || {};
@@ -411,7 +406,7 @@ export function setAccountStatus(actor, id, accountStatus) {
     ]);
   }
   const employee = getEmployeeOr404(id);
-  if (Number(actor.employee_id) === Number(employee.id)) {
+  if (ownsEmployeeRecord(actor, employee.id)) {
     throw new AppError(400, 'You cannot change your own account status', 'VALIDATION_FAILED');
   }
   const user = db.prepare('SELECT id FROM users WHERE employee_id = ?').get(employee.id);
