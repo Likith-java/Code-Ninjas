@@ -3,6 +3,7 @@ import { useAuth } from './auth/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Employees from './pages/Employees.jsx';
+import Attendance from './pages/Attendance.jsx';
 import Login from './pages/Login.jsx';
 
 function Protected({ children }) {
@@ -32,6 +33,7 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="employees" element={<Employees />} />
+        <Route path="attendance" element={<Attendance />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

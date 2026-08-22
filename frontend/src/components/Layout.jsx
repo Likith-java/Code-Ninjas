@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 
 const NAV_ITEMS = [
   { to: '/', icon: 'dashboard', label: 'Dashboard' },
+  { to: '/attendance', icon: 'fact_check', label: 'Attendance' },
   { to: '/employees', icon: 'badge', label: 'Employee Directory' },
 ];
 
