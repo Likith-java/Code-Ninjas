@@ -111,6 +111,10 @@ const MIGRATIONS = [
 
         CREATE INDEX IF NOT EXISTS idx_time_off_employee ON time_off_requests(employee_id);
         CREATE INDEX IF NOT EXISTS idx_time_off_status ON time_off_requests(status);
+      `);
+    },
+  },
+  {
     name: '002_add_users_token_version',
     up: (db) => {
       const userColumns = columnNames(db, 'users');

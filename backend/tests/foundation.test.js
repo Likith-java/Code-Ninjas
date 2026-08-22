@@ -37,6 +37,7 @@ test('all migrations are recorded as applied', () => {
   assert.ok(row.includes('001_add_employee_domain_fields'));
   assert.deepEqual(row, [
     '001_add_employee_domain_fields',
+    '002_add_attendance_and_time_off',
     '002_add_users_token_version',
     '003_add_directory_indexes',
     '004_add_profile_bank_details',
