@@ -75,11 +75,27 @@ The backend serves the built React app from `frontend/dist` when it exists.
 | HR       | SACO20230001   | hr@dayflow.com    | Hr@123456    |
 | Employee | MIDO20220001   | employee@dayflow.com | Employee@123 |
 
-The login form accepts either the email address or login ID. After changing the database schema,
-delete `backend/data/dayflow.db` (and any `-shm`/`-wal` sidecar files) and run the seed command
-again before using the demo accounts.
+The login form accepts either the email address or login ID.
 
 HR/Admin can create, edit, and delete employees; Employee role is read-only.
+
+### Database & Migrations
+
+The backend uses SQLite (`backend/data/dayflow.db`) with the schema baseline defined in
+`backend/src/db/schema.sql`. Incremental schema changes are plain JavaScript migrations in
+`backend/src/db/migrations.js` that run automatically on every backend start (and before
+seeding), tracked in a `schema_migrations` table:
+
+- Fresh databases get the full baseline schema, then pending migrations are recorded.
+- Existing databases are upgraded **in place** — migrations only add columns/indexes, never
+  drop or reset data. Deleting the database file after a schema change is no longer necessary.
+- To add a new migration, append an entry to the `MIGRATIONS` array in
+  `backend/src/db/migrations.js`; keep each step idempotent so fresh and migrated databases
+  converge on the same shape.
+
+Current employee-domain model: employees (job fields incl. company/location/self-referencing
+manager, identifiers employee_code/PAN/UAN), users (login/auth state), employee_profiles
+(personal details, about, resume), plus normalized skills and certifications tables.
 
 ### API Overview
 
@@ -112,6 +128,9 @@ employee themselves and managers receive private fields and edit access where pe
 ```bash
 npm test --prefix backend
 ```
+
+The suite covers auth, RBAC, provisioning, profile/resume flows, and the database foundation
+(schema shape, unique constraints, manager hierarchy, and in-place migration upgrades).
 
 ## Contributing
 
