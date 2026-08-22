@@ -99,6 +99,22 @@ Current employee-domain model: employees (job fields incl. company/location/self
 manager, identifiers employee_code/PAN/UAN), users (login/auth state), employee_profiles
 (personal details, about, resume), plus normalized skills and certifications tables.
 
+### Derived employee status
+
+Directory status (`GET /api/employees`, `GET /api/employees/:id`) is a **derived value**
+computed by a swappable status provider (`backend/src/services/directory/status.service.js`),
+never a manually maintained duplicate flag:
+
+- `disabled` — linked user account is disabled
+- `on_leave` — legacy manual employment flag (temporary source)
+- `active` — otherwise
+
+The canonical future source is the attendance/time-off domain, which is not implemented
+yet. When it lands, implement the same `EmployeeStatusProvider` contract against its
+tables and swap the provider at the single wiring point in `getEmployeeStatusProvider()`;
+routes, services, and filters require no further changes. See the INTEGRATION POINT notes
+in that file.
+
 ### API Overview
 
 All protected endpoints use the httpOnly cookie set by login. Employee detail responses are
@@ -111,7 +127,7 @@ employee themselves and managers receive private fields and edit access where pe
 | GET | `/api/auth/me` | required | Current user and password-change state |
 | POST | `/api/auth/change-password` | required | Change the current password |
 | POST | `/api/auth/logout` | public | Clear session cookie |
-| GET | `/api/employees` | required | List employees (`?q=&department=&page=&limit=`) |
+| GET | `/api/employees` | required | List employees (`?q=&department=&status=&page=&limit=`); returns directory cards only (id, name, photo, position, department, derived status) |
 | GET | `/api/employees/meta` | required | List departments and directory metadata |
 | GET | `/api/employees/:id` | required | Viewer-aware employee profile |
 | POST | `/api/employees` | admin, hr | Create employee and provision account |
@@ -131,8 +147,10 @@ employee themselves and managers receive private fields and edit access where pe
 npm test --prefix backend
 ```
 
-The suite covers auth, RBAC, provisioning, profile/resume flows, and the database foundation
-(schema shape, unique constraints, manager hierarchy, and in-place migration upgrades).
+The suite covers auth, RBAC, provisioning, profile/resume flows, the employee directory
+(search scoped to non-sensitive fields, pagination, derived status, field-exposure
+guarantees), and the database foundation (schema shape, unique constraints, manager
+hierarchy, and in-place migration upgrades).
 
 ## Contributing
 

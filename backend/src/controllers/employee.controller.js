@@ -1,5 +1,4 @@
 import {
-  listEmployees as listEmployeesService,
   getEmployeeDetail,
   provisionEmployee,
   updateEmployee,
@@ -12,6 +11,8 @@ import {
   updateResume,
   getResumePdf,
 } from '../services/employee.service.js';
+import { listDirectoryCards } from '../services/directory/directory.service.js';
+import { DIRECTORY_STATUSES } from '../services/directory/status.service.js';
 import { DEPARTMENTS, STATUSES } from '../validators/employee.validator.js';
 
 function listParams(req) {
@@ -20,9 +21,7 @@ function listParams(req) {
     typeof req.query.department === 'string' && req.query.department !== 'All'
       ? req.query.department
       : null;
-  const status = ['active', 'on_leave'].includes(req.query.status)
-    ? req.query.status
-    : null;
+  const status = DIRECTORY_STATUSES.includes(req.query.status) ? req.query.status : null;
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
   return { q, department, status, page, limit };
@@ -31,9 +30,9 @@ function listParams(req) {
 export function listEmployees(req, res, next) {
   try {
     const params = listParams(req);
-    const { rows, total } = listEmployeesService(params);
+    const { cards, total } = listDirectoryCards(params);
     return res.json({
-      data: rows,
+      data: cards,
       meta: {
         page: params.page,
         limit: params.limit,
@@ -142,5 +141,11 @@ export function downloadResumePdf(req, res, next) {
 }
 
 export function listMeta(_req, res) {
-  return res.json({ data: { departments: DEPARTMENTS, statuses: STATUSES } });
+  return res.json({
+    data: {
+      departments: DEPARTMENTS,
+      statuses: STATUSES,
+      directory_statuses: DIRECTORY_STATUSES,
+    },
+  });
 }

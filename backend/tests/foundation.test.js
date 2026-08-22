@@ -27,7 +27,7 @@ function indexNames(db, table) {
     .map((index) => index.name);
 }
 
-test('migration 001 is recorded as applied', () => {
+test('all migrations are recorded as applied', () => {
   const dbFile = new Database(dbPath, { readonly: true });
   const row = dbFile
     .prepare('SELECT name FROM schema_migrations ORDER BY name')
@@ -37,6 +37,7 @@ test('migration 001 is recorded as applied', () => {
   assert.deepEqual(row, [
     '001_add_employee_domain_fields',
     '002_add_users_token_version',
+    '003_add_directory_indexes',
   ]);
 });
 
@@ -124,6 +125,7 @@ test('search and login indexes exist', () => {
     'idx_employees_employee_code',
     'idx_employees_pan',
     'idx_employees_uan',
+    'idx_employees_directory_order',
   ]) {
     assert.ok(employees.includes(name), `index ${name} missing`);
   }
