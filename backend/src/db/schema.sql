@@ -88,3 +88,18 @@ CREATE TABLE IF NOT EXISTS certifications (
 );
 
 CREATE INDEX IF NOT EXISTS idx_certifications_employee ON certifications(employee_id);
+
+CREATE TABLE IF NOT EXISTS salary_structures (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  monthly_wage REAL NOT NULL,
+  basic_rate REAL NOT NULL,
+  hra_rate REAL NOT NULL,
+  pf_rate REAL NOT NULL,
+  fixed_allowance REAL NOT NULL,
+  working_days_per_week INTEGER NOT NULL DEFAULT 5,
+  effective_date TEXT NOT NULL DEFAULT (datetime('now')),
+  end_date TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_salary_user_effective ON salary_structures(user_id, effective_date, end_date);

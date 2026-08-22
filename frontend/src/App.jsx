@@ -5,6 +5,9 @@ import Dashboard from './pages/Dashboard.jsx';
 import Employees from './pages/Employees.jsx';
 import EmployeeProfile from './pages/EmployeeProfile.jsx';
 import ChangePassword from './pages/ChangePassword.jsx';
+import SalaryCalculatorPage from './pages/SalaryCalculatorPage.jsx';
+import PayrollGeneratorPage from './pages/PayrollGeneratorPage.jsx';
+import PayrollReportsPage from './pages/PayrollReportsPage.jsx';
 import Login from './pages/Login.jsx';
 
 function Protected({ children }) {
@@ -54,6 +57,9 @@ export default function App() {
         <Route path="employees" element={<Employees />} />
         <Route path="employees/me" element={<MyProfileRedirect />} />
         <Route path="employees/:id" element={<EmployeeProfile />} />
+        <Route path="salary-calculator" element={<SalaryCalculatorPage />} />
+        <Route path="payroll-generator" element={<PayrollGeneratorPage />} />
+        <Route path="payroll-reports" element={<PayrollReportsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
