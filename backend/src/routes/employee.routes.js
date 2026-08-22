@@ -13,6 +13,12 @@ import {
   putResume,
   downloadResumePdf,
   listMeta,
+  getProfile,
+  putProfile,
+  postSkill,
+  deleteSkill,
+  postCertification,
+  deleteCertification,
 } from '../controllers/employee.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 import {
@@ -47,6 +53,39 @@ router.delete('/:id', requirePermission('employee:delete'), removeEmployee);
 // narrowed to a read-only public view unless the viewer owns the record or
 // holds the manager permission set.
 router.get('/:id', requirePermission('employee:profile:read'), getEmployee);
+
+// PRD Employee Profile API ------------------------------------------------------
+// GET is viewer-aware by design: the service serializes a dedicated DTO per
+// relation (own / other-employee / admin). Sensitive fields never enter the
+// response unless the caller is authorized — there is no reliance on the
+// client to hide anything.
+router.get('/:id/profile', requirePermission('employee:profile:read'), getProfile);
+
+// Mutations: record owner (personal fields only) or managers holding
+// "update any". Field whitelists are re-enforced in the service layer, so
+// route-guard bypasses still cannot touch protected data.
+router.put('/:id/profile', requireOwnershipOrPermission('employee:update:any'), putProfile);
+
+router.post(
+  '/:id/skills',
+  requireOwnershipOrPermission('employee:content:manage:any'),
+  postSkill
+);
+router.delete(
+  '/:id/skills/:skillId',
+  requireOwnershipOrPermission('employee:content:manage:any'),
+  deleteSkill
+);
+router.post(
+  '/:id/certifications',
+  requireOwnershipOrPermission('employee:content:manage:any'),
+  postCertification
+);
+router.delete(
+  '/:id/certifications/:certificationId',
+  requireOwnershipOrPermission('employee:content:manage:any'),
+  deleteCertification
+);
 
 // Mutations are limited to the record owner or managers holding the
 // "update any" permission. Self-service edits remain restricted to the

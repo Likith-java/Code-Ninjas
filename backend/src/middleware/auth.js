@@ -59,21 +59,23 @@ export function requireAuth(req, res, next) {
   }
 }
 
-export function requireRole(...allowedRoles) {
+/**
+ * Guard factory for role-scoped routes (e.g. time-off approvals). Must run
+ * after `requireAuth`; the caller's role is always resolved from the database,
+ * never from token claims.
+ */
+export function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) {
       return res
         .status(401)
         .json({ error: { message: 'Authentication required', code: 'UNAUTHENTICATED' } });
     }
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!roles.includes(req.user.role)) {
       return res
         .status(403)
-        .json({ error: { message: 'Forbidden: insufficient role', code: 'FORBIDDEN' } });
+        .json({ error: { message: 'Insufficient permissions', code: 'FORBIDDEN' } });
     }
     return next();
   };
 }
-
-
-
