@@ -187,15 +187,32 @@ export default function Attendance() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(user?.id || 'current');
 
   // Attendance Records State
+  // Attendance Records State
   const [attendanceRecords, setAttendanceRecords] = useState(() =>
     getInitialMockData(today.getFullYear(), today.getMonth())
   );
 
   // Today's Live Attendance Punch State
-  const [todayPunch, setTodayPunch] = useState({
-    checkedIn: true,
-    checkInTime: new Date(Date.now() - 4 * 3600 * 1000 - 25 * 60 * 1000).toISOString(),
-    checkOutTime: null,
+  const [todayPunch, setTodayPunch] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dayflow_today_punch');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const todayDate = new Date().toISOString().split('T')[0];
+        if (parsed.date === todayDate) {
+          return {
+            checkedIn: parsed.checkedIn,
+            checkInTime: parsed.checkInTime,
+            checkOutTime: parsed.checkOutTime,
+          };
+        }
+      }
+    } catch {}
+    return {
+      checkedIn: true,
+      checkInTime: new Date(Date.now() - 4 * 3600 * 1000 - 25 * 60 * 1000).toISOString(),
+      checkOutTime: null,
+    };
   });
 
   // Live Clock
@@ -214,6 +231,51 @@ export default function Attendance() {
         .catch(() => {});
     }
   }, [isAdmin]);
+
+  // Fetch real attendance records from API on mount & month/employee change
+  useEffect(() => {
+    const todayDateStr = new Date().toISOString().split('T')[0];
+    const monthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    const empParam = isAdmin && selectedEmployeeId && selectedEmployeeId !== 'current' ? `employeeId=${selectedEmployeeId}&` : '';
+
+    api(`/api/attendance?${empParam}month=${monthStr}`)
+      .then((res) => {
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const mapped = res.data.map((r) => ({
+            ...r,
+            day: days[new Date(r.date + 'T00:00:00Z').getUTCDay()] || 'Mon',
+          }));
+          setAttendanceRecords(mapped);
+
+          const todayRec = res.data.find((r) => r.date === todayDateStr);
+          if (todayRec) {
+            if (todayRec.check_in_time && todayRec.check_out_time) {
+              const punchState = {
+                checkedIn: false,
+                checkInTime: todayRec.check_in_time,
+                checkOutTime: todayRec.check_out_time,
+              };
+              setTodayPunch(punchState);
+              try {
+                localStorage.setItem('dayflow_today_punch', JSON.stringify({ ...punchState, date: todayDateStr }));
+              } catch {}
+            } else if (todayRec.check_in_time) {
+              const punchState = {
+                checkedIn: true,
+                checkInTime: todayRec.check_in_time,
+                checkOutTime: null,
+              };
+              setTodayPunch(punchState);
+              try {
+                localStorage.setItem('dayflow_today_punch', JSON.stringify({ ...punchState, date: todayDateStr }));
+              } catch {}
+            }
+          }
+        }
+      })
+      .catch(() => {});
+  }, [currentYear, currentMonth, selectedEmployeeId, isAdmin]);
 
   // When year or month changes, update records
   const handleMonthChange = (direction) => {
@@ -244,36 +306,70 @@ export default function Attendance() {
   };
 
   // Check In / Check Out Actions
-  const handlePunchToggle = () => {
+  const handlePunchToggle = async () => {
+    const todayDateStr = new Date().toISOString().split('T')[0];
     const nowIso = new Date().toISOString();
+
     if (todayPunch.checkedIn) {
-      // Check out
-      setTodayPunch((prev) => ({
-        ...prev,
+      // Check out: stop timer immediately, fix checkOutTime
+      const updatedPunch = {
+        ...todayPunch,
         checkedIn: false,
         checkOutTime: nowIso,
-      }));
+      };
+      setTodayPunch(updatedPunch);
+      try {
+        localStorage.setItem('dayflow_today_punch', JSON.stringify({ ...updatedPunch, date: todayDateStr }));
+      } catch {}
+
+      try {
+        await api('/api/attendance/check-out', {
+          method: 'POST',
+          body: { date: todayDateStr, time: nowIso },
+        });
+      } catch {}
     } else {
-      // Check in
-      setTodayPunch({
+      // Check in: start timer
+      const updatedPunch = {
         checkedIn: true,
         checkInTime: nowIso,
         checkOutTime: null,
-      });
+      };
+      setTodayPunch(updatedPunch);
+      try {
+        localStorage.setItem('dayflow_today_punch', JSON.stringify({ ...updatedPunch, date: todayDateStr }));
+      } catch {}
+
+      try {
+        await api('/api/attendance/check-in', {
+          method: 'POST',
+          body: { date: todayDateStr, time: nowIso },
+        });
+      } catch {}
     }
   };
 
-  // Elapsed Work Timer Calculation
+  // Elapsed Work Timer Calculation: strictly stops when checked out
   const elapsedString = useMemo(() => {
     if (!todayPunch.checkInTime) return '00h 00m 00s';
     const start = new Date(todayPunch.checkInTime).getTime();
-    const end = todayPunch.checkOutTime ? new Date(todayPunch.checkOutTime).getTime() : currentTime.getTime();
+    if (isNaN(start)) return '00h 00m 00s';
+
+    // When checked in, timer increments with currentTime.
+    // When checked out, end is fixed to checkOutTime so timer stops completely.
+    let end = start;
+    if (todayPunch.checkedIn) {
+      end = currentTime.getTime();
+    } else if (todayPunch.checkOutTime) {
+      end = new Date(todayPunch.checkOutTime).getTime();
+    }
+
     const diffSec = Math.max(0, Math.floor((end - start) / 1000));
     const hrs = Math.floor(diffSec / 3600);
     const mins = Math.floor((diffSec % 3600) / 60);
     const secs = diffSec % 60;
     return `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
-  }, [todayPunch, currentTime]);
+  }, [todayPunch.checkedIn, todayPunch.checkInTime, todayPunch.checkOutTime, currentTime]);
 
   // Compute Metrics matching Payroll summary consumption requirements
   const summaryMetrics = useMemo(() => {
