@@ -34,7 +34,7 @@ test('migration 001 is recorded as applied', () => {
     .all()
     .map((r) => r.name);
   dbFile.close();
-  assert.deepEqual(row, ['001_add_employee_domain_fields']);
+  assert.ok(row.includes('001_add_employee_domain_fields'));
 });
 
 test('employees table carries job fields', () => {

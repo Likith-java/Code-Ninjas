@@ -6,6 +6,8 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import authRoutes from './routes/auth.routes.js';
 import employeeRoutes from './routes/employee.routes.js';
+import attendanceRoutes from './routes/attendance.routes.js';
+import timeOffRoutes from './routes/time-off.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -32,6 +34,8 @@ export function createApp() {
   app.get('/api/health', (_req, res) => res.json({ data: { status: 'ok' } }));
   app.use('/api/auth', authRoutes);
   app.use('/api/employees', employeeRoutes);
+  app.use('/api/attendance', attendanceRoutes);
+  app.use('/api/time-off', timeOffRoutes);
 
   if (process.env.NODE_ENV !== 'test') {
     app.use(express.static(publicDir));

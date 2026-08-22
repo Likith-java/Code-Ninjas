@@ -153,6 +153,76 @@ export function seed() {
     }
   })();
 
+  const insertAttendance = db.prepare(`
+    INSERT OR IGNORE INTO attendance_records (employee_id, date, status, check_in_time, check_out_time, work_hours, extra_hours, notes)
+    VALUES (@employee_id, @date, @status, @check_in_time, @check_out_time, @work_hours, @extra_hours, @notes)
+  `);
+
+  const insertTimeOff = db.prepare(`
+    INSERT OR IGNORE INTO time_off_requests (employee_id, type, start_date, end_date, days, reason, status)
+    VALUES (@employee_id, @type, @start_date, @end_date, @days, @reason, @status)
+  `);
+
+  const employees = db.prepare('SELECT id, email FROM employees').all();
+  const currentYear = new Date().getFullYear();
+  const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+
+  db.transaction(() => {
+    for (const emp of employees) {
+      // Seed sample attendance for the current month
+      insertAttendance.run({
+        employee_id: emp.id,
+        date: `${currentYear}-${currentMonth}-01`,
+        status: 'PRESENT',
+        check_in_time: `${currentYear}-${currentMonth}-01T09:00:00Z`,
+        check_out_time: `${currentYear}-${currentMonth}-01T17:30:00Z`,
+        work_hours: 8.5,
+        extra_hours: 0.5,
+        notes: 'Regular on-time shift',
+      });
+      insertAttendance.run({
+        employee_id: emp.id,
+        date: `${currentYear}-${currentMonth}-02`,
+        status: 'PRESENT',
+        check_in_time: `${currentYear}-${currentMonth}-02T09:15:00Z`,
+        check_out_time: null, // missing checkout demonstration
+        work_hours: 0,
+        extra_hours: 0,
+        notes: 'Forgot evening punch',
+      });
+      insertAttendance.run({
+        employee_id: emp.id,
+        date: `${currentYear}-${currentMonth}-03`,
+        status: 'HALF_DAY',
+        check_in_time: `${currentYear}-${currentMonth}-03T09:00:00Z`,
+        check_out_time: `${currentYear}-${currentMonth}-03T13:00:00Z`,
+        work_hours: 4.0,
+        extra_hours: 0,
+        notes: 'Half day afternoon leave',
+      });
+
+      // Seed sample time off requests
+      insertTimeOff.run({
+        employee_id: emp.id,
+        type: 'PAID',
+        start_date: `${currentYear}-${currentMonth}-10`,
+        end_date: `${currentYear}-${currentMonth}-12`,
+        days: 3,
+        reason: 'Annual personal time off',
+        status: 'APPROVED',
+      });
+      insertTimeOff.run({
+        employee_id: emp.id,
+        type: 'UNPAID',
+        start_date: `${currentYear}-${currentMonth}-20`,
+        end_date: `${currentYear}-${currentMonth}-21`,
+        days: 2,
+        reason: 'Personal urgent relocation',
+        status: 'PENDING',
+      });
+    }
+  })();
+
   console.log('Seed complete. Demo accounts:');
   for (const u of USERS) {
     console.log(`  ${u.role.padEnd(8)} ${u.email} / ${u.login_id} / ${u.password}`);

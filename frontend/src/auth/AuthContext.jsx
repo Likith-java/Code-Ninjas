@@ -22,6 +22,7 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       loading,
+      isAdmin: user?.role === 'admin' || user?.role === 'hr',
       isManager: user?.role === 'admin' || user?.role === 'hr',
       mustChangePassword: Boolean(user?.must_change_password),
       async refreshUser() {
