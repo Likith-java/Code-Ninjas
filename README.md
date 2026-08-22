@@ -1,28 +1,43 @@
-# Code Ninjas
+# Dayflow HRMS
 
-A full-stack HRMS web application ("Dayflow HRMS") with a separated frontend and backend architecture.
+A full-stack Human Resource Management System (HRMS) built with a modern React frontend and a secure Express API, backed by SQLite.
+
+## Features
+
+- **Employee directory** — searchable, paginated listing with derived account status
+- **Role-based access control** — Admin, HR, and Employee roles with viewer-aware profile responses
+- **Employee profiles** — personal details, about, job information, skills, and certifications
+- **Resume support** — text or PDF upload and download
+- **Account management** — provisioning, password resets, enable/disable accounts
+- **Secure authentication** — JWT sessions via httpOnly cookies, bcrypt password hashing
+- **Automatic schema migrations** — in-place, non-destructive upgrades on startup
+
+## Tech Stack
+
+| Layer    | Technologies                                                                 |
+| -------- | ---------------------------------------------------------------------------- |
+| Frontend | React 18, Vite, React Router 6, Tailwind CSS 3, Vitest                       |
+| Backend  | Node.js, Express 4, better-sqlite3, JWT, bcryptjs                            |
+| Database | SQLite (`backend/data/dayflow.db`)                                           |
+
+> Legacy static HTML + Tailwind (CDN) design mockups are kept as `.html` files in `frontend/`.
 
 ## Project Structure
 
 ```
 code-ninjas/
-├── frontend/   # Static HTML + Tailwind (CDN) pages, wired to the API via ES modules
-├── backend/    # Express API: authentication + employee management (SQLite)
-├── package.json
-└── README.md
+├── frontend/        # React app (src/) + legacy static mockups (.html)
+├── backend/         # Express API: auth + employee management
+│   ├── data/        # SQLite database
+│   └── tests/       # Backend test suite
+└── package.json
 ```
-
-## Tech Stack
-
-- **Frontend:** React 18 + Vite + React Router + Tailwind CSS 3 (`frontend/src`) — legacy design mockups kept as static `.html` files in `frontend/`
-- **Backend:** Node.js + Express 4, better-sqlite3, JWT auth (httpOnly cookie), bcryptjs
-- **Database:** SQLite (`backend/data/dayflow.db`)
 
 ## Getting Started
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) v18 or later
+- [Node.js](https://nodejs.org/) v18+
 - npm
 
 ### Installation
@@ -34,7 +49,7 @@ code-ninjas/
    cd Code-Ninjas
    ```
 
-2. Install dependencies for both frontend and backend:
+2. Install dependencies for both apps:
 
    ```bash
    npm install --prefix frontend
@@ -47,7 +62,7 @@ code-ninjas/
    npm run seed --prefix backend
    ```
 
-4. Optional — configure the backend via env vars:
+4. *(Optional)* Configure the backend via environment variables:
 
    ```bash
    cp backend/.env.example backend/.env
@@ -55,99 +70,126 @@ code-ninjas/
 
 ### Running the Application
 
-Start the backend and frontend in development mode (in separate terminals):
+Start the backend and frontend in development mode (separate terminals):
 
 ```bash
-npm run dev --prefix backend    # API on http://localhost:4000
-npm run dev --prefix frontend   # React app with HMR
+npm run dev --prefix backend     # API      → http://localhost:4000
+npm run dev --prefix frontend    # React app → http://localhost:5173
 ```
 
-- **React app (Vite, HMR):** http://localhost:5173 — proxies `/api` to the backend
-- **App + API (production build):** `npm run build --prefix frontend`, then open http://localhost:4000
+The Vite dev server proxies `/api` requests to the backend. For a production build, run `npm run build --prefix frontend` — the backend then serves the built app from `frontend/dist` at http://localhost:4000.
 
-The backend serves the built React app from `frontend/dist` when it exists.
-
-> Note: the API runs on port 4000 by default to avoid clashing with VS Code Live Preview (port 3000).
+> The API defaults to port **4000** to avoid clashing with VS Code Live Preview (port 3000).
 
 ### Demo Accounts
 
-| Role     | Login ID       | Email             | Password     |
-| -------- | -------------- | ----------------- | ------------ |
-| Admin    | ADUS20200001   | admin@dayflow.com | Admin@123    |
-| HR       | SACO20230001   | hr@dayflow.com    | Hr@123456    |
-| Employee | MIDO20220001   | employee@dayflow.com | Employee@123 |
-
 The login form accepts either the email address or login ID.
 
-HR/Admin can create, edit, and delete employees; Employee role is read-only.
+| Role     | Login ID       | Email                | Password       |
+| -------- | -------------- | -------------------- | -------------- |
+| Admin    | ADUS20200001   | admin@dayflow.com    | Admin@123      |
+| HR       | SACO20230001   | hr@dayflow.com       | Hr@123456      |
+| Employee | MIDO20220001   | employee@dayflow.com | Employee@123   |
+
+HR/Admin can create, edit, and delete employees; the Employee role is read-only.
+
+### NPM Scripts
+
+| Command                          | Description                        |
+| -------------------------------- | ---------------------------------- |
+| `npm run dev --prefix backend`   | Start API with watch mode          |
+| `npm test --prefix backend`      | Run backend test suite             |
+| `npm run seed --prefix backend`  | Seed demo employees and accounts   |
+| `npm run dev --prefix frontend`  | Start React app with HMR           |
+| `npm run build --prefix frontend`| Production build to `frontend/dist`|
+| `npm test --prefix frontend`     | Run frontend test suite            |
+
+## Architecture Notes
 
 ### Database & Migrations
 
-The backend uses SQLite (`backend/data/dayflow.db`) with the schema baseline defined in
-`backend/src/db/schema.sql`. Incremental schema changes are plain JavaScript migrations in
-`backend/src/db/migrations.js` that run automatically on every backend start (and before
-seeding), tracked in a `schema_migrations` table:
+The backend uses SQLite with a schema baseline defined in `backend/src/db/schema.sql`.
+Incremental changes are plain JavaScript migrations in `backend/src/db/migrations.js`,
+executed automatically on every backend start (and before seeding) and tracked in a
+`schema_migrations` table:
 
-- Fresh databases get the full baseline schema, then pending migrations are recorded.
-- Existing databases are upgraded **in place** — migrations only add columns/indexes, never
-  drop or reset data. Deleting the database file after a schema change is no longer necessary.
-- To add a new migration, append an entry to the `MIGRATIONS` array in
-  `backend/src/db/migrations.js`; keep each step idempotent so fresh and migrated databases
-  converge on the same shape.
+- Fresh databases receive the full baseline schema; pending migrations are recorded.
+- Existing databases are upgraded **in place** — migrations only add columns/indexes,
+  never drop or reset data.
+- To add a migration, append an entry to the `MIGRATIONS` array in
+  `backend/src/db/migrations.js`. Keep each step idempotent so fresh and migrated
+  databases converge on the same shape.
 
-Current employee-domain model: employees (job fields incl. company/location/self-referencing
-manager, identifiers employee_code/PAN/UAN), users (login/auth state), employee_profiles
-(personal details, about, resume), plus normalized skills and certifications tables.
+Current employee-domain model: `employees` (job fields incl. company/location/self-referencing manager, identifiers employee_code/PAN/UAN), `users` (login/auth state), `employee_profiles` (personal details, about, resume), plus normalized `skills` and `certifications` tables.
 
-### Derived employee status
+### Derived Employee Status
 
 Directory status (`GET /api/employees`, `GET /api/employees/:id`) is a **derived value**
-computed by a swappable status provider (`backend/src/services/directory/status.service.js`),
-never a manually maintained duplicate flag:
+computed by a swappable status provider (`backend/src/services/directory/status.service.js`)
+— never a manually maintained duplicate flag:
 
-- `disabled` — linked user account is disabled
-- `on_leave` — legacy manual employment flag (temporary source)
-- `active` — otherwise
+| Status      | Meaning                                    |
+| ----------- | ------------------------------------------ |
+| `disabled`  | Linked user account is disabled            |
+| `on_leave`  | Legacy manual employment flag (temporary)  |
+| `active`    | Default state                              |
 
-The canonical future source is the attendance/time-off domain, which is not implemented
-yet. When it lands, implement the same `EmployeeStatusProvider` contract against its
-tables and swap the provider at the single wiring point in `getEmployeeStatusProvider()`;
-routes, services, and filters require no further changes. See the INTEGRATION POINT notes
-in that file.
+The canonical future source will be the attendance/time-off domain. When implemented,
+satisfy the same `EmployeeStatusProvider` contract against its tables and swap the
+provider at the single wiring point in `getEmployeeStatusProvider()` — routes, services,
+and filters require no further changes. See the INTEGRATION POINT notes in that file.
 
-### API Overview
+## API Reference
 
-All protected endpoints use the httpOnly cookie set by login. Employee detail responses are
-viewer-aware: employees viewing another employee receive a read-only public profile, while the
-employee themselves and managers receive private fields and edit access where permitted.
+All protected endpoints authenticate via the httpOnly cookie set at login. Employee detail
+responses are **viewer-aware**: employees viewing another employee receive a read-only public
+profile, while the employee themselves and managers receive private fields and edit access
+where permitted.
 
-| Method | Endpoint | Auth | Description |
-| ------ | -------- | ---- | ----------- |
-| POST | `/api/auth/login` | public | Sign in with email or login ID; sets session cookie |
-| GET | `/api/auth/me` | required | Current user and password-change state |
-| POST | `/api/auth/change-password` | required | Change the current password |
-| POST | `/api/auth/logout` | public | Clear session cookie |
-| GET | `/api/employees` | required | List employees (`?q=&department=&status=&page=&limit=`); returns directory cards only (id, name, photo, position, department, derived status) |
-| GET | `/api/employees/meta` | required | List departments and directory metadata |
-| GET | `/api/employees/:id` | required | Viewer-aware employee profile |
-| GET | `/api/employees/:id/profile` | required | Employee Profile API — DTO narrows by caller (own / other-employee read-only / admin with security block) |
-| PUT | `/api/employees/:id/profile` | self, admin, hr | Update Private Info tab + About (personal fields for self; job details, work email, bank details, identifiers for admin) |
-| POST | `/api/employees/:id/skills` | self, admin, hr | Add one skill (deduped, max 50) |
-| DELETE | `/api/employees/:id/skills/:skillId` | self, admin, hr | Remove one skill |
-| POST | `/api/employees/:id/certifications` | self, admin, hr | Add one certification (max 50) |
-| DELETE | `/api/employees/:id/certifications/:certificationId` | self, admin, hr | Remove one certification |
-| POST | `/api/employees` | admin, hr | Create employee and provision account |
-| PUT | `/api/employees/:id` | self, admin, hr | Update permitted employee fields |
-| DELETE | `/api/employees/:id` | admin, hr | Delete employee |
-| PUT | `/api/employees/:id/skills` | self, admin, hr | Replace skills |
-| PUT | `/api/employees/:id/certifications` | self, admin, hr | Replace certifications |
-| PUT | `/api/employees/:id/resume` | self, admin, hr | Update resume text or PDF |
-| GET | `/api/employees/:id/resume.pdf` | self, admin, hr | Download resume PDF |
-| GET | `/api/employees/:id/security` | admin, hr | View account security details |
-| POST | `/api/employees/:id/reset-password` | admin, hr | Generate a one-time temporary password |
-| PATCH | `/api/employees/:id/status` | admin, hr | Enable or disable an account |
+### Authentication
 
-### Tests
+| Method | Endpoint                  | Auth    | Description                                            |
+| ------ | ------------------------- | ------- | ------------------------------------------------------ |
+| POST   | `/api/auth/login`         | Public  | Sign in with email or login ID; sets session cookie    |
+| GET    | `/api/auth/me`            | Required| Current user and password-change state                 |
+| POST   | `/api/auth/change-password` | Required | Change the current password                         |
+| POST   | `/api/auth/logout`        | Public  | Clear session cookie                                   |
+
+### Employees
+
+| Method | Endpoint                                        | Auth              | Description |
+| ------ | ----------------------------------------------- | ----------------- | ----------- |
+| GET    | `/api/employees`                                | Required          | List employees (`?q=&department=&status=&page=&limit=`); returns directory cards only (id, name, photo, position, department, derived status) |
+| GET    | `/api/employees/meta`                           | Required          | List departments and directory metadata |
+| GET    | `/api/employees/:id`                            | Required          | Viewer-aware employee profile |
+| POST   | `/api/employees`                                | Admin, HR         | Create employee and provision account |
+| PUT    | `/api/employees/:id`                            | Self, Admin, HR   | Update permitted employee fields |
+| DELETE | `/api/employees/:id`                            | Admin, HR         | Delete employee |
+| PATCH  | `/api/employees/:id/status`                     | Admin, HR         | Enable or disable an account |
+
+### Profiles, Skills & Certifications
+
+| Method | Endpoint                                        | Auth              | Description |
+| ------ | ----------------------------------------------- | ----------------- | ----------- |
+| GET    | `/api/employees/:id/profile`                    | Required          | Profile API — DTO narrows by caller (own / other-employee read-only / admin with security block) |
+| PUT    | `/api/employees/:id/profile`                    | Self, Admin, HR   | Update Private Info tab + About (personal fields for self; job details, work email, bank details, identifiers for admin) |
+| POST   | `/api/employees/:id/skills`                     | Self, Admin, HR   | Add one skill (deduped, max 50) |
+| DELETE | `/api/employees/:id/skills/:skillId`            | Self, Admin, HR   | Remove one skill |
+| PUT    | `/api/employees/:id/skills`                     | Self, Admin, HR   | Replace skills |
+| POST   | `/api/employees/:id/certifications`             | Self, Admin, HR   | Add one certification (max 50) |
+| DELETE | `/api/employees/:id/certifications/:certId`     | Self, Admin, HR   | Remove one certification |
+| PUT    | `/api/employees/:id/certifications`             | Self, Admin, HR   | Replace certifications |
+
+### Resume & Account Security
+
+| Method | Endpoint                                        | Auth              | Description |
+| ------ | ----------------------------------------------- | ----------------- | ----------- |
+| PUT    | `/api/employees/:id/resume`                     | Self, Admin, HR   | Update resume text or PDF |
+| GET    | `/api/employees/:id/resume.pdf`                 | Self, Admin, HR   | Download resume PDF |
+| GET    | `/api/employees/:id/security`                   | Admin, HR         | View account security details |
+| POST   | `/api/employees/:id/reset-password`             | Admin, HR         | Generate a one-time temporary password |
+
+## Testing
 
 ```bash
 npm test --prefix backend
@@ -157,6 +199,10 @@ The suite covers auth, RBAC, provisioning, profile/resume flows, the employee di
 (search scoped to non-sensitive fields, pagination, derived status, field-exposure
 guarantees), and the database foundation (schema shape, unique constraints, manager
 hierarchy, and in-place migration upgrades).
+
+```bash
+npm test --prefix frontend
+```
 
 ## Contributing
 
@@ -168,4 +214,4 @@ hierarchy, and in-place migration upgrades).
 
 ## Author
 
-- **Likith V Shetty** — [Likith-java](https://github.com/Likith-java)
+**Likith V Shetty** — [Likith-java](https://github.com/Likith-java)
