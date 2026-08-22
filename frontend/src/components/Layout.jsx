@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 const NAV_ITEMS = [
   { to: '/', icon: 'dashboard', label: 'Dashboard' },
   { to: '/employees', icon: 'badge', label: 'Employee Directory' },
+  { to: '/employees/me', icon: 'person', label: 'My Profile' },
 ];
 
 export default function Layout() {

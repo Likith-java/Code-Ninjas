@@ -9,6 +9,7 @@ const EMPLOYEES = [
     email: 'richard.bachmann@dayflow.io',
     position: 'UI/UX Designer',
     department: 'Design',
+    hired_at: '2021-03-15',
   },
   {
     first_name: 'Jenifer',
@@ -16,6 +17,7 @@ const EMPLOYEES = [
     email: 'jenifer.smith@dayflow.io',
     position: 'Product Manager',
     department: 'Product',
+    hired_at: '2020-08-01',
   },
   {
     first_name: 'Michael',
@@ -23,6 +25,7 @@ const EMPLOYEES = [
     email: 'michael.doe@dayflow.io',
     position: 'Frontend Developer',
     department: 'Engineering',
+    hired_at: '2022-04-11',
   },
   {
     first_name: 'Sarah',
@@ -30,6 +33,7 @@ const EMPLOYEES = [
     email: 'sarah.connor@dayflow.io',
     position: 'HR Specialist',
     department: 'Human Resources',
+    hired_at: '2023-01-09',
   },
   {
     first_name: 'David',
@@ -37,6 +41,7 @@ const EMPLOYEES = [
     email: 'david.lee@dayflow.io',
     position: 'Backend Developer',
     department: 'Engineering',
+    hired_at: '2022-09-05',
   },
   {
     first_name: 'Emily',
@@ -44,13 +49,53 @@ const EMPLOYEES = [
     email: 'emily.chen@dayflow.io',
     position: 'Marketing Manager',
     department: 'Marketing',
+    hired_at: '2024-02-19',
   },
 ];
 
 const USERS = [
-  { email: 'admin@dayflow.com', password: 'Admin@123', role: 'admin', employeeEmail: null },
-  { email: 'hr@dayflow.com', password: 'Hr@123456', role: 'hr', employeeEmail: 'sarah.connor@dayflow.io' },
-  { email: 'employee@dayflow.com', password: 'Employee@123', role: 'employee', employeeEmail: 'michael.doe@dayflow.io' },
+  {
+    login_id: 'ADUS20200001',
+    email: 'admin@dayflow.com',
+    password: 'Admin@123',
+    role: 'admin',
+    employeeEmail: null,
+  },
+  {
+    login_id: 'SACO20230001',
+    email: 'hr@dayflow.com',
+    password: 'Hr@123456',
+    role: 'hr',
+    employeeEmail: 'sarah.connor@dayflow.io',
+  },
+  {
+    login_id: 'MIDO20220001',
+    email: 'employee@dayflow.com',
+    password: 'Employee@123',
+    role: 'employee',
+    employeeEmail: 'michael.doe@dayflow.io',
+  },
+];
+
+const PROFILES = [
+  {
+    email: 'michael.doe@dayflow.io',
+    about: 'Frontend developer focused on React and design systems.',
+    skills: ['React', 'JavaScript', 'CSS', 'Accessibility'],
+    certifications: [{ name: 'Meta Front-End Developer', issuer: 'Coursera', issued_on: '2023-06-01', expires_on: null }],
+  },
+  {
+    email: 'sarah.connor@dayflow.io',
+    about: 'HR specialist handling onboarding and people operations.',
+    skills: ['Recruiting', 'Onboarding', 'Employee Relations'],
+    certifications: [{ name: 'SHRM-CP', issuer: 'SHRM', issued_on: '2022-05-20', expires_on: '2025-05-20' }],
+  },
+  {
+    email: 'david.lee@dayflow.io',
+    about: null,
+    skills: ['Node.js', 'SQLite', 'REST APIs'],
+    certifications: [],
+  },
 ];
 
 export function seed() {
@@ -58,8 +103,8 @@ export function seed() {
 
   if (employeeCount === 0) {
     const insertEmployee = db.prepare(
-      `INSERT INTO employees (first_name, last_name, email, position, department)
-       VALUES (@first_name, @last_name, @email, @position, @department)`
+      `INSERT INTO employees (first_name, last_name, email, position, department, hired_at)
+       VALUES (@first_name, @last_name, @email, @position, @department, @hired_at)`
     );
     db.transaction(() => {
       for (const e of EMPLOYEES) insertEmployee.run(e);
@@ -68,15 +113,16 @@ export function seed() {
   }
 
   const upsertUser = db.prepare(
-    `INSERT INTO users (email, password_hash, role, employee_id)
-     VALUES (@email, @password_hash, @role,
-             (SELECT id FROM employees WHERE email = @employee_email))
+    `INSERT INTO users (login_id, email, password_hash, role, employee_id, must_change_password)
+     VALUES (@login_id, @email, @password_hash, @role,
+             (SELECT id FROM employees WHERE email = @employee_email), 0)
      ON CONFLICT(email) DO NOTHING`
   );
 
   db.transaction(() => {
     for (const u of USERS) {
       upsertUser.run({
+        login_id: u.login_id,
         email: u.email,
         password_hash: bcrypt.hashSync(u.password, 10),
         role: u.role,
@@ -85,8 +131,32 @@ export function seed() {
     }
   })();
 
+  const upsertProfile = db.prepare(
+    `INSERT INTO employee_profiles (employee_id, about)
+     VALUES ((SELECT id FROM employees WHERE email = @email), @about)
+     ON CONFLICT(employee_id) DO NOTHING`
+  );
+  const insertSkill = db.prepare(
+    `INSERT OR IGNORE INTO skills (employee_id, name)
+     VALUES ((SELECT id FROM employees WHERE email = @email), @name)`
+  );
+  const insertCertification = db.prepare(
+    `INSERT INTO certifications (employee_id, name, issuer, issued_on, expires_on)
+     VALUES ((SELECT id FROM employees WHERE email = @email), @name, @issuer, @issued_on, @expires_on)`
+  );
+
+  db.transaction(() => {
+    for (const p of PROFILES) {
+      upsertProfile.run({ email: p.email, about: p.about });
+      for (const name of p.skills) insertSkill.run({ email: p.email, name });
+      for (const c of p.certifications) insertCertification.run({ email: p.email, ...c });
+    }
+  })();
+
   console.log('Seed complete. Demo accounts:');
-  for (const u of USERS) console.log(`  ${u.role.padEnd(8)} ${u.email} / ${u.password}`);
+  for (const u of USERS) {
+    console.log(`  ${u.role.padEnd(8)} ${u.email} / ${u.login_id} / ${u.password}`);
+  }
 }
 
 const isCli =

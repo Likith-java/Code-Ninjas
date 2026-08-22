@@ -16,3 +16,10 @@ db.pragma('foreign_keys = ON');
 
 const schema = fs.readFileSync(path.join(__dirname, '../db/schema.sql'), 'utf8');
 db.exec(schema);
+
+const userColumns = db.prepare('PRAGMA table_info(users)').all().map((column) => column.name);
+if (!userColumns.includes('login_id')) {
+  throw new Error(
+    `Outdated database schema at ${dbPath}. Delete the file and re-run "npm run seed --prefix backend".`
+  );
+}

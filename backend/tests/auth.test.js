@@ -22,12 +22,53 @@ test('login requires email and password', async () => {
   assert.equal(res.status, 400);
 });
 
-test('login rejects wrong password', async () => {
+test('login rejects wrong password with a generic error', async () => {
   const res = await request
     .post('/api/auth/login')
     .send({ email: 'admin@dayflow.com', password: 'wrong' });
   assert.equal(res.status, 401);
-  assert.equal(res.body.error.message, 'Invalid email or password');
+  assert.equal(res.body.error.message, 'Invalid credentials');
+});
+
+test('login rejects unknown identifier with the same generic error', async () => {
+  const wrongPassword = await request
+    .post('/api/auth/login')
+    .send({ email: 'admin@dayflow.com', password: 'wrong' });
+  const unknownUser = await request
+    .post('/api/auth/login')
+    .send({ identifier: 'ghost@dayflow.io', password: 'whatever' });
+  assert.equal(unknownUser.status, 401);
+  assert.deepEqual(unknownUser.body, wrongPassword.body);
+});
+
+test('login accepts a login ID as identifier', async () => {
+  const res = await request
+    .post('/api/auth/login')
+    .send({ identifier: 'MIDO20220001', password: 'Employee@123' });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.data.role, 'employee');
+  assert.equal(res.body.data.login_id, 'MIDO20220001');
+});
+
+test('disabled accounts fail login with the generic error', async () => {
+  const admin = await login(request, 'admin@dayflow.com', 'Admin@123');
+  const target = await request.get('/api/employees?q=michael').set('Cookie', admin.cookie);
+  const michaelId = target.body.data[0].id;
+  await request
+    .patch(`/api/employees/${michaelId}/status`)
+    .set('Cookie', admin.cookie)
+    .send({ account_status: 'disabled' });
+
+  const res = await request
+    .post('/api/auth/login')
+    .send({ identifier: 'MIDO20220001', password: 'Employee@123' });
+  assert.equal(res.status, 401);
+  assert.equal(res.body.error.code, 'INVALID_CREDENTIALS');
+
+  await request
+    .patch(`/api/employees/${michaelId}/status`)
+    .set('Cookie', admin.cookie)
+    .send({ account_status: 'active' });
 });
 
 test('admin can log in and receives httpOnly session cookie', async () => {

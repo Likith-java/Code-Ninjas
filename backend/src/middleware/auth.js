@@ -19,29 +19,45 @@ export function requireAuth(req, res, next) {
   try {
     const token = getToken(req);
     if (!token) {
-      return res.status(401).json({ error: { message: 'Authentication required' } });
+      return res
+        .status(401)
+        .json({ error: { message: 'Authentication required', code: 'UNAUTHENTICATED' } });
     }
     const payload = jwt.verify(token, JWT_SECRET);
     const user = db
-      .prepare('SELECT id, email, role, employee_id FROM users WHERE id = ?')
+      .prepare(
+        `SELECT id, login_id, email, role, employee_id, must_change_password, account_status
+         FROM users WHERE id = ?`
+      )
       .get(payload.sub);
-    if (!user) {
-      return res.status(401).json({ error: { message: 'User no longer exists' } });
+    if (!user || user.account_status === 'disabled') {
+      return res
+        .status(401)
+        .json({ error: { message: 'Invalid or expired session', code: 'UNAUTHENTICATED' } });
     }
-    req.user = user;
+    req.user = {
+      ...user,
+      must_change_password: Boolean(user.must_change_password),
+    };
     return next();
   } catch {
-    return res.status(401).json({ error: { message: 'Invalid or expired session' } });
+    return res
+      .status(401)
+      .json({ error: { message: 'Invalid or expired session', code: 'UNAUTHENTICATED' } });
   }
 }
 
 export function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ error: { message: 'Authentication required' } });
+      return res
+        .status(401)
+        .json({ error: { message: 'Authentication required', code: 'UNAUTHENTICATED' } });
     }
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ error: { message: 'Insufficient permissions' } });
+      return res
+        .status(403)
+        .json({ error: { message: 'Insufficient permissions', code: 'FORBIDDEN' } });
     }
     return next();
   };

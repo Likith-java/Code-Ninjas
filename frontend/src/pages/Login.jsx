@@ -8,23 +8,29 @@ const DEMO_ACCOUNTS = [
   { role: 'Employee', email: 'employee@dayflow.com', password: 'Employee@123' },
 ];
 
+function destinationFor(user) {
+  if (user.must_change_password) return '/change-password';
+  if (user.role === 'admin' || user.role === 'hr') return '/employees';
+  return '/';
+}
+
 export default function Login() {
   const { user, loading, login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  if (!loading && user) return <Navigate to="/" replace />;
+  if (!loading && user) return <Navigate to={destinationFor(user)} replace />;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setSubmitting(true);
     try {
-      await login(email.trim(), password);
-      navigate('/', { replace: true });
+      const signedIn = await login(identifier.trim(), password);
+      navigate(destinationFor(signedIn), { replace: true });
     } catch (err) {
       setError(err.message || 'Sign in failed');
       setSubmitting(false);
@@ -45,17 +51,17 @@ export default function Login() {
         <div className="rounded-[24px] bg-secondary-container p-8 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="font-label-md mb-1 block text-on-surface-variant">
-                Email
+              <label htmlFor="identifier" className="font-label-md mb-1 block text-on-surface-variant">
+                Email or Login ID
               </label>
               <input
-                id="email"
-                type="email"
+                id="identifier"
+                type="text"
                 autoComplete="username"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="you@company.com or JODO20220001"
                 className="font-body-lg w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 text-on-surface focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -95,7 +101,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => {
-                    setEmail(account.email);
+                    setIdentifier(account.email);
                     setPassword(account.password);
                   }}
                   className="text-left hover:text-primary hover:underline"

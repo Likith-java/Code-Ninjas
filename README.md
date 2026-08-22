@@ -69,26 +69,43 @@ The backend serves the built React app from `frontend/dist` when it exists.
 
 ### Demo Accounts
 
-| Role     | Email                | Password      |
-| -------- | -------------------- | ------------- |
-| Admin    | admin@dayflow.com    | Admin@123     |
-| HR       | hr@dayflow.com       | Hr@123456     |
-| Employee | employee@dayflow.com | Employee@123  |
+| Role     | Login ID       | Email             | Password     |
+| -------- | -------------- | ----------------- | ------------ |
+| Admin    | ADUS20200001   | admin@dayflow.com | Admin@123    |
+| HR       | SACO20230001   | hr@dayflow.com    | Hr@123456    |
+| Employee | MIDO20220001   | employee@dayflow.com | Employee@123 |
+
+The login form accepts either the email address or login ID. After changing the database schema,
+delete `backend/data/dayflow.db` (and any `-shm`/`-wal` sidecar files) and run the seed command
+again before using the demo accounts.
 
 HR/Admin can create, edit, and delete employees; Employee role is read-only.
 
 ### API Overview
 
-| Method | Endpoint              | Auth        | Description                          |
-| ------ | --------------------- | ----------- | ------------------------------------ |
-| POST   | /api/auth/login       | public      | Sign in, sets httpOnly session cookie |
-| GET    | /api/auth/me          | required    | Current user                         |
-| POST   | /api/auth/logout      | public      | Clears session cookie                |
-| GET    | /api/employees        | required    | List (`?q=&department=&page=&limit=`)|
-| GET    | /api/employees/:id    | required    | Single employee                      |
-| POST   | /api/employees        | admin, hr   | Create employee                      |
-| PUT    | /api/employees/:id    | admin, hr   | Update employee                      |
-| DELETE | /api/employees/:id    | admin, hr   | Delete employee                      |
+All protected endpoints use the httpOnly cookie set by login. Employee detail responses are
+viewer-aware: employees viewing another employee receive a read-only public profile, while the
+employee themselves and managers receive private fields and edit access where permitted.
+
+| Method | Endpoint | Auth | Description |
+| ------ | -------- | ---- | ----------- |
+| POST | `/api/auth/login` | public | Sign in with email or login ID; sets session cookie |
+| GET | `/api/auth/me` | required | Current user and password-change state |
+| POST | `/api/auth/change-password` | required | Change the current password |
+| POST | `/api/auth/logout` | public | Clear session cookie |
+| GET | `/api/employees` | required | List employees (`?q=&department=&page=&limit=`) |
+| GET | `/api/employees/meta` | required | List departments and directory metadata |
+| GET | `/api/employees/:id` | required | Viewer-aware employee profile |
+| POST | `/api/employees` | admin, hr | Create employee and provision account |
+| PUT | `/api/employees/:id` | self, admin, hr | Update permitted employee fields |
+| DELETE | `/api/employees/:id` | admin, hr | Delete employee |
+| PUT | `/api/employees/:id/skills` | self, admin, hr | Replace skills |
+| PUT | `/api/employees/:id/certifications` | self, admin, hr | Replace certifications |
+| PUT | `/api/employees/:id/resume` | self, admin, hr | Update resume text or PDF |
+| GET | `/api/employees/:id/resume.pdf` | self, admin, hr | Download resume PDF |
+| GET | `/api/employees/:id/security` | admin, hr | View account security details |
+| POST | `/api/employees/:id/reset-password` | admin, hr | Generate a one-time temporary password |
+| PATCH | `/api/employees/:id/status` | admin, hr | Enable or disable an account |
 
 ### Tests
 

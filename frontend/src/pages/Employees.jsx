@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import Avatar from '../components/Avatar.jsx';
+import { useNavigate } from 'react-router-dom';
+import EmployeeCard from '../components/EmployeeCard.jsx';
+import EmptyState from '../components/EmptyState.jsx';
+import FormField from '../components/FormField.jsx';
+import Modal from '../components/Modal.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
 import { api } from '../api/client.js';
-import { departmentChipClass, DEPARTMENT_CHIP_CLASSES } from '../utils/employees.js';
+import {
+  DEPARTMENT_CHIP_CLASSES,
+} from '../utils/employees.js';
 
 const EMPTY_FORM = {
   first_name: '',
@@ -15,7 +22,8 @@ const EMPTY_FORM = {
 };
 
 export default function Employees() {
-  const { user, isAdmin } = useAuth();
+  const { user, isManager } = useAuth();
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [meta, setMeta] = useState({ total: 0 });
@@ -28,6 +36,9 @@ export default function Employees() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [provisioned, setProvisioned] = useState(null);
+
+  const debouncedQuery = useDebouncedValue(query);
 
   useEffect(() => {
     api('/api/employees/meta')
@@ -36,26 +47,24 @@ export default function Employees() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(loadEmployees, query ? 300 : 0);
-    return () => clearTimeout(timer);
-  }, [query, department]);
-
-  async function loadEmployees() {
+    let cancelled = false;
     setLoading(true);
     setError('');
-    try {
-      const params = new URLSearchParams({ limit: '100' });
-      if (query.trim()) params.set('q', query.trim());
-      if (department !== 'All') params.set('department', department);
-      const res = await api(`/api/employees?${params.toString()}`);
-      setEmployees(res.data);
-      setMeta(res.meta);
-    } catch (err) {
-      setError(err.message || 'Failed to load employees');
-    } finally {
-      setLoading(false);
-    }
-  }
+    const params = new URLSearchParams({ limit: '100' });
+    if (debouncedQuery.trim()) params.set('q', debouncedQuery.trim());
+    if (department !== 'All') params.set('department', department);
+    api(`/api/employees?${params.toString()}`)
+      .then((res) => {
+        if (cancelled) return;
+        setEmployees(res.data);
+        setMeta(res.meta);
+      })
+      .catch((err) => !cancelled && setError(err.message || 'Failed to load employees'))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery, department]);
 
   const openCreate = () => {
     setEditing(null);
@@ -65,12 +74,11 @@ export default function Employees() {
   };
 
   const openEdit = (employee) => {
-    if (!isAdmin) return;
     setEditing(employee);
     setForm({
       first_name: employee.first_name,
       last_name: employee.last_name,
-      email: employee.email,
+      email: employee.email ?? '',
       position: employee.position,
       department: employee.department,
       phone: employee.phone ?? '',
@@ -89,11 +97,14 @@ export default function Employees() {
     try {
       if (editing) {
         await api(`/api/employees/${editing.id}`, { method: 'PUT', body: form });
+        setModalOpen(false);
+        await refreshList();
       } else {
-        await api('/api/employees', { method: 'POST', body: form });
+        const res = await api('/api/employees', { method: 'POST', body: form });
+        setModalOpen(false);
+        setProvisioned(res.data.account);
+        await refreshList();
       }
-      setModalOpen(false);
-      await loadEmployees();
     } catch (err) {
       setFormError(
         err.details?.map((d) => d.message).join('. ') || err.message || 'Something went wrong'
@@ -103,6 +114,15 @@ export default function Employees() {
     }
   };
 
+  async function refreshList() {
+    const params = new URLSearchParams({ limit: '100' });
+    if (debouncedQuery.trim()) params.set('q', debouncedQuery.trim());
+    if (department !== 'All') params.set('department', department);
+    const res = await api(`/api/employees?${params.toString()}`);
+    setEmployees(res.data);
+    setMeta(res.meta);
+  }
+
   const handleDelete = async () => {
     if (!editing) return;
     if (!window.confirm(`Delete ${editing.full_name}? This cannot be undone.`)) return;
@@ -110,7 +130,7 @@ export default function Employees() {
     try {
       await api(`/api/employees/${editing.id}`, { method: 'DELETE' });
       setModalOpen(false);
-      await loadEmployees();
+      await refreshList();
     } catch (err) {
       setFormError(err.message || 'Delete failed');
     } finally {
@@ -127,10 +147,10 @@ export default function Employees() {
           <h2 className="font-headline-lg text-primary">Employee Directory</h2>
           <p className="font-body-lg mt-1 text-on-surface-variant">
             {loading ? 'Loading…' : `${meta.total} people across your organisation`}
-            {!isAdmin && user ? ' · read-only access' : ''}
+            {!isManager && user ? ' · click a card for a read-only profile' : ''}
           </p>
         </div>
-        {isAdmin && (
+        {isManager && (
           <button
             onClick={openCreate}
             className="font-label-md flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-label-md text-on-primary shadow-sm transition-colors hover:bg-primary/90"
@@ -149,7 +169,7 @@ export default function Employees() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name, email or position…"
+            placeholder="Search by name, email, login ID, position or skill…"
             className="font-body-md h-10 w-full rounded-lg border border-outline-variant/30 bg-surface-container-low pl-10 pr-4 text-on-surface placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
@@ -177,89 +197,59 @@ export default function Employees() {
       )}
 
       {!error && !loading && employees.length === 0 && (
-        <div className="font-body-lg rounded-xl border border-dashed border-outline-variant bg-surface-container-lowest p-12 text-center text-on-surface-variant">
-          No employees match this view.
-        </div>
+        <EmptyState
+          icon="group_search"
+          title="No matches"
+          message="No employees match this view."
+        />
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {employees.map((employee) => (
-          <div
+          <EmployeeCard
             key={employee.id}
-            onClick={() => openEdit(employee)}
-            className={`group flex items-center gap-4 rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-card-padding shadow-card transition-all hover:-translate-y-0.5 hover:border-primary/30 ${
-              isAdmin ? 'cursor-pointer' : 'cursor-default'
-            }`}
-          >
-            <Avatar name={employee.full_name} url={employee.avatar_url} />
-            <div className="min-w-0 flex-1">
-              <p className="font-headline-md truncate text-[16px] font-bold text-on-surface">
-                {employee.full_name}
-              </p>
-              <p className="font-body-md truncate text-on-surface-variant">{employee.position}</p>
-              <div className="mt-1.5 flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${departmentChipClass(
-                    employee.department
-                  )}`}
+            employee={employee}
+            onClick={() => navigate(`/employees/${employee.id}`)}
+            action={
+              isManager ? (
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openEdit(employee);
+                  }}
+                  title="Edit"
+                  className="material-symbols-outlined h-9 w-9 shrink-0 rounded-full text-on-surface-variant opacity-0 transition-all hover:bg-surface-container-high hover:text-primary group-hover:opacity-100"
                 >
-                  {employee.department}
-                </span>
-                <span
-                  className={`text-[10px] font-semibold uppercase tracking-wider ${
-                    employee.status === 'on_leave' ? 'text-error' : 'text-green-600'
-                  }`}
-                >
-                  {employee.status === 'on_leave' ? 'On leave' : 'Active'}
-                </span>
-              </div>
-            </div>
-            {isAdmin && (
-              <button
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openEdit(employee);
-                }}
-                title="Edit"
-                className="material-symbols-outlined h-9 w-9 shrink-0 rounded-full text-on-surface-variant opacity-0 transition-all hover:bg-surface-container-high hover:text-primary group-hover:opacity-100"
-              >
-                edit
-              </button>
-            )}
-          </div>
+                  edit
+                </button>
+              ) : null
+            }
+          />
         ))}
       </div>
 
       {modalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setModalOpen(false);
-          }}
-        >
-          <form
-            onSubmit={handleSave}
-            className="max-h-full w-full max-w-lg space-y-3 overflow-y-auto rounded-xl bg-surface-container-lowest p-6 shadow-xl"
-          >
-            <h3 className="font-headline-md mb-2 font-bold text-primary">
-              {editing ? `Edit ${editing.full_name}` : 'New Employee'}
-            </h3>
+        <Modal title={editing ? `Edit ${editing.full_name}` : 'New Employee'} onClose={() => setModalOpen(false)}>
+          <form onSubmit={handleSave} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="First name">
+              <FormField label="First name">
                 <input required value={form.first_name} onChange={setField('first_name')} className="input" />
-              </Field>
-              <Field label="Last name">
+              </FormField>
+              <FormField label="Last name">
                 <input required value={form.last_name} onChange={setField('last_name')} className="input" />
-              </Field>
+              </FormField>
             </div>
-            <Field label="Email">
+            <FormField label="Email">
               <input required type="email" value={form.email} onChange={setField('email')} className="input" />
-            </Field>
+            </FormField>
+            <p className="-mt-1 text-xs text-on-surface-variant">
+              A login ID and one-time temporary password are generated automatically.
+            </p>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Position">
+              <FormField label="Position">
                 <input required value={form.position} onChange={setField('position')} className="input" />
-              </Field>
-              <Field label="Department">
+              </FormField>
+              <FormField label="Department">
                 <select value={form.department} onChange={setField('department')} className="input">
                   {(departments.length ? departments : Object.keys(DEPARTMENT_CHIP_CLASSES)).map((d) => (
                     <option key={d} value={d}>
@@ -267,18 +257,18 @@ export default function Employees() {
                     </option>
                   ))}
                 </select>
-              </Field>
+              </FormField>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Phone">
+              <FormField label="Phone">
                 <input value={form.phone} onChange={setField('phone')} placeholder="+91 98765 43210" className="input" />
-              </Field>
-              <Field label="Status">
+              </FormField>
+              <FormField label="Status">
                 <select value={form.status} onChange={setField('status')} className="input">
                   <option value="active">Active</option>
                   <option value="on_leave">On leave</option>
                 </select>
-              </Field>
+              </FormField>
             </div>
             {formError && <p className="font-body-md text-error">{formError}</p>}
             <div className="flex items-center gap-3 pt-1">
@@ -290,14 +280,26 @@ export default function Employees() {
                 Cancel
               </button>
               {editing && (
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={saving}
-                  className="rounded-lg bg-error py-2.5 px-4 text-sm font-semibold text-white transition-colors hover:brightness-110 disabled:opacity-60"
-                >
-                  Delete
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalOpen(false);
+                      navigate(`/employees/${editing.id}?tab=security`);
+                    }}
+                    className="rounded-lg border border-outline-variant py-2.5 px-4 text-sm font-semibold text-on-surface-variant transition-colors hover:bg-surface-container-low"
+                  >
+                    Security
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={saving}
+                    className="rounded-lg bg-error py-2.5 px-4 text-sm font-semibold text-white transition-colors hover:brightness-110 disabled:opacity-60"
+                  >
+                    Delete
+                  </button>
+                </>
               )}
               <button
                 type="submit"
@@ -308,19 +310,56 @@ export default function Employees() {
               </button>
             </div>
           </form>
-        </div>
+        </Modal>
+      )}
+
+      {provisioned && (
+        <Modal title="Employee created" onClose={() => setProvisioned(null)}>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-error/30 bg-error-container p-4 font-body-md text-on-error-container">
+              Copy these credentials now. The temporary password will{' '}
+              <strong>not be shown again</strong>. The employee must change it at first login.
+            </div>
+            <CredentialRow label="Login ID" value={provisioned.login_id} />
+            <CredentialRow label="Temporary password" value={provisioned.temp_password} />
+            <button
+              type="button"
+              onClick={() => setProvisioned(null)}
+              className="font-label-md w-full rounded-lg bg-primary py-2.5 text-label-md text-on-primary transition-colors hover:bg-primary/90"
+            >
+              Done
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );
 }
 
-function Field({ label, children }) {
+function CredentialRow({ label, value }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
   return (
-    <label className="block">
-      <span className="font-label-md mb-1 block uppercase tracking-wider text-on-surface-variant">
-        {label}
-      </span>
-      {children}
-    </label>
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-outline-variant bg-surface-container-low px-4 py-3">
+      <div className="min-w-0">
+        <p className="font-label-md text-xs uppercase tracking-wider text-on-surface-variant">{label}</p>
+        <p className="truncate font-mono text-base font-bold text-on-surface">{value}</p>
+      </div>
+      <button
+        type="button"
+        onClick={copy}
+        className="material-symbols-outlined rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-primary"
+      >
+        {copied ? 'check' : 'content_copy'}
+      </button>
+    </div>
   );
 }
