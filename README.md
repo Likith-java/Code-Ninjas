@@ -130,6 +130,12 @@ employee themselves and managers receive private fields and edit access where pe
 | GET | `/api/employees` | required | List employees (`?q=&department=&status=&page=&limit=`); returns directory cards only (id, name, photo, position, department, derived status) |
 | GET | `/api/employees/meta` | required | List departments and directory metadata |
 | GET | `/api/employees/:id` | required | Viewer-aware employee profile |
+| GET | `/api/employees/:id/profile` | required | Employee Profile API — DTO narrows by caller (own / other-employee read-only / admin with security block) |
+| PUT | `/api/employees/:id/profile` | self, admin, hr | Update Private Info tab + About (personal fields for self; job details, work email, bank details, identifiers for admin) |
+| POST | `/api/employees/:id/skills` | self, admin, hr | Add one skill (deduped, max 50) |
+| DELETE | `/api/employees/:id/skills/:skillId` | self, admin, hr | Remove one skill |
+| POST | `/api/employees/:id/certifications` | self, admin, hr | Add one certification (max 50) |
+| DELETE | `/api/employees/:id/certifications/:certificationId` | self, admin, hr | Remove one certification |
 | POST | `/api/employees` | admin, hr | Create employee and provision account |
 | PUT | `/api/employees/:id` | self, admin, hr | Update permitted employee fields |
 | DELETE | `/api/employees/:id` | admin, hr | Delete employee |

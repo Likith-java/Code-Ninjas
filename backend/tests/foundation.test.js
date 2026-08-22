@@ -39,6 +39,7 @@ test('all migrations are recorded as applied', () => {
     '001_add_employee_domain_fields',
     '002_add_users_token_version',
     '003_add_directory_indexes',
+    '004_add_profile_bank_details',
   ]);
 });
 

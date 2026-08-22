@@ -142,6 +142,27 @@ const MIGRATIONS = [
       `);
     },
   },
+  {
+    name: '004_add_profile_bank_details',
+    // PRD Private Info tab includes a Bank Details section (bank name,
+    // account number, IFSC). PAN/UAN/employee_code already live on `employees`
+    // (migration 001); these three are personal-details columns and belong on
+    // employee_profiles next to the rest of the private info block.
+    up: (db) => {
+      const profileColumns = columnNames(db, 'employee_profiles');
+      const addProfileColumn = (definition) => {
+        const name = definition.split(' ')[0];
+        if (!profileColumns.includes(name)) {
+          db.exec(`ALTER TABLE employee_profiles ADD COLUMN ${definition}`);
+          profileColumns.push(name);
+        }
+      };
+
+      addProfileColumn('bank_name TEXT');
+      addProfileColumn('bank_account_number TEXT');
+      addProfileColumn('bank_ifsc TEXT');
+    },
+  },
 ];
 
 function columnNames(db, table) {

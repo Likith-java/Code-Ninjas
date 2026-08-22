@@ -11,6 +11,14 @@ import {
   updateResume,
   getResumePdf,
 } from '../services/employee.service.js';
+import {
+  getEmployeeProfile,
+  updateEmployeeProfile,
+  addSkill,
+  removeSkill,
+  addCertification,
+  removeCertification,
+} from '../services/profile/profile.service.js';
 import { listDirectoryCards } from '../services/directory/directory.service.js';
 import { DIRECTORY_STATUSES } from '../services/directory/status.service.js';
 import { DEPARTMENTS, STATUSES } from '../validators/employee.validator.js';
@@ -148,4 +156,58 @@ export function listMeta(_req, res) {
       directory_statuses: DIRECTORY_STATUSES,
     },
   });
+}
+
+// Profile API (PRD Employee Profile module) -----------------------------------
+
+export function getProfile(req, res, next) {
+  try {
+    return res.json({ data: getEmployeeProfile(req.user, req.params.id) });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export function putProfile(req, res, next) {
+  try {
+    return res.json({ data: updateEmployeeProfile(req.user, req.params.id, req.body || {}) });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export function postSkill(req, res, next) {
+  try {
+    return res.status(201).json({ data: addSkill(req.user, req.params.id, req.body || {}) });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export function deleteSkill(req, res, next) {
+  try {
+    return res.json({ data: removeSkill(req.user, req.params.id, req.params.skillId) });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export function postCertification(req, res, next) {
+  try {
+    return res
+      .status(201)
+      .json({ data: addCertification(req.user, req.params.id, req.body || {}) });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export function deleteCertification(req, res, next) {
+  try {
+    return res.json({
+      data: removeCertification(req.user, req.params.id, req.params.certificationId),
+    });
+  } catch (err) {
+    return next(err);
+  }
 }
