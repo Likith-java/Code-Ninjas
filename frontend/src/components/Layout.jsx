@@ -4,6 +4,8 @@ import { useAuth } from '../auth/AuthContext.jsx';
 
 const NAV_ITEMS = [
   { to: '/', icon: 'dashboard', label: 'Dashboard' },
+  { to: '/attendance', icon: 'fact_check', label: 'Attendance' },
+  { to: '/time-off', icon: 'event_available', label: 'Time Off' },
   { to: '/employees', icon: 'badge', label: 'Employee Directory' },
   { to: '/salary-calculator', icon: 'calculate', label: 'Salary Calculator' },
   { to: '/payroll-generator', icon: 'receipt_long', label: 'Payroll Generator' },

@@ -3,6 +3,8 @@ import { useAuth } from './auth/AuthContext.jsx';
 import Layout from './components/Layout.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Employees from './pages/Employees.jsx';
+import Attendance from './pages/Attendance.jsx';
+import TimeOff from './pages/TimeOff.jsx';
 import EmployeeProfile from './pages/EmployeeProfile.jsx';
 import ChangePassword from './pages/ChangePassword.jsx';
 import SalaryCalculatorPage from './pages/SalaryCalculatorPage.jsx';
@@ -57,6 +59,8 @@ export default function App() {
         <Route path="employees" element={<Employees />} />
         <Route path="employees/me" element={<MyProfileRedirect />} />
         <Route path="employees/:id" element={<EmployeeProfile />} />
+        <Route path="attendance" element={<Attendance />} />
+        <Route path="time-off" element={<TimeOff />} />
         <Route path="salary-calculator" element={<SalaryCalculatorPage />} />
         <Route path="payroll-generator" element={<PayrollGeneratorPage />} />
         <Route path="payroll-reports" element={<PayrollReportsPage />} />

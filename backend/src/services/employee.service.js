@@ -7,6 +7,8 @@ import {
 } from '../utils/errors.js';
 import { generateTempPassword, hashPassword } from '../utils/password.js';
 import { generateLoginId } from './login-id.service.js';
+import { getEmployeeStatusProvider } from './directory/status.service.js';
+import { projectDirectoryCard } from './directory/directory.service.js';
 import { ROLES, isManagerRole, ownsEmployeeRecord } from '../middleware/permissions.js';
 import {
   validateEmployee,
@@ -15,12 +17,6 @@ import {
   validateCertificationsPayload,
   validateResumePayload,
 } from '../validators/employee.validator.js';
-
-const CARD_FIELDS = 'id, first_name, last_name, position, department, avatar_url, status';
-
-function fullName(row) {
-  return `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim();
-}
 
 export function getProfileRow(employeeId) {
   return db.prepare('SELECT * FROM employee_profiles WHERE employee_id = ?').get(employeeId);
@@ -42,29 +38,22 @@ function getCertifications(employeeId) {
     .all(employeeId);
 }
 
-function toCard(row) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    first_name: row.first_name,
-    last_name: row.last_name,
-    full_name: fullName(row),
-    position: row.position,
-    department: row.department,
-    avatar_url: row.avatar_url,
-    status: row.status,
-  };
-}
-
 function relationOf(actor, employeeId) {
   if (isManagerRole(actor?.role)) return 'manager';
   if (ownsEmployeeRecord(actor, employeeId)) return 'self';
   return 'other';
 }
 
+// Status shown on any profile/card view is always the derived value from the
+// status provider (see services/directory/status.service.js) — never read
+// straight off an employees.status-style column here.
+function derivedStatusFor(employeeId) {
+  return getEmployeeStatusProvider().resolveStatuses([employeeId]).get(employeeId);
+}
+
 function serializeDetail(actor, employee) {
   const relation = relationOf(actor, employee.id);
-  const card = toCard(employee);
+  const card = projectDirectoryCard(employee, derivedStatusFor(employee.id));
 
   if (relation === 'other') {
     const profile = getProfileRow(employee.id);
@@ -84,7 +73,6 @@ function serializeDetail(actor, employee) {
     ...card,
     email: employee.email,
     phone: employee.phone,
-    status: employee.status,
     hired_at: employee.hired_at,
     created_at: employee.created_at,
     updated_at: employee.updated_at,
@@ -102,48 +90,6 @@ function serializeDetail(actor, employee) {
     viewer: relation,
     can_edit: true,
   };
-}
-
-export function listEmployees({ q = '', department = null, status = null, page = 1, limit = 50 }) {
-  const conditions = [];
-  const params = [];
-  if (q) {
-    const like = `%${q}%`;
-    conditions.push(
-      `(first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR position LIKE ?
-        OR EXISTS (SELECT 1 FROM users u WHERE u.employee_id = employees.id AND u.login_id LIKE ?)
-        OR EXISTS (SELECT 1 FROM skills s WHERE s.employee_id = employees.id AND s.name LIKE ?))`
-    );
-    params.push(like, like, like, like, like, like);
-  }
-  if (department) {
-    conditions.push('department = ?');
-    params.push(department);
-  }
-  if (status) {
-    conditions.push('status = ?');
-    params.push(status);
-  }
-  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  const offset = (page - 1) * limit;
-
-  const total = db
-    .prepare(`SELECT COUNT(*) AS count FROM employees ${where}`)
-    .get(...params).count;
-  const rows = db
-    .prepare(
-      `SELECT ${CARD_FIELDS} FROM employees ${where}
-       ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE LIMIT ? OFFSET ?`
-    )
-    .all(...params, limit, offset);
-
-  return { rows: rows.map(toCard), total };
-}
-
-export function getEmployeeCard(id) {
-  const row = db.prepare(`SELECT ${CARD_FIELDS} FROM employees WHERE id = ?`).get(id);
-  if (!row) throw notFoundError('Employee not found');
-  return toCard(row);
 }
 
 export function getEmployeeDetail(actor, id) {
