@@ -22,9 +22,15 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       loading,
-      isAdmin: user?.role === 'admin' || user?.role === 'hr',
-      async login(email, password) {
-        const res = await api('/api/auth/login', { method: 'POST', body: { email, password } });
+      isManager: user?.role === 'admin' || user?.role === 'hr',
+      mustChangePassword: Boolean(user?.must_change_password),
+      async refreshUser() {
+        const res = await api('/api/auth/me');
+        setUser(res.data);
+        return res.data;
+      },
+      async login(identifier, password) {
+        const res = await api('/api/auth/login', { method: 'POST', body: { identifier, password } });
         setUser(res.data);
         return res.data;
       },

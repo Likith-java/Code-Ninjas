@@ -69,32 +69,68 @@ The backend serves the built React app from `frontend/dist` when it exists.
 
 ### Demo Accounts
 
-| Role     | Email                | Password      |
-| -------- | -------------------- | ------------- |
-| Admin    | admin@dayflow.com    | Admin@123     |
-| HR       | hr@dayflow.com       | Hr@123456     |
-| Employee | employee@dayflow.com | Employee@123  |
+| Role     | Login ID       | Email             | Password     |
+| -------- | -------------- | ----------------- | ------------ |
+| Admin    | ADUS20200001   | admin@dayflow.com | Admin@123    |
+| HR       | SACO20230001   | hr@dayflow.com    | Hr@123456    |
+| Employee | MIDO20220001   | employee@dayflow.com | Employee@123 |
+
+The login form accepts either the email address or login ID.
 
 HR/Admin can create, edit, and delete employees; Employee role is read-only.
 
+### Database & Migrations
+
+The backend uses SQLite (`backend/data/dayflow.db`) with the schema baseline defined in
+`backend/src/db/schema.sql`. Incremental schema changes are plain JavaScript migrations in
+`backend/src/db/migrations.js` that run automatically on every backend start (and before
+seeding), tracked in a `schema_migrations` table:
+
+- Fresh databases get the full baseline schema, then pending migrations are recorded.
+- Existing databases are upgraded **in place** — migrations only add columns/indexes, never
+  drop or reset data. Deleting the database file after a schema change is no longer necessary.
+- To add a new migration, append an entry to the `MIGRATIONS` array in
+  `backend/src/db/migrations.js`; keep each step idempotent so fresh and migrated databases
+  converge on the same shape.
+
+Current employee-domain model: employees (job fields incl. company/location/self-referencing
+manager, identifiers employee_code/PAN/UAN), users (login/auth state), employee_profiles
+(personal details, about, resume), plus normalized skills and certifications tables.
+
 ### API Overview
 
-| Method | Endpoint              | Auth        | Description                          |
-| ------ | --------------------- | ----------- | ------------------------------------ |
-| POST   | /api/auth/login       | public      | Sign in, sets httpOnly session cookie |
-| GET    | /api/auth/me          | required    | Current user                         |
-| POST   | /api/auth/logout      | public      | Clears session cookie                |
-| GET    | /api/employees        | required    | List (`?q=&department=&page=&limit=`)|
-| GET    | /api/employees/:id    | required    | Single employee                      |
-| POST   | /api/employees        | admin, hr   | Create employee                      |
-| PUT    | /api/employees/:id    | admin, hr   | Update employee                      |
-| DELETE | /api/employees/:id    | admin, hr   | Delete employee                      |
+All protected endpoints use the httpOnly cookie set by login. Employee detail responses are
+viewer-aware: employees viewing another employee receive a read-only public profile, while the
+employee themselves and managers receive private fields and edit access where permitted.
+
+| Method | Endpoint | Auth | Description |
+| ------ | -------- | ---- | ----------- |
+| POST | `/api/auth/login` | public | Sign in with email or login ID; sets session cookie |
+| GET | `/api/auth/me` | required | Current user and password-change state |
+| POST | `/api/auth/change-password` | required | Change the current password |
+| POST | `/api/auth/logout` | public | Clear session cookie |
+| GET | `/api/employees` | required | List employees (`?q=&department=&page=&limit=`) |
+| GET | `/api/employees/meta` | required | List departments and directory metadata |
+| GET | `/api/employees/:id` | required | Viewer-aware employee profile |
+| POST | `/api/employees` | admin, hr | Create employee and provision account |
+| PUT | `/api/employees/:id` | self, admin, hr | Update permitted employee fields |
+| DELETE | `/api/employees/:id` | admin, hr | Delete employee |
+| PUT | `/api/employees/:id/skills` | self, admin, hr | Replace skills |
+| PUT | `/api/employees/:id/certifications` | self, admin, hr | Replace certifications |
+| PUT | `/api/employees/:id/resume` | self, admin, hr | Update resume text or PDF |
+| GET | `/api/employees/:id/resume.pdf` | self, admin, hr | Download resume PDF |
+| GET | `/api/employees/:id/security` | admin, hr | View account security details |
+| POST | `/api/employees/:id/reset-password` | admin, hr | Generate a one-time temporary password |
+| PATCH | `/api/employees/:id/status` | admin, hr | Enable or disable an account |
 
 ### Tests
 
 ```bash
 npm test --prefix backend
 ```
+
+The suite covers auth, RBAC, provisioning, profile/resume flows, and the database foundation
+(schema shape, unique constraints, manager hierarchy, and in-place migration upgrades).
 
 ## Contributing
 

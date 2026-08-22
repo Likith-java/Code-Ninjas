@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { to: '/attendance', icon: 'fact_check', label: 'Attendance' },
   { to: '/time-off', icon: 'event_available', label: 'Time Off' },
   { to: '/employees', icon: 'badge', label: 'Employee Directory' },
+  { to: '/employees/me', icon: 'person', label: 'My Profile' },
 ];
 
 export default function Layout() {
