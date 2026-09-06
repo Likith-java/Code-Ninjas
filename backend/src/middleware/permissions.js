@@ -46,6 +46,9 @@ export const PERMISSIONS = {
   // Private content of other employees --------------------------------------
   'resume:read:any': [...MANAGER_ROLES],
   'employee:content:manage:any': [...MANAGER_ROLES],
+
+  // Payroll processing & reports ---------------------------------------------
+  'payroll:manage': [...MANAGER_ROLES],
 };
 
 export function isManagerRole(role) {

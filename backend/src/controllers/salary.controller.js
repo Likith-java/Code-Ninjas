@@ -1,6 +1,6 @@
 import { db } from '../config/db.js';
 
-function resolveUser(employeeId) {
+export function resolveUser(employeeId) {
   const empStr = String(employeeId).trim();
   let user = null;
 

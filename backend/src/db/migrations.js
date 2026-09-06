@@ -167,6 +167,35 @@ const MIGRATIONS = [
       addProfileColumn('bank_ifsc TEXT');
     },
   },
+  {
+    name: '005_add_payslips',
+    // Immutable payslip ledger backing /api/payroll/generate and the payroll
+    // summary report. One payslip per user per pay period (regenerating a
+    // period overwrites the previous run).
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS payslips (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          pay_period TEXT NOT NULL,
+          payable_days REAL NOT NULL,
+          total_working_days REAL NOT NULL,
+          basic REAL NOT NULL DEFAULT 0,
+          hra REAL NOT NULL DEFAULT 0,
+          fixed_allowance REAL NOT NULL DEFAULT 0,
+          gross_earnings REAL NOT NULL DEFAULT 0,
+          pf_deduction REAL NOT NULL DEFAULT 0,
+          net_salary REAL NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+          UNIQUE (user_id, pay_period)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_payslips_period ON payslips(pay_period);
+        CREATE INDEX IF NOT EXISTS idx_payslips_user ON payslips(user_id);
+      `);
+    },
+  },
 ];
 
 function columnNames(db, table) {

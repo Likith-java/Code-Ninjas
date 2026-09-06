@@ -144,3 +144,23 @@ CREATE TABLE IF NOT EXISTS time_off_requests (
 CREATE INDEX IF NOT EXISTS idx_time_off_employee ON time_off_requests(employee_id);
 CREATE INDEX IF NOT EXISTS idx_time_off_status ON time_off_requests(status);
 
+CREATE TABLE IF NOT EXISTS payslips (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  pay_period TEXT NOT NULL,
+  payable_days REAL NOT NULL,
+  total_working_days REAL NOT NULL,
+  basic REAL NOT NULL DEFAULT 0,
+  hra REAL NOT NULL DEFAULT 0,
+  fixed_allowance REAL NOT NULL DEFAULT 0,
+  gross_earnings REAL NOT NULL DEFAULT 0,
+  pf_deduction REAL NOT NULL DEFAULT 0,
+  net_salary REAL NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (user_id, pay_period)
+);
+
+CREATE INDEX IF NOT EXISTS idx_payslips_period ON payslips(pay_period);
+CREATE INDEX IF NOT EXISTS idx_payslips_user ON payslips(user_id);
+

@@ -225,8 +225,9 @@ export function seed() {
 
   console.log('Seed complete. Demo accounts:');
   for (const u of USERS) {
-    console.log(`  ${u.role.padEnd(8)} ${u.email} / ${u.login_id} / ${u.password}`);
+    console.log(`  ${u.role.padEnd(8)} ${u.email} / ${u.login_id}`);
   }
+  console.log('Passwords are documented in README.md (Demo Accounts).');
 }
 
 const isCli =

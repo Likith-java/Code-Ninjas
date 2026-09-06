@@ -82,7 +82,7 @@ def seed_mock_data() -> None:
             basic_rate=Decimal("0.4000"),
             hra_rate=Decimal("0.2000"),
             pf_rate=Decimal("0.1200"),
-            fixed_allowance=Decimal("20000.00"),
+            fixed_allowance=Decimal("26000.00"),
             working_days_per_week=5,
             effective_date=datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
             end_date=None,  # Active record

@@ -32,7 +32,7 @@ import { db } from '../../config/db.js';
 /**
  * Canonical status values exposed by the directory. UI vocabulary stays stable
  * even when the underlying derivation source changes.
- * @type {'active'|'on_leave'|'disabled'[]}
+ * @type {('active'|'on_leave'|'disabled')[]}
  */
 export const DIRECTORY_STATUSES = ['active', 'on_leave', 'disabled'];
 

@@ -9,6 +9,8 @@ import employeeRoutes from './routes/employee.routes.js';
 import salaryRoutes from './routes/salary.routes.js';
 import attendanceRoutes from './routes/attendance.routes.js';
 import timeOffRoutes from './routes/time-off.routes.js';
+import payrollRoutes from './routes/payroll.routes.js';
+import reportRoutes from './routes/reports.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,6 +40,8 @@ export function createApp() {
   app.use('/api/salary', salaryRoutes);
   app.use('/api/attendance', attendanceRoutes);
   app.use('/api/time-off', timeOffRoutes);
+  app.use('/api/payroll', payrollRoutes);
+  app.use('/api/reports', reportRoutes);
 
 
   if (process.env.NODE_ENV !== 'test') {

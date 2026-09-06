@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
+import { api } from '../api/client';
 
 /**
  * Payroll Generator Dashboard Component
- * 
+ *
  * Features:
  * - Dynamic Proration: Generates exact pro-rated pay based on days worked (e.g. 10 days vs 22 days)
  * - Inputs: Employee ID, Pay Period (YYYY-MM), Standard Month Days, Actual Payable Days
- * - API Integration: POST http://127.0.0.1:8000/api/payroll/generate
+ * - API Integration: POST /api/payroll/generate
  * - Live Proration Preview: Shows the exact % ratio (e.g., 10 / 22 = 45.45%)
  * - Results Display: Official payslip summary card with earnings and deductions
  */
@@ -55,35 +56,7 @@ export default function PayrollGenerator() {
     };
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/payroll/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        let formattedError = 'Failed to process payroll.';
-        if (typeof data.detail === 'string') {
-          formattedError = data.detail;
-        } else if (Array.isArray(data.detail)) {
-          formattedError = data.detail
-            .map((item) => {
-              const field = item.loc ? item.loc[item.loc.length - 1] : 'field';
-              return `${field}: ${item.msg}`;
-            })
-            .join(' | ');
-        } else if (data.detail && typeof data.detail === 'object') {
-          formattedError = JSON.stringify(data.detail);
-        } else if (data.message) {
-          formattedError = data.message;
-        }
-        throw new Error(formattedError);
-      }
+      const data = await api('/api/payroll/generate', { method: 'POST', body: payload });
 
       setPayslipData(data);
 
@@ -93,7 +66,7 @@ export default function PayrollGenerator() {
       setSuccessMessage(statusMsg);
     } catch (err) {
       setErrorMessage(
-        err.message || 'Failed to connect to FastAPI backend at http://127.0.0.1:8000/api/payroll/generate'
+        err.message || 'Failed to connect to backend payroll service.'
       );
     } finally {
       setLoading(false);

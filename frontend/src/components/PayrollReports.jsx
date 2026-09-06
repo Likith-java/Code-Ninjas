@@ -13,6 +13,7 @@ import {
   ArrowUpRight,
   Receipt
 } from 'lucide-react';
+import { api, ApiError } from '../api/client';
 
 /**
  * Payroll Reports & Analytics Dashboard Component
@@ -50,27 +51,14 @@ export default function PayrollReports() {
     setIsNotFound(false);
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/reports/payroll-summary/${targetPeriod}`, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.status === 404) {
+      const data = await api(`/api/reports/payroll-summary/${targetPeriod}`);
+      setReportData(data);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
         setIsNotFound(true);
         setReportData(null);
         return;
       }
-
-      if (!response.ok) {
-        throw new Error(data.detail || `Server returned code ${response.status}: Failed to fetch report.`);
-      }
-
-      setReportData(data);
-    } catch (err) {
       setErrorMessage(err.message || 'Failed to connect to backend reports service.');
       setReportData(null);
     } finally {

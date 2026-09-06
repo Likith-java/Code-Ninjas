@@ -5,6 +5,7 @@ deductions computation, and immutable ledger (Payslip) creation/upsert.
 """
 
 import calendar
+from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, date
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/api/payroll", tags=["Payroll Module"])
 
 
 class PayrollRunRequest(BaseModel):
-    employee_id: Union[int, str] = Field(1, description="Employee ID (e.g. 1, '1', or 'employee1')")
+    employee_id: Union[int, str] = Field(...)
     pay_period: str = Field(..., description="Format: YYYY-MM (e.g., 2026-08)")
     total_working_days_in_month: Optional[int] = Field(22, description="Standard working days for the month (default 22)")
     custom_payable_days: Optional[float] = Field(None, description="Payable days worked (e.g. 10 or 22)")
@@ -53,18 +54,18 @@ def generate_payslip(payload: PayrollRunRequest, db: Session = Depends(get_db)):
     # 2. Fetch Active Salary Structure (where end_date is null)
     salary_struct = db.query(SalaryStructure).filter(
         SalaryStructure.user_id == user.id,
-        SalaryStructure.end_date == None
+        SalaryStructure.end_date.is_(None)
     ).order_by(SalaryStructure.effective_date.desc()).first()
 
     # If salary structure is not configured yet, auto-initialize standard benchmark structure
     if not salary_struct:
         salary_struct = SalaryStructure(
             user_id=user.id,
-            monthly_wage=50000.00,
-            basic_rate=0.40,
-            hra_rate=0.20,
-            pf_rate=0.12,
-            fixed_allowance=20000.00,
+            monthly_wage=Decimal("50000.00"),
+            basic_rate=Decimal("0.4000"),
+            hra_rate=Decimal("0.2000"),
+            pf_rate=Decimal("0.1200"),
+            fixed_allowance=Decimal("26000.00"),
             working_days_per_week=5,
             effective_date=datetime.now(timezone.utc),
             end_date=None,
