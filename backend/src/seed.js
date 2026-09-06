@@ -51,6 +51,14 @@ const EMPLOYEES = [
     department: 'Marketing',
     hired_at: '2024-02-19',
   },
+  {
+    first_name: 'System',
+    last_name: 'Administrator',
+    email: 'admin@dayflow.com',
+    position: 'System Administrator',
+    department: 'Engineering',
+    hired_at: '2020-01-15',
+  },
 ];
 
 const USERS = [
@@ -59,7 +67,7 @@ const USERS = [
     email: 'admin@dayflow.com',
     password: 'Admin@123',
     role: 'admin',
-    employeeEmail: null,
+    employeeEmail: 'admin@dayflow.com',
   },
   {
     login_id: 'SACO20230001',
@@ -78,6 +86,12 @@ const USERS = [
 ];
 
 const PROFILES = [
+  {
+    email: 'admin@dayflow.com',
+    about: 'System Administrator managing the Dayflow HRMS platform.',
+    skills: ['System Administration', 'Security Operations', 'Database Management', 'Access Control'],
+    certifications: [{ name: 'Certified Information Systems Security Professional (CISSP)', issuer: 'ISC2', issued_on: '2021-01-10', expires_on: null }],
+  },
   {
     email: 'michael.doe@dayflow.io',
     about: 'Frontend developer focused on React and design systems.',
@@ -99,18 +113,17 @@ const PROFILES = [
 ];
 
 export function seed() {
-  const employeeCount = db.prepare('SELECT COUNT(*) AS count FROM employees').get().count;
+  const insertEmployee = db.prepare(
+    `INSERT INTO employees (first_name, last_name, email, position, department, hired_at)
+     VALUES (@first_name, @last_name, @email, @position, @department, @hired_at)`
+  );
 
-  if (employeeCount === 0) {
-    const insertEmployee = db.prepare(
-      `INSERT INTO employees (first_name, last_name, email, position, department, hired_at)
-       VALUES (@first_name, @last_name, @email, @position, @department, @hired_at)`
-    );
-    db.transaction(() => {
-      for (const e of EMPLOYEES) insertEmployee.run(e);
-    })();
-    console.log(`Seeded ${EMPLOYEES.length} employees`);
-  }
+  db.transaction(() => {
+    for (const e of EMPLOYEES) {
+      const existing = db.prepare('SELECT id FROM employees WHERE email = ? COLLATE NOCASE').get(e.email);
+      if (!existing) insertEmployee.run(e);
+    }
+  })();
 
   const upsertUser = db.prepare(
     `INSERT INTO users (login_id, email, password_hash, role, employee_id, must_change_password)
@@ -128,6 +141,12 @@ export function seed() {
         role: u.role,
         employee_email: u.employeeEmail,
       });
+
+      if (u.employeeEmail) {
+        db.prepare(
+          `UPDATE users SET employee_id = (SELECT id FROM employees WHERE email = ?) WHERE email = ?`
+        ).run(u.employeeEmail, u.email);
+      }
     }
   })();
 

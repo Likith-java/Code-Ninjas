@@ -142,46 +142,67 @@ export default function Employees() {
 
   return (
     <div className="mx-auto flex max-w-container-max-width flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="font-headline-lg text-primary">Employee Directory</h2>
-          <p className="font-body-lg mt-1 text-on-surface-variant">
-            {loading ? 'Loading…' : `${meta.total} people across your organisation`}
-            {!isManager && user ? ' · click a card for a read-only profile' : ''}
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs font-bold text-primary">
+              <span className="material-symbols-outlined text-[14px]">badge</span>
+              <span>Workforce Directory</span>
+            </span>
+            <span className="rounded-full bg-surface-container px-2 py-0.5 text-[10px] font-bold text-on-surface-variant">
+              {loading ? '…' : `${meta.total} Members`}
+            </span>
+          </div>
+          <h2 className="font-headline-lg text-2xl sm:text-3xl font-bold tracking-tight text-primary">
+            Employee Directory
+          </h2>
+          <p className="text-sm text-on-surface-variant">
+            Browse team members across your organisation
+            {!isManager && user ? ' · click any card to view their profile' : ''}
           </p>
         </div>
         {isManager && (
           <button
             onClick={openCreate}
-            className="font-label-md flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-label-md text-on-primary shadow-sm transition-colors hover:bg-primary/90"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary-container px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/20 transition-all duration-200 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5"
           >
             <span className="material-symbols-outlined text-[18px]">person_add</span>
-            Add Employee
+            <span>Add Employee</span>
           </button>
         )}
       </div>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center">
-        <div className="relative w-full md:max-w-sm">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60">
-            search
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative w-full lg:max-w-md">
+          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant/60">
+            <span className="material-symbols-outlined text-[20px]">search</span>
           </span>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, email, login ID, position or skill…"
-            className="font-body-md h-10 w-full rounded-lg border border-outline-variant/30 bg-surface-container-low pl-10 pr-4 text-on-surface placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="h-11 w-full rounded-xl border border-outline-variant/40 bg-white pl-11 pr-10 text-sm text-on-surface shadow-2xs placeholder:text-on-surface-variant/50 transition-all focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
           />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-on-surface"
+              title="Clear search"
+            >
+              <span className="material-symbols-outlined text-[18px]">cancel</span>
+            </button>
+          )}
         </div>
+
         <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
           {chips.map((chip) => (
             <button
               key={chip}
               onClick={() => setDepartment(chip)}
-              className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+              className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition-all duration-150 ${
                 chip === department
-                  ? 'bg-primary text-on-primary'
-                  : 'border border-outline-variant bg-surface-container-lowest text-on-surface-variant hover:border-primary'
+                  ? 'bg-gradient-to-r from-primary to-primary-container text-white shadow-sm shadow-primary/20'
+                  : 'border border-outline-variant/40 bg-white text-on-surface-variant hover:border-primary/40 hover:bg-surface-container/50'
               }`}
             >
               {chip}
