@@ -87,6 +87,9 @@ export default {
       boxShadow: {
         card: '0px 4px 20px rgba(0,0,0,0.05)',
         payroll: '0px 12px 32px rgba(13,59,122,0.12)',
+        'card-hover': '0 12px 30px -4px rgba(0, 37, 86, 0.08), 0 4px 8px -2px rgba(0, 37, 86, 0.04)',
+        'card-elevated': '0 20px 32px -6px rgba(0, 37, 86, 0.09), 0 8px 12px -4px rgba(0, 37, 86, 0.03)',
+        'glow-primary': '0 0 24px rgba(13, 59, 122, 0.28)',
       },
     },
   },

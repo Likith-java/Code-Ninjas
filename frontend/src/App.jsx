@@ -32,6 +32,9 @@ function Protected({ children }) {
 function MyProfileRedirect() {
   const { user } = useAuth();
   if (user?.employee_id) return <Navigate to={`/employees/${user.employee_id}`} replace />;
+  if (user?.role === 'admin' || user?.role === 'hr') {
+    return <Navigate to="/employees" replace />;
+  }
   return <Navigate to="/" replace />;
 }
 
