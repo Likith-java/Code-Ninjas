@@ -12,6 +12,7 @@ from .models import Scenario, Disruption, DisruptionType, SchedulerType, SolverS
 from .loader import load_scenario_file
 from .validator import validate_schedule
 from .baseline import run_edf_baseline, run_edf
+from .optimizer import optimize as run_cpsat_optimize
 from .optimizer import run_cpsat_optimizer
 from .metrics import compute_metrics
 from .durations import compute_duration
@@ -81,11 +82,17 @@ def run(scenario_path: Path, output: Path | None, validate: bool) -> None:
 @click.option(
     "-o", "--output", type=click.Path(path_type=Path), help="Output file (default: stdout)"
 )
-@click.option("--time-limit", default=30.0, help="Solver time limit in seconds")
+@click.option("--time-limit", default=10.0, help="Solver time limit in seconds")
 @click.option("--seed", default=42, help="Random seed for reproducibility")
+@click.option("--workers", default=8, help="CP-SAT worker count")
 @click.option("--warm-start/--no-warm-start", default=True, help="Use EDF baseline as warm start")
 def optimize(
-    scenario_path: Path, output: Path | None, time_limit: float, seed: int, warm_start: bool
+    scenario_path: Path,
+    output: Path | None,
+    time_limit: float,
+    seed: int,
+    workers: int,
+    warm_start: bool,
 ) -> None:
     """Run CP-SAT optimizer on a scenario (requires ortools)."""
     try:
@@ -100,48 +107,27 @@ def optimize(
             warm_start_ops = run_edf_baseline(scenario)
             click.echo(f"EDF scheduled {len(warm_start_ops)} operations")
 
-        click.echo(f"Running CP-SAT optimizer (time_limit={time_limit}s, seed={seed})...")
-        status, operations, solve_time = run_cpsat_optimizer(
+        click.echo(
+            f"Running CP-SAT optimizer (time_limit={time_limit}s, seed={seed}, workers={workers})..."
+        )
+        schedule = run_cpsat_optimize(
             scenario=scenario,
             time_limit_seconds=time_limit,
             random_seed=seed,
             warm_start_ops=warm_start_ops,
+            num_workers=workers,
         )
-        click.echo(f"Solver status: {status.value} (took {solve_time:.2f}s)")
-        click.echo(f"Scheduled {len(operations)} operations")
+        click.echo(f"Solver status: {schedule.status.value} (took {schedule.compute_seconds:.2f}s)")
+        click.echo(f"Scheduled {len(schedule.operations)} operations")
+        for warning in schedule.warnings:
+            click.echo(f"NOTE: {warning}", err=True)
 
-        metrics = compute_metrics(scenario, operations)
-
-        from .models import Schedule, ValidationResult, ScheduleMetrics
-
-        validation = validate_schedule(
-            scenario,
-            Schedule(
-                scenario_id=scenario.scenario_id,
-                solver=SchedulerType.CP_SAT,
-                status=status,
-                compute_seconds=solve_time,
-                validation=ValidationResult(violations=[]),
-                metrics=metrics,
-                operations=operations,
-            ),
-        )
-
-        schedule = Schedule(
-            scenario_id=scenario.scenario_id,
-            solver=SchedulerType.CP_SAT,
-            status=status,
-            compute_seconds=solve_time,
-            validation=validation,
-            metrics=metrics,
-            operations=operations,
-        )
-
-        if not validation.is_valid:
+        if not schedule.validation.is_valid:
             click.echo(
-                f"WARNING: Validation found {len(validation.violations)} violations", err=True
+                f"WARNING: Validation found {len(schedule.validation.violations)} violations",
+                err=True,
             )
-            for v in validation.violations:
+            for v in schedule.validation.violations:
                 click.echo(f"  {v.code}: {v.message}", err=True)
 
         save_schedule(schedule, str(output) if output else None)
@@ -165,7 +151,7 @@ def optimize(
 @click.option("--yarn-delay", help="Order ID for yarn delay")
 @click.option("--hours", type=int, help="Delay in hours")
 @click.option("--now", type=int, default=0, help="Current time (minutes)")
-@click.option("--time-limit", default=30.0, help="Solver time limit")
+@click.option("--time-limit", default=10.0, help="Solver time limit")
 @click.option("--seed", default=42, help="Random seed")
 @click.option("-o", "--output", type=click.Path(path_type=Path), help="Output file")
 def replan(
@@ -235,8 +221,9 @@ def replan(
         )
         click.echo(f"Re-plan status: {status.value} (took {solve_time:.2f}s)")
 
-        # Combine frozen + new operations
-        all_ops = frozen_ops + new_ops
+        # Solver output is already complete: frozen operations are modelled
+        # with presence forced, so combining them again would duplicate.
+        all_ops = new_ops
 
         from .models import Schedule, ValidationResult
 

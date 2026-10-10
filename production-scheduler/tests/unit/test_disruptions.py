@@ -202,3 +202,46 @@ class TestMachineBreakdown:
         assert isinstance(diff.now_at_risk, list)
         assert isinstance(diff.frozen_count, int)
         assert isinstance(diff.split_count, int)
+
+    def test_completed_operations_frozen_as_history(self) -> None:
+        """Ops finished before 'now' must freeze, not stay re-schedulable."""
+        scenario, operations = create_scenario_with_schedule()
+
+        disruption = Disruption(
+            type=DisruptionType.MACHINE_DOWN,
+            machine="WEAVE-01",
+            from_minute=1000,
+            to_minute=2000,
+            now=700,
+        )
+
+        new_scenario, new_ops, diff = apply_disruption(scenario, operations, disruption)
+
+        completed = [op for op in operations if op.end <= 700]
+        assert completed, "test needs operations completed before now"
+        frozen_keys = {(f.order, f.stage, f.machine) for f in new_scenario.frozen}
+        for op in completed:
+            assert (op.order, op.stage, op.machine) in frozen_keys
+            frozen = next(
+                f
+                for f in new_scenario.frozen
+                if (f.order, f.stage, f.machine) == (op.order, op.stage, op.machine)
+            )
+            assert (frozen.start, frozen.end) == (op.start, op.end)
+
+    def test_replan_operations_have_no_duplicates(self) -> None:
+        """Returned operations must not repeat an order-stage-machine."""
+        scenario, operations = create_scenario_with_schedule()
+
+        disruption = Disruption(
+            type=DisruptionType.MACHINE_DOWN,
+            machine="WEAVE-01",
+            from_minute=1000,
+            to_minute=2000,
+            now=500,
+        )
+
+        _, new_ops, _ = apply_disruption(scenario, operations, disruption)
+
+        keys = [(op.order, op.stage, op.machine) for op in new_ops]
+        assert len(keys) == len(set(keys))

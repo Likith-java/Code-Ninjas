@@ -198,8 +198,9 @@ class TestFullPipeline:
 
             assert status in (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE)
 
-            # Validate re-plan
-            all_ops = frozen_ops + new_ops
+            # Solver output is already complete: frozen operations are
+            # modelled with presence forced, so no combination is needed.
+            all_ops = new_ops
             metrics = compute_metrics(new_scenario, all_ops)
             validation = validate_schedule(
                 new_scenario,

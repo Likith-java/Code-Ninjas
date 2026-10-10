@@ -112,9 +112,17 @@ def _apply_machine_breakdown(
         else:
             new_machines.append(m)
 
-    # Build new operations list (remove the broken operation, keep frozen)
+    # Build new operations list (remove the broken operation, keep frozen).
+    # Operations already captured as frozen copies below are skipped here so
+    # no operation appears twice (the validator rejects duplicates).
+    # Operations completed before 'now' are history: they become frozen at
+    # their exact intervals instead of staying re-schedulable, otherwise the
+    # replan model (unfrozen starts >= now, frozen predecessors fixed) is
+    # over-constrained and correctly -- but uselessly -- infeasible.
     new_operations = []
     split_count = 0
+    prefrozen_keys = {(fo.order, fo.stage, fo.machine) for fo in frozen_ops}
+    order_by_id = {o.id: o for o in scenario.orders}
 
     for op in operations:
         if (
@@ -148,12 +156,27 @@ def _apply_machine_breakdown(
         elif op.machine == machine_id and op.start >= dt_to:
             # Operation entirely after downtime - will be re-scheduled
             pass
+        elif op.end <= now:
+            # Completed before 'now': freeze at the exact interval.
+            completed_order = order_by_id.get(op.order)
+            frozen_ops.append(
+                FrozenOperation(
+                    order=op.order,
+                    stage=op.stage,
+                    machine=op.machine,
+                    start=op.start,
+                    end=op.end,
+                    quantity_metres=(completed_order.metres if completed_order else None),
+                )
+            )
+        elif (op.order, op.stage, op.machine) in prefrozen_keys:
+            # Represented by its frozen copy appended below, not duplicated
+            pass
         else:
-            # Keep other operations (including frozen ones)
+            # Keep other operations
             new_operations.append(op)
 
     # Add frozen operations to the list
-    order_by_id = {o.id: o for o in scenario.orders}
     for fo in frozen_ops:
         fo_order = order_by_id.get(fo.order)
         new_operations.append(
@@ -213,6 +236,26 @@ def _apply_yarn_delay(
                     machine=op.machine,
                     start=op.start,
                     end=op.end,
+                )
+            )
+
+    # Operations completed before 'now' are history: freeze them at their
+    # exact intervals (see _apply_machine_breakdown for why).
+    order_by_id = {o.id: o for o in scenario.orders}
+    for op in operations:
+        if op.end <= now and not any(
+            fo.order == op.order and fo.stage == op.stage and fo.machine == op.machine
+            for fo in frozen_ops
+        ):
+            completed_order = order_by_id.get(op.order)
+            frozen_ops.append(
+                FrozenOperation(
+                    order=op.order,
+                    stage=op.stage,
+                    machine=op.machine,
+                    start=op.start,
+                    end=op.end,
+                    quantity_metres=(completed_order.metres if completed_order else None),
                 )
             )
 

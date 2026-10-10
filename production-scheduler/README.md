@@ -208,3 +208,17 @@ splitting. It always validates its own output (invalid output is marked
 `MODEL_INVALID`, never successful) and raises an explicit error naming the
 order and stage when an operation cannot be placed. See the module docstring
 in `src/textile_scheduler/baseline.py` for details.
+
+## CP-SAT optimizer
+
+`optimize()` minimizes priority-weighted tardiness
+`tardiness_i = max(0, completion_i - due_i)` with a secondary sum-of-completions
+tie-breaker encoded exactly as `K * primary + secondary` with the rigorous
+bound `K = n_orders * horizon + 1` (see `lexicographic_coefficient`), so the
+tie-breaker can never dominate the primary objective. Statuses are honest:
+`OPTIMAL` only when proved, `FEASIBLE` for valid-but-unproved solutions,
+`INFEASIBLE` when proved (including mandatory operations with no available
+machine), `UNKNOWN` with no partial plan on inconclusive timeouts, and
+`MODEL_INVALID` if output ever fails independent validation. Warm-start hints
+from the validated EDF schedule guide the search only. No improvement margin
+is promised; CP-SAT is measured against EDF on the same scenarios.
