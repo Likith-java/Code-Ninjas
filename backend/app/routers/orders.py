@@ -1,8 +1,8 @@
-from app.schemas import BuyerCreate, BuyerOut
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import case, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
@@ -16,6 +16,8 @@ from app.models import (
     Order,
 )
 from app.schemas import (
+    BuyerCreate,
+    BuyerOut,
     FeasibilityOut,
     FeasibilityRequest,
     MaterialShortfall,
@@ -180,20 +182,32 @@ def list_orders(
     limit: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
-    return db.scalars(
+    from app.services.dispatch import derive_order_status
+
+    orders = db.scalars(
         select(Order)
         .order_by(Order.id.desc())
         .offset(offset)
         .limit(limit)
     ).all()
+    results: list[OrderOut] = []
+    for o in orders:
+        out = OrderOut.model_validate(o)
+        out.derived_status = derive_order_status(db, o)
+        results.append(out)
+    return results
 
 
 @router.get("/orders/{order_id}", response_model=OrderOut)
 def get_order(order_id: int, db: Session = Depends(get_db)):
+    from app.services.dispatch import derive_order_status
+
     order = db.get(Order, order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
-    return order
+    out = OrderOut.model_validate(order)
+    out.derived_status = derive_order_status(db, order)
+    return out
 
 @router.post("/buyers", response_model=BuyerOut, status_code=201)
 def create_buyer(payload: BuyerCreate, db: Session = Depends(get_db)):

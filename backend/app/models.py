@@ -457,6 +457,10 @@ class Dispatch(Base):
     __tablename__ = "dispatches"
     __table_args__ = (
         UniqueConstraint("invoice_number", name="uq_dispatch_invoice_number"),
+        CheckConstraint(
+            "(confirmed = FALSE) OR (confirmed = TRUE AND confirmed_at IS NOT NULL)",
+            name="ck_dispatch_confirmed_at",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
