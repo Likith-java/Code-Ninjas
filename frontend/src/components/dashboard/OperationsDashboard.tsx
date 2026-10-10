@@ -13,6 +13,7 @@ import {
 } from '@/lib/api'
 import { formatCanonicalOrderId, formatLegacyOrderId, matchesOrderQuery } from '@/lib/orderUtils'
 import { UserRole, getRolePermissions, ROLE_PROFILES } from '@/lib/permissions'
+import { OrderDetailsPopover, OrderDetailsData } from '@/components/board/OrderDetailsPopover'
 import { OrderCreationModal } from '@/components/modules/OrderCreationModal'
 import { getUser } from '@/lib/auth-storage'
 
@@ -30,8 +31,9 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
   const [machineTypeFilter, setMachineTypeFilter] = useState<'all' | 'spinning' | 'weaving' | 'dyeing'>('all')
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false)
 
-  // Selected Order Drawer / Expandable detail
-  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
+  // Anchored Floating Order Details Popover
+  const [popoverOrder, setPopoverOrder] = useState<OrderDetailsData | null>(null)
+  const [popoverRect, setPopoverRect] = useState<DOMRect | null>(null)
 
   // Individual Order Resolution Modal State
   const [resolveModalOrder, setResolveModalOrder] = useState<DashboardOrder | null>(null)
@@ -275,7 +277,29 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
     }
   }, [masterOrders, masterMachines])
 
-  // Execute Individual Order Resolution (Phase 4)
+  // Open Anchored Order Details Popover
+  const handleOpenOrderDetails = (order: DashboardOrder, rect: DOMRect) => {
+    setPopoverOrder({
+      id: order.id,
+      buyer: order.buyer,
+      fabric: order.fabric,
+      targetMeters: order.targetMeters,
+      producedMeters: order.producedMeters,
+      progress:
+        order.targetMeters > 0
+          ? Math.min(100, Math.round((order.producedMeters / order.targetMeters) * 100))
+          : 0,
+      currentStage: order.stage,
+      status: order.status,
+      disruptionNote:
+        order.id === 'ETM-ORD-000004' || order.id === 'ORD-004'
+          ? 'Mechanical collision halted weaving on WEAVE-03. 1,200m woven passed, 1,800m remaining halted.'
+          : undefined,
+    })
+    setPopoverRect(rect)
+  }
+
+  // Execute Individual Order Resolution Preview (Phase 4)
   const handleConfirmResolveOrder = () => {
     if (!resolveModalOrder) return
 
@@ -284,34 +308,34 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
       setResolvedOrderIds((prev) => new Set(prev).add(resolveModalOrder.id))
       setIsResolving(false)
       setResolveModalOrder(null)
-    }, 900)
+    }, 600)
   }
 
   return (
     <div className="flex-1 h-full overflow-y-auto bg-[#F5F0E3] p-3 sm:p-5 space-y-4">
       {/* 1. COMPACT TOP STATUS STRIP */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2.5 bg-white border-2 border-[#181816] rounded-xl px-3.5 py-2.5 pop-shadow-xs text-xs font-mono">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2.5 bg-white border border-stone-200 rounded-xl px-3.5 py-2.5 shadow-xs text-xs font-body">
         <div className="flex items-center gap-2 flex-wrap">
           {apiStateMode === 'live' ? (
             liveError ? (
-              <Badge variant="warning" size="xs" className="gap-1 font-bold">
+              <Badge variant="warning" size="xs" className="gap-1 font-semibold">
                 <MaterialIcon name="warning" size="xs" color="#B45309" />
                 API Connected · DB Offline
               </Badge>
             ) : (
-              <Badge variant="success" size="xs" dotColor="#15803D" className="gap-1 font-bold">
+              <Badge variant="success" size="xs" dotColor="#15803D" className="gap-1 font-semibold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 live-dot inline-block" />
                 Live Backend API · Port 8000
               </Badge>
             )
           ) : (
-            <Badge variant="warning" size="xs" className="font-bold">
+            <Badge variant="warning" size="xs" className="font-semibold">
               DEMO: Synthetic Reference Data
             </Badge>
           )}
 
           <span className="text-stone-500 hidden sm:inline">
-            Role: <strong className="text-[#181816]">{roleProfile.name}</strong>
+            Role: <strong className="text-[#181816] font-semibold">{roleProfile.name}</strong>
           </span>
 
           {currentRole === 'customer' && (
@@ -349,32 +373,32 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
               setApiStateMode('live')
               fetchLiveData()
             }}
-            className={`px-2 py-0.5 rounded font-bold transition-all ${
-              apiStateMode === 'live' ? 'bg-[#0E4B3E] text-white' : 'text-stone-700 hover:bg-stone-200'
+            className={`px-2 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+              apiStateMode === 'live' ? 'bg-[#0E4B3E] text-white shadow-xs' : 'text-stone-700 hover:bg-stone-200'
             }`}
           >
             Live API
           </button>
           <button
             onClick={() => setApiStateMode('demo')}
-            className={`px-2 py-0.5 rounded font-bold transition-all ${
-              apiStateMode === 'demo' ? 'bg-amber-700 text-white' : 'text-stone-700 hover:bg-stone-200'
+            className={`px-2 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+              apiStateMode === 'demo' ? 'bg-amber-700 text-white shadow-xs' : 'text-stone-700 hover:bg-stone-200'
             }`}
           >
             Demo
           </button>
           <button
             onClick={() => setApiStateMode('empty')}
-            className={`px-1.5 py-0.5 rounded font-bold transition-all ${
-              apiStateMode === 'empty' ? 'bg-stone-800 text-white' : 'text-stone-700 hover:bg-stone-200'
+            className={`px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+              apiStateMode === 'empty' ? 'bg-stone-800 text-white shadow-xs' : 'text-stone-700 hover:bg-stone-200'
             }`}
           >
             Empty
           </button>
           <button
             onClick={() => setApiStateMode('error')}
-            className={`px-1.5 py-0.5 rounded font-bold transition-all ${
-              apiStateMode === 'error' ? 'bg-red-700 text-white' : 'text-stone-700 hover:bg-stone-200'
+            className={`px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+              apiStateMode === 'error' ? 'bg-red-700 text-white shadow-xs' : 'text-stone-700 hover:bg-stone-200'
             }`}
           >
             Error
@@ -385,12 +409,12 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
 
       {/* ERROR FALLBACK ALERT */}
       {(apiStateMode === 'error' || (apiStateMode === 'live' && liveError)) && (
-        <div className="p-3 bg-[#FFF5F2] border-2 border-[#E05326] rounded-xl pop-shadow-xs flex items-center justify-between gap-3 text-xs">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl shadow-xs flex items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
             <MaterialIcon name="error" size="md" color="#E05326" />
             <div>
-              <strong className="text-[#E05326] font-mono">Backend Database Status:</strong>
-              <p className="text-stone-700 text-[11px] font-mono mt-0.5">
+              <strong className="text-red-900 font-semibold font-body">Backend Database Status:</strong>
+              <p className="text-stone-700 text-[11px] mt-0.5 font-body">
                 {liveError || 'FastAPI health check passed. PostgreSQL database probe returned HTTP 503 unavailable.'}
               </p>
             </div>
@@ -404,33 +428,33 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
       {/* 2. HIGH-DENSITY KPI STRIP (SPACE-EFFICIENT) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
         {/* KPI 1: Orders */}
-        <div className="bg-white border-2 border-[#181816] rounded-xl p-3 pop-shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-stone-500 font-mono text-[10.5px] uppercase font-bold">
+        <div className="bg-white border border-stone-200 rounded-xl p-3 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-stone-500 text-[10.5px] uppercase font-semibold">
             <span>Production Orders</span>
             <MaterialIcon name="inventory_2" size="xs" color="#0E4B3E" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black font-mono text-[#181816]">{metrics.totalOrders}</span>
-            <span className="text-[10px] font-mono text-stone-500">
+            <span className="text-2xl font-bold font-mono text-[#181816]">{metrics.totalOrders}</span>
+            <span className="text-[10.5px] text-stone-500">
               {metrics.completedOrders} Done · {metrics.inProductionOrders} Active
             </span>
           </div>
           {metrics.delayedOrders > 0 && (
-            <span className="text-[9.5px] font-mono bg-red-100 text-red-800 border border-red-300 px-1.5 py-0.2 rounded font-bold inline-block">
+            <span className="text-[10px] bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.2 rounded font-medium inline-block">
               {metrics.delayedOrders} Attention Required
             </span>
           )}
         </div>
 
         {/* KPI 2: Meters Progress */}
-        <div className="bg-white border-2 border-[#181816] rounded-xl p-3 pop-shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-stone-500 font-mono text-[10.5px] uppercase font-bold">
+        <div className="bg-white border border-stone-200 rounded-xl p-3 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-stone-500 text-[10.5px] uppercase font-semibold">
             <span>Fabric Output</span>
             <MaterialIcon name="straighten" size="xs" color="#0E4B3E" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black font-mono text-[#0E4B3E]">{metrics.overallProgress}%</span>
-            <span className="text-[10px] font-mono text-stone-500 truncate">
+            <span className="text-2xl font-bold font-mono text-[#0E4B3E]">{metrics.overallProgress}%</span>
+            <span className="text-[10.5px] text-stone-500 truncate">
               {metrics.totalProducedMeters.toLocaleString()}m / {metrics.totalTargetMeters.toLocaleString()}m
             </span>
           </div>
@@ -473,16 +497,16 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
         )}
 
         {/* KPI 4: Yield Quality */}
-        <div className="bg-white border-2 border-[#181816] rounded-xl p-3 pop-shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-stone-500 font-mono text-[10.5px] uppercase font-bold">
+        <div className="bg-white border border-stone-200 rounded-xl p-3 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-stone-500 text-[10.5px] uppercase font-semibold">
             <span>First-Pass Yield</span>
             <MaterialIcon name="verified" size="xs" color="#0E4B3E" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black font-mono text-[#181816]">{metrics.firstPassYield}%</span>
-            <span className="text-[10px] font-mono text-emerald-800 font-bold">Grade A Target</span>
+            <span className="text-2xl font-bold font-mono text-[#181816]">{metrics.firstPassYield}%</span>
+            <span className="text-[10.5px] text-emerald-800 font-semibold">Grade A Target</span>
           </div>
-          <div className="text-[9.5px] font-mono text-stone-500">
+          <div className="text-[10px] text-stone-500">
             4-Point Inspection Standard
           </div>
         </div>
@@ -496,7 +520,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
         <div className={`${permissions.canViewMachines ? 'xl:col-span-7' : 'xl:col-span-12'} bg-white border-2 border-[#181816] rounded-2xl pop-shadow-md p-3.5 space-y-3`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-stone-200 pb-2.5">
             <div>
-              <h2 className="text-base font-black text-[#181816] flex items-center gap-1.5">
+              <h2 className="text-sm font-bold text-[#181816] flex items-center gap-1.5 font-body">
                 <MaterialIcon name="list_alt" size="sm" color="#0E4B3E" />
                 {currentRole === 'customer' ? 'My Production Orders' : 'Production Orders'}
                 <span className="text-xs font-mono font-normal text-stone-500">({filteredOrders.length})</span>
@@ -507,34 +531,34 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
             </div>
 
             {/* Status Filter Tabs */}
-            <div className="flex border-2 border-[#181816] rounded-xl overflow-hidden text-[10px] font-mono bg-white shrink-0">
+            <div className="flex border border-stone-200 rounded-lg overflow-hidden text-[11px] font-medium bg-stone-50 shrink-0">
               <button
                 onClick={() => setOrderFilter('all')}
-                className={`px-2 py-1 font-bold ${orderFilter === 'all' ? 'bg-[#0E4B3E] text-white' : 'hover:bg-stone-100 text-stone-700'}`}
+                className={`px-2.5 py-1 transition-colors cursor-pointer ${orderFilter === 'all' ? 'bg-[#0E4B3E] text-white shadow-xs' : 'hover:bg-stone-200/60 text-stone-700'}`}
               >
                 All
               </button>
               <button
                 onClick={() => setOrderFilter('In Production')}
-                className={`px-2 py-1 font-bold border-l border-stone-300 ${orderFilter === 'In Production' ? 'bg-[#0E4B3E] text-white' : 'hover:bg-stone-100 text-stone-700'}`}
+                className={`px-2.5 py-1 border-l border-stone-200 transition-colors cursor-pointer ${orderFilter === 'In Production' ? 'bg-[#0E4B3E] text-white shadow-xs' : 'hover:bg-stone-200/60 text-stone-700'}`}
               >
                 Active
               </button>
               <button
                 onClick={() => setOrderFilter('Scheduled')}
-                className={`px-2 py-1 font-bold border-l border-stone-300 ${orderFilter === 'Scheduled' ? 'bg-[#0E4B3E] text-white' : 'hover:bg-stone-100 text-stone-700'}`}
+                className={`px-2.5 py-1 border-l border-stone-200 transition-colors cursor-pointer ${orderFilter === 'Scheduled' ? 'bg-[#0E4B3E] text-white shadow-xs' : 'hover:bg-stone-200/60 text-stone-700'}`}
               >
                 Plan
               </button>
               <button
                 onClick={() => setOrderFilter('Completed')}
-                className={`px-2 py-1 font-bold border-l border-stone-300 ${orderFilter === 'Completed' ? 'bg-[#0E4B3E] text-white' : 'hover:bg-stone-100 text-stone-700'}`}
+                className={`px-2.5 py-1 border-l border-stone-200 transition-colors cursor-pointer ${orderFilter === 'Completed' ? 'bg-[#0E4B3E] text-white shadow-xs' : 'hover:bg-stone-200/60 text-stone-700'}`}
               >
                 Done
               </button>
               <button
                 onClick={() => setOrderFilter('Disrupted')}
-                className={`px-2 py-1 font-bold border-l border-stone-300 ${orderFilter === 'Disrupted' ? 'bg-red-700 text-white' : 'hover:bg-stone-100 text-red-800'}`}
+                className={`px-2.5 py-1 border-l border-stone-200 transition-colors cursor-pointer ${orderFilter === 'Disrupted' ? 'bg-red-700 text-white shadow-xs' : 'hover:bg-stone-200/60 text-red-800'}`}
               >
                 Alert
               </button>
@@ -557,10 +581,10 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
           <div className="relative">
             <input
               type="text"
-              placeholder="Search by Order ID (e.g. ETM-ORD-000001, ORD-01), Buyer, or Product..."
+              placeholder="Search by Order ID (e.g. ETM-ORD-000001), Buyer, or Fabric..."
               value={orderSearch}
               onChange={(e) => setOrderSearch(e.target.value)}
-              className="w-full px-3 py-1.5 pl-8 text-xs font-mono bg-[#FAF7F0] border-2 border-[#181816] rounded-xl pop-shadow-xs focus:outline-none focus:ring-1 focus:ring-[#0E4B3E]"
+              className="w-full px-3 py-1.5 pl-8 text-xs font-body bg-[#FAF7F0] border border-stone-200 rounded-lg shadow-2xs focus:outline-hidden focus:ring-1 focus:ring-[#0E4B3E] focus:bg-white transition-colors"
             />
             <span className="absolute left-2.5 top-2 text-stone-400">
               <MaterialIcon name="search" size="xs" />
@@ -568,7 +592,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
             {orderSearch && (
               <button
                 onClick={() => setOrderSearch('')}
-                className="absolute right-2.5 top-1.5 text-stone-400 hover:text-stone-700 text-xs font-mono font-bold"
+                className="absolute right-2.5 top-1.5 text-stone-400 hover:text-stone-700 text-xs font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -634,45 +658,44 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
               <table className="w-full text-left font-mono text-[11px] border-collapse">
                 <thead className="sticky top-0 bg-[#FAF7F0] border-b-2 border-[#181816] text-stone-700 z-10">
                   <tr>
-                    <th className="py-2 px-2.5 font-bold">Order ID</th>
-                    <th className="py-2 px-2.5 font-bold">Buyer</th>
-                    <th className="py-2 px-2.5 font-bold">Fabric Spec</th>
-                    <th className="py-2 px-2.5 font-bold">Progress (m)</th>
-                    <th className="py-2 px-2.5 font-bold">Status</th>
-                    <th className="py-2 px-2.5 font-bold text-right">Action</th>
+                    <th className="py-2 px-2.5 font-semibold">Order ID</th>
+                    <th className="py-2 px-2.5 font-semibold">Buyer</th>
+                    <th className="py-2 px-2.5 font-semibold">Fabric Spec</th>
+                    <th className="py-2 px-2.5 font-semibold">Progress (m)</th>
+                    <th className="py-2 px-2.5 font-semibold">Status</th>
+                    <th className="py-2 px-2.5 font-semibold text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-200">
+                <tbody className="divide-y divide-stone-100">
                   {filteredOrders.map((order) => {
                     const pct =
                       order.targetMeters > 0
                         ? Math.min(100, Math.round((order.producedMeters / order.targetMeters) * 100))
                         : 0
-                    const isExpanded = expandedOrderId === order.id
                     const isDisrupted = order.status === 'Delayed'
 
                     return (
                       <tr
                         key={order.id}
-                        className={`hover:bg-[#FAF7F0] transition-colors ${
-                          isDisrupted ? 'bg-red-50/60' : isExpanded ? 'bg-emerald-50/50' : ''
+                        className={`hover:bg-[#FAF7F0]/80 transition-colors ${
+                          isDisrupted ? 'bg-red-50/40' : ''
                         }`}
                       >
                         <td className="py-2 px-2.5 align-middle">
-                          <div className="font-black text-[#0E4B3E] text-xs">{order.id}</div>
-                          <div className="text-[9.5px] text-stone-400">{formatLegacyOrderId(order.id)}</div>
+                          <div className="font-bold text-[#0E4B3E] text-xs font-mono">{order.id}</div>
+                          <div className="text-[10px] text-stone-400 font-mono">{formatLegacyOrderId(order.id)}</div>
                         </td>
-                        <td className="py-2 px-2.5 align-middle font-sans font-bold text-stone-800 text-xs">
+                        <td className="py-2 px-2.5 align-middle font-medium text-stone-800 text-xs">
                           {order.buyer}
                         </td>
                         <td className="py-2 px-2.5 align-middle">
-                          <div className="font-semibold text-stone-800 text-[11px]">{order.fabric}</div>
-                          <div className="text-[9.5px] text-stone-500">{order.stage} stage</div>
+                          <div className="font-medium text-stone-800 text-xs">{order.fabric}</div>
+                          <div className="text-[10px] text-stone-500 capitalize">{order.stage} stage</div>
                         </td>
                         <td className="py-2 px-2.5 align-middle">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold">{order.producedMeters}/{order.targetMeters}m</span>
-                            <span className="text-[9.5px] text-stone-500">({pct}%)</span>
+                          <div className="flex items-center gap-1.5 text-[11px]">
+                            <span className="font-semibold text-stone-800">{order.producedMeters.toLocaleString()}/{order.targetMeters.toLocaleString()}m</span>
+                            <span className="text-[10px] text-stone-500">({pct}%)</span>
                           </div>
                           <div className="w-20 bg-stone-200 rounded-full h-1.5 overflow-hidden mt-0.5">
                             <div
@@ -689,7 +712,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
                         </td>
                         <td className="py-2 px-2.5 align-middle">
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold border ${
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
                               order.status === 'Completed'
                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                                 : order.status === 'In Production'
@@ -703,25 +726,28 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
                           </span>
                         </td>
                         <td className="py-2 px-2.5 align-middle text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {/* Individual Resolve Action (Phase 4) */}
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Individual Resolve Action */}
                             {isDisrupted && permissions.canResolveOrder && (
                               <button
                                 onClick={() => setResolveModalOrder(order)}
-                                className="px-2 py-0.5 rounded bg-[#E05326] text-white border border-[#181816] text-[10px] font-bold pop-shadow-xs hover:bg-[#c7441a] transition-all"
-                                title="Resolve disruption for this order"
+                                className="px-2 py-0.5 rounded bg-[#E05326] text-white border border-[#B83E18] text-[10px] font-semibold hover:bg-[#c7441a] transition-colors cursor-pointer shadow-2xs"
+                                title="Inspect disruption resolution"
                               >
                                 Resolve
                               </button>
                             )}
 
-                            {/* Details expand button */}
+                            {/* Details popover trigger anchored to button */}
                             <button
-                              onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
-                              className="px-1.5 py-0.5 rounded border border-stone-300 bg-white hover:bg-stone-100 text-stone-600 text-[10px] font-bold"
-                              title="Expand order details"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenOrderDetails(order, e.currentTarget.getBoundingClientRect())
+                              }}
+                              className="px-2 py-0.5 rounded border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 hover:text-black text-[10.5px] font-medium transition-colors cursor-pointer shadow-2xs"
+                              title={`View details for ${order.id}`}
                             >
-                              {isExpanded ? 'Less' : 'Details'}
+                              Details
                             </button>
                           </div>
                         </td>
@@ -892,47 +918,55 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
         )}
       </div>
 
-      {/* 4. INDIVIDUAL ORDER RESOLUTION MODAL (PHASE 4) */}
+      {/* 4. DISRUPTION MITIGATION INSPECTION MODAL (PHASE 4) */}
       {resolveModalOrder && (
-        <div className="fixed inset-0 bg-[#181816]/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <Card variant="elevated" padding="lg" className="max-w-md w-full bg-white space-y-4 pop-shadow-lg">
-            <div className="flex items-center justify-between border-b-2 border-stone-200 pb-2">
+        <div className="fixed inset-0 bg-[#181816]/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <Card variant="elevated" padding="lg" className="max-w-md w-full bg-white space-y-3.5 shadow-xl border border-stone-300">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-2.5">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-[#E05326] text-white flex items-center justify-center border border-[#181816]">
+                <div className="w-8 h-8 rounded-lg bg-[#E05326] text-white flex items-center justify-center border border-[#B83E18] shadow-xs">
                   <MaterialIcon name="build" size="sm" color="#FFFFFF" />
                 </div>
                 <div>
-                  <h3 className="font-black text-sm text-[#181816]">Resolve Order Disruption</h3>
-                  <span className="font-mono text-[10.5px] text-[#0E4B3E] font-bold">{resolveModalOrder.id}</span>
+                  <h3 className="font-bold text-sm text-[#181816]">Order Disruption Mitigation</h3>
+                  <span className="font-mono text-xs text-[#0E4B3E] font-semibold">{resolveModalOrder.id}</span>
                 </div>
               </div>
               <button
                 onClick={() => setResolveModalOrder(null)}
-                className="text-stone-400 hover:text-stone-700 font-bold"
+                className="text-stone-400 hover:text-stone-700 font-bold p-1 cursor-pointer"
+                aria-label="Close modal"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-2 text-xs font-mono text-stone-700">
-              <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl space-y-1">
-                <strong className="text-red-900 block font-bold">Disruption Context:</strong>
+            <div className="space-y-2 text-xs font-body text-stone-700">
+              <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg space-y-1">
+                <strong className="text-red-900 block font-semibold">Incident Context:</strong>
                 <p className="text-[11px] text-red-800">
-                  Order was affected by machine WEAVE-03 mechanical collision. Remaining 1,800m fabric weaving halted.
+                  Loom WEAVE-03 suffered a mechanical breakdown. Remaining 1,800m fabric weaving is currently halted.
                 </p>
               </div>
 
-              <div className="p-2.5 bg-[#FAF7F0] border border-stone-300 rounded-xl space-y-1">
-                <strong className="text-[#0E4B3E] block font-bold">CP-SAT Re-Routing Solution:</strong>
+              <div className="p-2.5 bg-[#FAF7F0] border border-stone-200 rounded-lg space-y-1.5">
+                <strong className="text-[#0E4B3E] block font-semibold">Proposed Recovery Route:</strong>
                 <ul className="list-disc list-inside text-[11px] space-y-0.5 text-stone-700">
-                  <li>Freeze 1,200m already woven on WEAVE-03 as passed stock.</li>
-                  <li>Re-allocate remaining 1,800m to available loom <strong>WEAVE-02</strong>.</li>
-                  <li>Schedule confirmed: <strong>0 deadline violations</strong>.</li>
+                  <li>Freeze 1,200m already woven on WEAVE-03 as passed inventory.</li>
+                  <li>Re-allocate remaining 1,800m to available loom <strong className="font-mono">WEAVE-02</strong>.</li>
+                  <li>Target delivery maintained within deadline window.</li>
                 </ul>
               </div>
 
-              <div className="text-[10.5px] text-stone-500 italic">
-                * Executes CP-SAT solver constraint validation for this specific production batch.
+              {/* Honest disclosure of backend solver status */}
+              <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg space-y-1 text-amber-900">
+                <div className="flex items-center gap-1 font-semibold text-[11px]">
+                  <MaterialIcon name="info" size="xs" color="#D97706" />
+                  <span>Backend Solver Service: Integration Pending</span>
+                </div>
+                <p className="text-[10.5px] text-amber-800 leading-snug">
+                  Automated CP-SAT re-scheduling requires the backend optimization endpoint (<code className="font-mono bg-white/70 px-1 py-0.2 rounded border border-amber-300">POST /schedules/optimize</code>). The FastAPI backend currently supports orders and downtimes, but automated mathematical re-solving is not yet deployed.
+                </p>
               </div>
             </div>
 
@@ -958,11 +992,20 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
                   )
                 }
               >
-                {isResolving ? 'Resolving with CP-SAT...' : 'Confirm & Commit Resolution'}
+                {isResolving ? 'Simulating Re-plan...' : 'Simulate Mitigation (Preview)'}
               </Button>
             </div>
           </Card>
         </div>
+      )}
+
+      {/* Anchored Order Details Floating Popover */}
+      {popoverOrder && popoverRect && (
+        <OrderDetailsPopover
+          order={popoverOrder}
+          anchorRect={popoverRect}
+          onClose={() => setPopoverOrder(null)}
+        />
       )}
 
       {/* ORDER CREATION MODAL */}
@@ -980,3 +1023,4 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
     </div>
   )
 }
+

@@ -41,21 +41,15 @@ const config: Config = {
         full: '9999px',
       },
       fontFamily: {
-        body: ['Hanken Grotesk', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        body: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
         mono: ['JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Menlo', 'monospace'],
       },
       boxShadow: {
-        'pop-xs': '1.5px 1.5px 0px #181816',
-        'pop-sm': '2.5px 2.5px 0px #181816',
-        'pop-md': '3.5px 3.5px 0px #181816',
-        'pop-lg': '5px 5px 0px #181816',
-        'pop-xl': '6px 6px 0px #181816',
-      },
-      backgroundImage: {
-        'dot-grid': 'radial-gradient(#CFBE9F 1.4px, transparent 1.4px)',
-      },
-      backgroundSize: {
-        'dot-grid': '18px 18px',
+        'pop-xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        'pop-sm': '0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
+        'pop-md': '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.04)',
+        'pop-lg': '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.03)',
+        'pop-xl': '0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03)',
       },
     },
   },
