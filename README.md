@@ -26,8 +26,6 @@ Built for the reference scenario Everest Textile Mills. All factory data in this
 14. [Testing](#testing)
 15. [Evaluation method](#evaluation-method)
 16. [Scope and limits](#scope-and-limits)
-17. [Team](#team)
-18. [Roadmap](#roadmap)
 
 ---
 
@@ -147,8 +145,6 @@ This is the target layout. Adjust paths if the repository differs.
 │   ├── app/ or pages/
 │   ├── components/
 │   └── lib/
-└── docs/
-    └── PRD.md
 ```
 
 ## Getting started
@@ -470,22 +466,9 @@ Known simplifications:
 - The solver is sized for a small mill. Larger instances would need time limits and decomposition, and solve times would be measured, not assumed.
 - The buyer page uses an unguessable link and no login in the MVP.
 
-## Team
-
-| Member | Area |
-| --- | --- |
-| Member 1 | Production and scheduling: CP-SAT engine, EDF baseline, validator, Gantt data, disruption re-planning |
-| Member 2 | (fill in) |
-| Member 3 | (fill in) |
-| Member 4 | (fill in) |
-
 ## Roadmap
 
 1. **Operational digitisation**: orders, inventory, floor, quality, dispatch, wages, payments.
 2. **Decision support**: scheduling, disruption recovery, order costing, alerts.
 3. **Learning from history**: defect-pattern analysis and delivery-risk estimates, once real data exists.
 4. **Machine integration**: telemetry and equipment-system integration.
-
-## Licence
-
-(Add a licence, or state that the repository is for hackathon evaluation only.)
