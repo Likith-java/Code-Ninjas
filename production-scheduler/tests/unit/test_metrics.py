@@ -99,12 +99,12 @@ class TestMetrics:
         scenario, operations = create_test_scenario_with_schedule()
         metrics = compute_metrics(scenario, operations)
 
-        # ORD-001: completes at 8400, due 5000 -> 3400 min late = 2.36 days * 3 = 7.08
-        # ORD-002: completes at 12000, due 3000 -> 9000 min late = 6.25 days * 2 = 12.5
-        # Total = 19.58
+        # ORD-001: completes at 8400, due 5000 -> 3400 min late x weight 3
+        # ORD-002: completes at 12000, due 3000 -> 9000 min late x weight 2
+        # Total = 3400*3 + 9000*2 = 28200 priority-weighted minutes
         assert metrics.weighted_tardiness > 0
         # Check approximate value
-        expected = (3400 / 1440) * 3 + (9000 / 1440) * 2
+        expected = 3400 * 3 + 9000 * 2
         assert abs(metrics.weighted_tardiness - expected) < 0.01
 
     def test_on_time_rate(self) -> None:

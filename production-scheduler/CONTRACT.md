@@ -77,7 +77,7 @@ by every rule.
 | `status` | `OPTIMAL` \| `FEASIBLE` \| `INFEASIBLE` \| `UNKNOWN` \| `MODEL_INVALID` | honest solver status |
 | `compute_seconds` | float ≥ 0 | solver wall-clock time |
 | `validation` | object | independent validation outcome (see below) |
-| `metrics` | object | `weighted_tardiness`, `on_time_rate`, `utilisation`, `makespan` |
+| `metrics` | object | `weighted_tardiness` (priority-weighted late minutes), `on_time_rate`, `utilisation` (productive over available minutes, downtime excluded), `makespan` (minutes from `scenario.now` to final completion) |
 | `operations` | operation list | one per order per route stage |
 | `warnings` | string list | default `[]` |
 | `diagnostics` | object | default `{}` |

@@ -222,3 +222,19 @@ machine), `UNKNOWN` with no partial plan on inconclusive timeouts, and
 `MODEL_INVALID` if output ever fails independent validation. Warm-start hints
 from the validated EDF schedule guide the search only. No improvement margin
 is promised; CP-SAT is measured against EDF on the same scenarios.
+
+## Benchmark
+
+```bash
+# Compare EDF vs CP-SAT on identical snapshots (writes results.json,
+# comparison.csv, report.md into the output directory)
+textile-scheduler benchmark --out benchmark
+```
+
+Both solvers receive the same immutable scenario; a canonical input hash
+proves it. Metrics come from the shared `metrics` module (tardiness in
+priority-weighted minutes, makespan from `scenario.now`, utilisation
+excluding downtime, delivery counts). Failed or invalid runs are never
+scored as plans and are reported separately. Percentage improvement is N/A
+when baseline tardiness is zero, and higher utilisation never overrides
+worsened delivery.

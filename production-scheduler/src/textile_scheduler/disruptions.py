@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .metrics import is_order_at_risk
 from .models import (
     Disruption,
     DisruptionType,
@@ -345,13 +346,11 @@ def _compute_diff(
             if new_c > order.due and (orig_c is None or orig_c <= order.due):
                 now_late.append(order.id)
 
-            # Check if at risk (completion in last 10% of window)
+            # Check if at risk (completion in last 10% of window, shared
+            # definition with metrics.is_order_at_risk)
             if new_c is not None:
-                window = order.due - new_scenario.now
-                if window > 0:
-                    threshold = order.due - window * 0.1
-                    if new_c >= threshold and new_c <= order.due:
-                        now_at_risk.append(order.id)
+                if is_order_at_risk(new_c, order.due, new_scenario.now):
+                    now_at_risk.append(order.id)
 
     return ReplanDiff(
         moved_orders=moved,

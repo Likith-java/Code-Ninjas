@@ -1,6 +1,18 @@
 """Schedule metrics computation.
 
-Computes weighted tardiness, on-time rate, utilisation, makespan.
+Shared by every scheduler and the benchmark runner so all comparisons use
+identical functions. Definitions:
+
+- Weighted tardiness: ``sum(priority_weight * max(0, completion - due))``
+  in priority-weighted minutes (same units as the CP-SAT objective).
+- Makespan: minutes from the planning reference (``scenario.now``) to the
+  final completion; ``0`` when nothing is scheduled.
+- Utilisation: productive machine minutes divided by available machine
+  minutes. Availability per machine is ``min(horizon, available_until)``
+  minus downtime; a zero denominator yields ``0.0`` (never divides by zero).
+- Delivery counts: completed within horizon, late (past due), at-risk
+  (within the last 10% of the ``now``-to-due window, same definition used
+  for replan diffs).
 """
 
 from __future__ import annotations
@@ -19,7 +31,7 @@ def compute_metrics(
     weighted_tardiness = _compute_weighted_tardiness(scenario, operations)
     on_time_rate = _compute_on_time_rate(scenario, operations)
     utilisation = _compute_utilisation(scenario, operations)
-    makespan = _compute_makespan(operations)
+    makespan = _compute_makespan(scenario, operations)
 
     return ScheduleMetrics(
         weighted_tardiness=weighted_tardiness,
@@ -29,26 +41,82 @@ def compute_metrics(
     )
 
 
+def _completions(operations: list[ScheduledOperation]) -> dict[str, int]:
+    """Latest end time per order."""
+    completion_by_order: dict[str, int] = {}
+    for op in operations:
+        if op.order not in completion_by_order or op.end > completion_by_order[op.order]:
+            completion_by_order[op.order] = op.end
+    return completion_by_order
+
+
+def order_completions(
+    scenario: Scenario, operations: list[ScheduledOperation]
+) -> dict[str, int | None]:
+    """Completion minute per order, or None when the order has no operations."""
+    done = _completions(operations)
+    return {order.id: done.get(order.id) for order in scenario.orders}
+
+
+def is_order_at_risk(completion: int, due: int, now: int) -> bool:
+    """An order is at risk when completion falls in the last 10% of the window.
+
+    Window is ``due - now``; at risk means
+    ``due - 0.1 * window <= completion <= due``. Zero or negative windows
+    are never at risk (they are already due or late).
+    """
+    window = due - now
+    if window <= 0:
+        return False
+    return due - 0.1 * window <= completion <= due
+
+
+def count_completed_within_horizon(scenario: Scenario, operations: list[ScheduledOperation]) -> int:
+    """Number of orders completed at or before the planning horizon."""
+    return sum(
+        1
+        for completion in order_completions(scenario, operations).values()
+        if completion is not None and completion <= scenario.horizon
+    )
+
+
+def count_late_orders(scenario: Scenario, operations: list[ScheduledOperation]) -> int:
+    """Number of scheduled orders completing after their deadline."""
+    completions = order_completions(scenario, operations)
+    return sum(
+        1 for order in scenario.orders if (c := completions[order.id]) is not None and c > order.due
+    )
+
+
+def count_at_risk_orders(scenario: Scenario, operations: list[ScheduledOperation]) -> int:
+    """Number of scheduled, on-time orders completing in the risk window."""
+    completions = order_completions(scenario, operations)
+    total = 0
+    for order in scenario.orders:
+        completion = completions[order.id]
+        if completion is None or completion > order.due:
+            continue
+        if is_order_at_risk(completion, order.due, scenario.now):
+            total += 1
+    return total
+
+
 def _compute_weighted_tardiness(
     scenario: Scenario,
     operations: list[ScheduledOperation],
 ) -> float:
-    """Sum over orders of (days_late * priority_weight)."""
-    completion_by_order: dict[str, int] = {}
-
-    for op in operations:
-        if op.order not in completion_by_order or op.end > completion_by_order[op.order]:
-            completion_by_order[op.order] = op.end
+    """Sum over orders of priority-weighted late minutes."""
+    completion_by_order = _completions(operations)
 
     total = 0.0
     for order in scenario.orders:
         completion = completion_by_order.get(order.id)
         if completion is None:
-            # Order not scheduled - treat as infinitely late
+            # Order not scheduled - contributes nothing here; completeness
+            # is a validator concern, never silently scored as on time.
             continue
         if completion > order.due:
-            days_late = (completion - order.due) / 1440.0  # minutes to days
-            total += days_late * order.priority_weight
+            total += (completion - order.due) * order.priority_weight
 
     return total
 
@@ -101,11 +169,11 @@ def _compute_utilisation(
     return productive_minutes / total_available
 
 
-def _compute_makespan(operations: list[ScheduledOperation]) -> int:
-    """Latest end time across all operations."""
+def _compute_makespan(scenario: Scenario, operations: list[ScheduledOperation]) -> int:
+    """Minutes from the planning reference (scenario.now) to final completion."""
     if not operations:
         return 0
-    return max(op.end for op in operations)
+    return max(0, max(op.end for op in operations) - scenario.now)
 
 
 def _machine_available_minutes(scenario: Scenario, machine: Machine) -> int:

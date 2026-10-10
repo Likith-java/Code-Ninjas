@@ -360,5 +360,80 @@ def duration() -> None:
         click.echo(f"  {metres}m @ {rate}m/hr = {dur} min ({dur / 60:.1f}h)")
 
 
+@main.command()
+@click.argument("scenarios", nargs=-1, type=click.Path(exists=True, path_type=Path))
+@click.option("--out", "out_dir", default="benchmark", help="Output directory")
+@click.option("--time-limit", default=10.0, help="CP-SAT time limit in seconds")
+@click.option("--seed", default=42, help="Random seed for reproducibility")
+@click.option("--workers", default=8, help="CP-SAT worker count")
+@click.option("--target", default=20.0, help="Target tardiness improvement percent")
+def benchmark(
+    scenarios: tuple[Path, ...],
+    out_dir: str,
+    time_limit: float,
+    seed: int,
+    workers: int,
+    target: float,
+) -> None:
+    """Compare EDF against CP-SAT on identical scenario snapshots."""
+    from .benchmark import (
+        BenchmarkConfig,
+        comparison_to_csv,
+        report_to_json,
+        run_benchmark,
+        write_markdown,
+    )
+
+    try:
+        if scenarios:
+            paths = [str(p) for p in scenarios]
+        else:
+            base = Path("scenarios")
+            paths = [
+                str(base / name)
+                for name in (
+                    "feasible_load.json",
+                    "weaving_breakdown.json",
+                    "late_yarn_lot.json",
+                    "infeasible_load.json",
+                )
+            ]
+            missing = [p for p in paths if not Path(p).exists()]
+            if missing:
+                click.echo(f"Error: default scenarios missing: {missing}", err=True)
+                sys.exit(1)
+
+        config = BenchmarkConfig(
+            time_limit_seconds=time_limit,
+            random_seed=seed,
+            num_workers=workers,
+            target_improvement_pct=target,
+        )
+        click.echo(f"Benchmarking {len(paths)} scenario(s)...")
+        report = run_benchmark(paths, config)
+
+        out = Path(out_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        report_to_json(report, out / "results.json")
+        comparison_to_csv(report, out / "comparison.csv")
+        write_markdown(report, out / "report.md")
+        click.echo(f"Wrote {out / 'results.json'}, {out / 'comparison.csv'}, {out / 'report.md'}")
+
+        for comparison in report.comparisons:
+            improvement = comparison.tardiness_improvement_pct
+            verdict = (
+                "N/A"
+                if improvement is None
+                else f"{improvement:.2f}% ({'MET' if comparison.target_met else 'NOT MET'})"
+            )
+            click.echo(f"  {comparison.scenario_id}: tardiness improvement {verdict}")
+        for failure in report.failures:
+            click.echo(f"  {failure.scenario_id}: FAILED separately ({failure.reason})")
+
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     main()

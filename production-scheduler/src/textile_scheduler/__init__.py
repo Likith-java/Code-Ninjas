@@ -5,6 +5,7 @@ __all__ = [
     "models",
     "contracts",
     "loader",
+    "benchmark",
     "time_utils",
     "durations",
     "exceptions",
