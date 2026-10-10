@@ -9,10 +9,10 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const variantStyles = {
-  default: 'bg-[#FAF7F0] border-2 border-[#181816]',
-  stage: 'bg-[#FFFFFF] border-2 border-[#181816] stage-card',
-  elevated: 'bg-[#FFFFFF] border-2 border-[#181816] pop-shadow-md',
-  disruption: 'bg-[#FFFFFF] border-2 border-[#E05326]',
+  default: 'bg-[#FAF7F0] border border-stone-200/80',
+  stage: 'bg-[#FFFFFF] border border-stone-200/90 stage-card',
+  elevated: 'bg-[#FFFFFF] border border-stone-200 shadow-sm',
+  disruption: 'bg-[#FFFFFF] border border-[#E05326]/80',
 }
 
 const paddingStyles = {
@@ -28,7 +28,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={cn(
-          'rounded-2xl',
+          'rounded-xl',
           variantStyles[variant],
           paddingStyles[padding],
           className
