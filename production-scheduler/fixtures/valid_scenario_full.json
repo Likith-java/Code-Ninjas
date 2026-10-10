@@ -1,0 +1,51 @@
+{
+  "scenario_id": "full",
+  "description": "Full-coverage scenario exercising every optional contract field.",
+  "synthetic_data": true,
+  "start": "2026-01-05T06:00:00",
+  "now": 120,
+  "horizon": 10080,
+  "route": ["spinning", "weaving", "dyeing"],
+  "machines": [
+    {
+      "id": "SPIN-01",
+      "stage": "spinning",
+      "rate_m_per_hour": 60,
+      "downtime": [{"start": 9000, "end": 9120, "reason": "planned maintenance"}],
+      "status": "idle",
+      "progress_pct": 0
+    },
+    {
+      "id": "WEAVE-01",
+      "stage": "weaving",
+      "rate_m_per_hour": 40,
+      "downtime": []
+    },
+    {
+      "id": "DYE-01",
+      "stage": "dyeing",
+      "rate_m_per_hour": 30,
+      "downtime": [],
+      "available_until": 10080
+    }
+  ],
+  "orders": [
+    {
+      "id": "ORD-001",
+      "buyer": "Buyer A",
+      "fabric": "cotton twill",
+      "colour": "navy",
+      "metres": 1200,
+      "ordered_at": 0,
+      "due": 9000,
+      "priority_weight": 3,
+      "yarn_ready": 120,
+      "eligible": {
+        "spinning": ["SPIN-01"],
+        "weaving": ["WEAVE-01"],
+        "dyeing": ["DYE-01"]
+      }
+    }
+  ],
+  "frozen": []
+}

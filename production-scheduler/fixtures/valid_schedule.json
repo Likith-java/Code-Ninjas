@@ -1,0 +1,48 @@
+{
+  "id": "695962f5b56d",
+  "scenario_id": "full",
+  "solver": "edf",
+  "status": "FEASIBLE",
+  "compute_seconds": 0.0,
+  "validation": {
+    "status": "valid",
+    "violations": []
+  },
+  "metrics": {
+    "weighted_tardiness": 0.0,
+    "on_time_rate": 1.0,
+    "utilisation": 0.17928286852589642,
+    "makespan": 5520
+  },
+  "operations": [
+    {
+      "order": "ORD-001",
+      "stage": "spinning",
+      "machine": "SPIN-01",
+      "start": 120,
+      "end": 1320,
+      "duration": 1200,
+      "quantity_metres": 1200
+    },
+    {
+      "order": "ORD-001",
+      "stage": "weaving",
+      "machine": "WEAVE-01",
+      "start": 1320,
+      "end": 3120,
+      "duration": 1800,
+      "quantity_metres": 1200
+    },
+    {
+      "order": "ORD-001",
+      "stage": "dyeing",
+      "machine": "DYE-01",
+      "start": 3120,
+      "end": 5520,
+      "duration": 2400,
+      "quantity_metres": 1200
+    }
+  ],
+  "warnings": [],
+  "diagnostics": {}
+}

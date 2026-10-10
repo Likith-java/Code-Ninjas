@@ -1,0 +1,21 @@
+{
+  "scenario_id": "zero-priority",
+  "machines": [
+    {"id": "SPIN-01", "stage": "spinning", "rate_m_per_hour": 60},
+    {"id": "WEAVE-01", "stage": "weaving", "rate_m_per_hour": 40},
+    {"id": "DYE-01", "stage": "dyeing", "rate_m_per_hour": 30}
+  ],
+  "orders": [
+    {
+      "id": "ORD-001",
+      "metres": 600,
+      "due": 9000,
+      "priority_weight": 0,
+      "eligible": {
+        "spinning": ["SPIN-01"],
+        "weaving": ["WEAVE-01"],
+        "dyeing": ["DYE-01"]
+      }
+    }
+  ]
+}

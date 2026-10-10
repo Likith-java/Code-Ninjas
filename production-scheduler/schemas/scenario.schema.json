@@ -1,0 +1,380 @@
+{
+  "$defs": {
+    "DowntimeWindow": {
+      "additionalProperties": false,
+      "description": "Machine downtime window with start, end, and reason.\n\nCanonical keys are ``start``/``end``. The legacy spellings ``from``,\n``to``, ``from_minute`` and ``to_minute`` are accepted on input.",
+      "properties": {
+        "start": {
+          "minimum": 0,
+          "title": "Start",
+          "type": "integer"
+        },
+        "end": {
+          "minimum": 0,
+          "title": "End",
+          "type": "integer"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "DowntimeWindow",
+      "type": "object"
+    },
+    "FrozenOperation": {
+      "additionalProperties": false,
+      "description": "Pre-fixed operation that cannot be moved during re-plan.\n\n``quantity_metres`` optionally records the completed quantity for a\npartially finished operation; the validator checks it against the\nschedule when both are present. There is no cumulative inventory model:\nthis field tracks per-operation progress only.",
+      "properties": {
+        "order": {
+          "title": "Order",
+          "type": "string"
+        },
+        "stage": {
+          "$ref": "#/$defs/Stage"
+        },
+        "machine": {
+          "title": "Machine",
+          "type": "string"
+        },
+        "start": {
+          "minimum": 0,
+          "title": "Start",
+          "type": "integer"
+        },
+        "end": {
+          "minimum": 0,
+          "title": "End",
+          "type": "integer"
+        },
+        "quantity_metres": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 100000,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quantity Metres"
+        }
+      },
+      "required": [
+        "order",
+        "stage",
+        "machine",
+        "start",
+        "end"
+      ],
+      "title": "FrozenOperation",
+      "type": "object"
+    },
+    "Machine": {
+      "additionalProperties": false,
+      "description": "Machine definition with stage, rate, downtime, and availability.",
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^[A-Z0-9\\-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "stage": {
+          "$ref": "#/$defs/Stage"
+        },
+        "rate_m_per_hour": {
+          "exclusiveMinimum": 0,
+          "maximum": 1000,
+          "title": "Rate M Per Hour",
+          "type": "integer"
+        },
+        "downtime": {
+          "items": {
+            "$ref": "#/$defs/DowntimeWindow"
+          },
+          "title": "Downtime",
+          "type": "array"
+        },
+        "available_until": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Available Until"
+        },
+        "status": {
+          "$ref": "#/$defs/MachineStatus",
+          "default": "idle"
+        },
+        "current_order": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Current Order"
+        },
+        "progress_pct": {
+          "default": 0,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Progress Pct",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "stage",
+        "rate_m_per_hour"
+      ],
+      "title": "Machine",
+      "type": "object"
+    },
+    "MachineStatus": {
+      "description": "Runtime machine state.",
+      "enum": [
+        "idle",
+        "running",
+        "down",
+        "maintenance"
+      ],
+      "title": "MachineStatus",
+      "type": "string"
+    },
+    "Order": {
+      "additionalProperties": false,
+      "description": "Production order with routing and timing constraints.",
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^[A-Z0-9\\-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "buyer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Buyer"
+        },
+        "fabric": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fabric"
+        },
+        "colour": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Colour"
+        },
+        "metres": {
+          "exclusiveMinimum": 0,
+          "maximum": 100000,
+          "title": "Metres",
+          "type": "integer"
+        },
+        "ordered_at": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Ordered At",
+          "type": "integer"
+        },
+        "due": {
+          "minimum": 0,
+          "title": "Due",
+          "type": "integer"
+        },
+        "priority_weight": {
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Priority Weight",
+          "type": "integer"
+        },
+        "yarn_ready": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Yarn Ready",
+          "type": "integer"
+        },
+        "eligible": {
+          "$ref": "#/$defs/OrderEligibility"
+        }
+      },
+      "required": [
+        "id",
+        "metres",
+        "due",
+        "priority_weight",
+        "eligible"
+      ],
+      "title": "Order",
+      "type": "object"
+    },
+    "OrderEligibility": {
+      "additionalProperties": false,
+      "description": "Eligible machines per stage for an order.",
+      "properties": {
+        "spinning": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Spinning",
+          "type": "array"
+        },
+        "weaving": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Weaving",
+          "type": "array"
+        },
+        "dyeing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dyeing",
+          "type": "array"
+        }
+      },
+      "title": "OrderEligibility",
+      "type": "object"
+    },
+    "Stage": {
+      "description": "Production route stages in order.",
+      "enum": [
+        "spinning",
+        "weaving",
+        "dyeing"
+      ],
+      "title": "Stage",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Complete scheduling scenario input (public contract).",
+  "properties": {
+    "scenario_id": {
+      "minLength": 1,
+      "title": "Scenario Id",
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+    },
+    "synthetic_data": {
+      "default": true,
+      "title": "Synthetic Data",
+      "type": "boolean"
+    },
+    "start": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Start"
+    },
+    "now": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Now",
+      "type": "integer"
+    },
+    "horizon": {
+      "default": 10080,
+      "exclusiveMinimum": 0,
+      "maximum": 100000,
+      "title": "Horizon",
+      "type": "integer"
+    },
+    "route": {
+      "items": {
+        "$ref": "#/$defs/Stage"
+      },
+      "title": "Route",
+      "type": "array"
+    },
+    "machines": {
+      "items": {
+        "$ref": "#/$defs/Machine"
+      },
+      "title": "Machines",
+      "type": "array"
+    },
+    "orders": {
+      "items": {
+        "$ref": "#/$defs/Order"
+      },
+      "title": "Orders",
+      "type": "array"
+    },
+    "frozen": {
+      "items": {
+        "$ref": "#/$defs/FrozenOperation"
+      },
+      "title": "Frozen",
+      "type": "array"
+    }
+  },
+  "required": [
+    "scenario_id",
+    "machines",
+    "orders"
+  ],
+  "title": "Scenario",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "textile-scheduler contract version 1"
+}

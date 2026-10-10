@@ -1,0 +1,396 @@
+{
+  "scenario_id": "feasible-load",
+  "description": "Base 12-order load: 3 spinning, 5 weaving, 2 dyeing machines. All orders routable; deadlines are soft costs.",
+  "synthetic_data": true,
+  "start": "2026-01-05T06:00:00",
+  "now": 0,
+  "horizon": 10080,
+  "route": [
+    "spinning",
+    "weaving",
+    "dyeing"
+  ],
+  "machines": [
+    {
+      "id": "SPIN-01",
+      "stage": "spinning",
+      "rate_m_per_hour": 60,
+      "downtime": []
+    },
+    {
+      "id": "SPIN-02",
+      "stage": "spinning",
+      "rate_m_per_hour": 55,
+      "downtime": []
+    },
+    {
+      "id": "SPIN-03",
+      "stage": "spinning",
+      "rate_m_per_hour": 50,
+      "downtime": []
+    },
+    {
+      "id": "WEAVE-01",
+      "stage": "weaving",
+      "rate_m_per_hour": 45,
+      "downtime": []
+    },
+    {
+      "id": "WEAVE-02",
+      "stage": "weaving",
+      "rate_m_per_hour": 42,
+      "downtime": []
+    },
+    {
+      "id": "WEAVE-03",
+      "stage": "weaving",
+      "rate_m_per_hour": 40,
+      "downtime": []
+    },
+    {
+      "id": "WEAVE-04",
+      "stage": "weaving",
+      "rate_m_per_hour": 38,
+      "downtime": []
+    },
+    {
+      "id": "WEAVE-05",
+      "stage": "weaving",
+      "rate_m_per_hour": 35,
+      "downtime": [
+        {
+          "start": 9500,
+          "end": 9560,
+          "reason": "planned maintenance"
+        }
+      ]
+    },
+    {
+      "id": "DYE-01",
+      "stage": "dyeing",
+      "rate_m_per_hour": 34,
+      "downtime": []
+    },
+    {
+      "id": "DYE-02",
+      "stage": "dyeing",
+      "rate_m_per_hour": 30,
+      "downtime": []
+    }
+  ],
+  "orders": [
+    {
+      "id": "ORD-001",
+      "buyer": "Buyer D",
+      "fabric": "denim",
+      "colour": "black",
+      "metres": 300,
+      "ordered_at": 0,
+      "due": 4800,
+      "priority_weight": 5,
+      "yarn_ready": 0,
+      "eligible": {
+        "spinning": [
+          "SPIN-01",
+          "SPIN-02",
+          "SPIN-03"
+        ],
+        "weaving": [
+          "WEAVE-02",
+          "WEAVE-03"
+        ],
+        "dyeing": [
+          "DYE-01"
+        ]
+      }
+    },
+    {
+      "id": "ORD-002",
+      "buyer": "Buyer A",
+      "fabric": "linen",
+      "colour": "olive",
+      "metres": 400,
+      "ordered_at": 0,
+      "due": 5760,
+      "priority_weight": 2,
+      "yarn_ready": 720,
+      "eligible": {
+        "spinning": [
+          "SPIN-01",
+          "SPIN-02",
+          "SPIN-03"
+        ],
+        "weaving": [
+          "WEAVE-01",
+          "WEAVE-03"
+        ],
+        "dyeing": [
+          "DYE-01",
+          "DYE-02"
+        ]
+      }
+    },
+    {
+      "id": "ORD-003",
+      "buyer": "Buyer B",
+      "fabric": "linen",
+      "colour": "white",
+      "metres": 600,
+      "ordered_at": 0,
+      "due": 5760,
+      "priority_weight": 5,
+      "yarn_ready": 1440,
+      "eligible": {
+        "spinning": [
+          "SPIN-01",
+          "SPIN-02"
+        ],
+        "weaving": [
+          "WEAVE-01",
+          "WEAVE-02",
+          "WEAVE-05"
+        ],
+        "dyeing": [
+          "DYE-01",
+          "DYE-02"
+        ]
+      }
+    },
+    {
+      "id": "ORD-004",
+      "buyer": "Buyer A",
+      "fabric": "cambric",
+      "colour": "white",
+      "metres": 800,
+      "ordered_at": 0,
+      "due": 4800,
+      "priority_weight": 2,
+      "yarn_ready": 0,
+      "eligible": {
+        "spinning": [
+          "SPIN-02",
+          "SPIN-03"
+        ],
+        "weaving": [
+          "WEAVE-01",
+          "WEAVE-04"
+        ],
+        "dyeing": [
+          "DYE-01",
+          "DYE-02"
+        ]
+      }
+    },
+    {
+      "id": "ORD-005",
+      "buyer": "Buyer B",
+      "fabric": "linen",
+      "colour": "natural",
+      "metres": 600,
+      "ordered_at": 0,
+      "due": 7200,
+      "priority_weight": 1,
+      "yarn_ready": 240,
+      "eligible": {
+        "spinning": [
+          "SPIN-01",
+          "SPIN-02",
+          "SPIN-03"
+        ],
+        "weaving": [
+          "WEAVE-01",
+          "WEAVE-02",
+          "WEAVE-05"
+        ],
+        "dyeing": [
+          "DYE-01",
+          "DYE-02"
+        ]
+      }
+    },
+    {
+      "id": "ORD-006",
+      "buyer": "Buyer B",
+      "fabric": "poplin",
+      "colour": "white",
+      "metres": 400,
+      "ordered_at": 0,
+      "due": 4800,
+      "priority_weight": 4,
+      "yarn_ready": 480,
+      "eligible": {
+        "spinning": [
+          "SPIN-01",
+          "SPIN-02",
+          "SPIN-03"
+        ],
+        "weaving": [
+          "WEAVE-03",
+          "WEAVE-04"
+        ],
+        "dyeing": [
+          "DYE-01",
+          "DYE-02"
+        ]
+      }
+    },
+    {
+      "id": "ORD-007",
+      "buyer": "Buyer C",
+      "fabric": "linen",
+      "colour": "olive",
+      "metres": 300,
+      "ordered_at": 0,
+      "due": 4800,
+      "priority_weight": 5,
+      "yarn_ready": 1200,
+      "eligible": {
+        "spinning": [
+          "SPIN-01",
+          "SPIN-02",
+          "SPIN-03"
+        ],
+        "weaving": [
+          "WEAVE-02",
+          "WEAVE-04"
+        ],
+        "dyeing": [
+          "DYE-01",
+          "DYE-02"
+        ]
+      }
+    },
+    {
+      "id": "ORD-008",
+      "buyer": "Buyer D",
+      "fabric": "cambric",
+      "colour": "white",
+      "metres": 600,
+      "ordered_at": 0,
+      "due": 7200,
+      "priority_weight": 2,
+      "yarn_ready": 240,
+      "eligible": {
+        "spinning": [
+          "SPIN-01",
+          "SPIN-02",
+          "SPIN-03"
+        ],
+        "weaving": [
+          "WEAVE-03",
+          "WEAVE-04",
+          "WEAVE-05"
+        ],
+        "dyeing": [
+          "DYE-01",
+          "DYE-02"
+        ]
+      }
+    },
+    {
+      "id": "ORD-009",
+      "buyer": "Buyer D",
+      "fabric": "poplin",
+      "colour": "red",
+      "metres": 300,
+      "ordered_at": 0,
+      "due": 3600,
+      "priority_weight": 2,
+      "yarn_ready": 960,
+      "eligible": {
+        "spinning": [
+          "SPIN-02",
+          "SPIN-03"
+        ],
+        "weaving": [
+          "WEAVE-02",
+          "WEAVE-03",
+          "WEAVE-05"
+        ],
+        "dyeing": [
+          "DYE-02"
+        ]
+      }
+    },
+    {
+      "id": "ORD-010",
+      "buyer": "Buyer D",
+      "fabric": "polyester",
+      "colour": "red",
+      "metres": 800,
+      "ordered_at": 0,
+      "due": 9600,
+      "priority_weight": 4,
+      "yarn_ready": 720,
+      "eligible": {
+        "spinning": [
+          "SPIN-01",
+          "SPIN-02",
+          "SPIN-03"
+        ],
+        "weaving": [
+          "WEAVE-01",
+          "WEAVE-02",
+          "WEAVE-04"
+        ],
+        "dyeing": [
+          "DYE-01",
+          "DYE-02"
+        ]
+      }
+    },
+    {
+      "id": "ORD-011",
+      "buyer": "Buyer B",
+      "fabric": "poplin",
+      "colour": "olive",
+      "metres": 500,
+      "ordered_at": 0,
+      "due": 10080,
+      "priority_weight": 4,
+      "yarn_ready": 240,
+      "eligible": {
+        "spinning": [
+          "SPIN-02",
+          "SPIN-03"
+        ],
+        "weaving": [
+          "WEAVE-01",
+          "WEAVE-04",
+          "WEAVE-05"
+        ],
+        "dyeing": [
+          "DYE-01",
+          "DYE-02"
+        ]
+      }
+    },
+    {
+      "id": "ORD-012",
+      "buyer": "Buyer D",
+      "fabric": "cambric",
+      "colour": "red",
+      "metres": 1000,
+      "ordered_at": 0,
+      "due": 4800,
+      "priority_weight": 5,
+      "yarn_ready": 0,
+      "eligible": {
+        "spinning": [
+          "SPIN-01",
+          "SPIN-02",
+          "SPIN-03"
+        ],
+        "weaving": [
+          "WEAVE-01",
+          "WEAVE-03",
+          "WEAVE-04"
+        ],
+        "dyeing": [
+          "DYE-02"
+        ]
+      }
+    }
+  ],
+  "frozen": []
+}

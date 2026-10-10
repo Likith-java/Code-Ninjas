@@ -1,0 +1,131 @@
+{
+  "scenario_id": "full",
+  "input_hash": "sha256:5cfc3cc33a13289aae08ef46517b520a4bdf5f4d559702476073bb9fc530d74a",
+  "solver_config": {
+    "time_limit_seconds": 10.0,
+    "random_seed": 42,
+    "num_workers": 8,
+    "target_improvement_pct": 20.0
+  },
+  "edf": {
+    "solver": "edf",
+    "status": "FEASIBLE",
+    "validation_status": "valid",
+    "violation_count": 0,
+    "compute_seconds": 1.0,
+    "weighted_tardiness": 426.0,
+    "on_time_rate": 1.0,
+    "makespan": 8000,
+    "utilisation": 0.3,
+    "orders_total": 12,
+    "orders_completed": 12,
+    "orders_late": 0,
+    "orders_at_risk": 2,
+    "ok": true,
+    "error": null
+  },
+  "cpsat": {
+    "solver": "cpsat",
+    "status": "FEASIBLE",
+    "validation_status": "valid",
+    "violation_count": 0,
+    "compute_seconds": 1.0,
+    "weighted_tardiness": 0.0,
+    "on_time_rate": 1.0,
+    "makespan": 8000,
+    "utilisation": 0.3,
+    "orders_total": 12,
+    "orders_completed": 12,
+    "orders_late": 0,
+    "orders_at_risk": 2,
+    "ok": true,
+    "error": null
+  },
+  "deltas": [
+    {
+      "metric": "weighted_tardiness",
+      "lower_is_better": true,
+      "advisory_only": false,
+      "edf": 426.0,
+      "cpsat": 0.0,
+      "absolute_change": -426.0,
+      "percent_change": -100.0
+    },
+    {
+      "metric": "on_time_rate",
+      "lower_is_better": false,
+      "advisory_only": false,
+      "edf": 1.0,
+      "cpsat": 1.0,
+      "absolute_change": 0.0,
+      "percent_change": 0.0
+    },
+    {
+      "metric": "makespan",
+      "lower_is_better": true,
+      "advisory_only": false,
+      "edf": 8000.0,
+      "cpsat": 8000.0,
+      "absolute_change": 0.0,
+      "percent_change": 0.0
+    },
+    {
+      "metric": "utilisation",
+      "lower_is_better": false,
+      "advisory_only": true,
+      "edf": 0.3,
+      "cpsat": 0.3,
+      "absolute_change": 0.0,
+      "percent_change": 0.0
+    },
+    {
+      "metric": "compute_seconds",
+      "lower_is_better": true,
+      "advisory_only": true,
+      "edf": 1.0,
+      "cpsat": 1.0,
+      "absolute_change": 0.0,
+      "percent_change": 0.0
+    },
+    {
+      "metric": "violation_count",
+      "lower_is_better": true,
+      "advisory_only": false,
+      "edf": 0.0,
+      "cpsat": 0.0,
+      "absolute_change": 0.0,
+      "percent_change": null
+    },
+    {
+      "metric": "orders_completed",
+      "lower_is_better": false,
+      "advisory_only": false,
+      "edf": 12.0,
+      "cpsat": 12.0,
+      "absolute_change": 0.0,
+      "percent_change": 0.0
+    },
+    {
+      "metric": "orders_late",
+      "lower_is_better": true,
+      "advisory_only": false,
+      "edf": 0.0,
+      "cpsat": 0.0,
+      "absolute_change": 0.0,
+      "percent_change": null
+    },
+    {
+      "metric": "orders_at_risk",
+      "lower_is_better": true,
+      "advisory_only": false,
+      "edf": 2.0,
+      "cpsat": 2.0,
+      "absolute_change": 0.0,
+      "percent_change": 0.0
+    }
+  ],
+  "tardiness_improvement_pct": 100.0,
+  "target_pct": 20.0,
+  "target_met": true,
+  "note": ""
+}

@@ -1,0 +1,88 @@
+{
+  "scenario_id": "full",
+  "schedule_id": "golden0001",
+  "solver": "edf",
+  "status": "FEASIBLE",
+  "validation": {
+    "status": "valid",
+    "violations": []
+  },
+  "time": {
+    "scenario_start": "2026-01-05T06:00:00",
+    "unit": "minutes",
+    "origin_minute": 0,
+    "now": 120,
+    "horizon": 10080
+  },
+  "metrics": {
+    "weighted_tardiness": 0.0,
+    "on_time_rate": 1.0,
+    "utilisation": 0.17928286852589642,
+    "makespan": 5400
+  },
+  "rows": [
+    {
+      "machine_id": "DYE-01",
+      "stage": "dyeing",
+      "rate_m_per_hour": 30,
+      "bars": [
+        {
+          "kind": "operation",
+          "order_id": "ORD-001",
+          "stage": "dyeing",
+          "machine_id": "DYE-01",
+          "start": 3120,
+          "end": 5520,
+          "duration": 2400,
+          "quantity_metres": 1200,
+          "late": false,
+          "frozen": false
+        }
+      ]
+    },
+    {
+      "machine_id": "SPIN-01",
+      "stage": "spinning",
+      "rate_m_per_hour": 60,
+      "bars": [
+        {
+          "kind": "operation",
+          "order_id": "ORD-001",
+          "stage": "spinning",
+          "machine_id": "SPIN-01",
+          "start": 120,
+          "end": 1320,
+          "duration": 1200,
+          "quantity_metres": 1200,
+          "late": false,
+          "frozen": false
+        },
+        {
+          "kind": "downtime",
+          "start": 9000,
+          "end": 9120,
+          "reason": "planned maintenance"
+        }
+      ]
+    },
+    {
+      "machine_id": "WEAVE-01",
+      "stage": "weaving",
+      "rate_m_per_hour": 40,
+      "bars": [
+        {
+          "kind": "operation",
+          "order_id": "ORD-001",
+          "stage": "weaving",
+          "machine_id": "WEAVE-01",
+          "start": 1320,
+          "end": 3120,
+          "duration": 1800,
+          "quantity_metres": 1200,
+          "late": false,
+          "frozen": false
+        }
+      ]
+    }
+  ]
+}
