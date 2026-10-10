@@ -13,7 +13,7 @@
   }
 
   body {
-    @apply bg-[#F5F0E3] text-[#181816] antialiased min-w-[1440px] h-screen overflow-hidden;
+    @apply bg-[#F5F0E3] text-[#181816] antialiased min-w-0 h-screen overflow-hidden;
   }
 }
 
