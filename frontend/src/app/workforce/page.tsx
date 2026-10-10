@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/Header'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { WorkforceAttendance } from '@/components/workforce/WorkforceAttendance'
+import { UserRole } from '@/lib/permissions'
 
 export default function WorkforceRoutePage() {
   const router = useRouter()
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [currentRole, setCurrentRole] = useState<UserRole>('admin')
 
   const handleModuleClick = (module: string) => {
     setIsMobileSidebarOpen(false)
@@ -25,16 +27,10 @@ export default function WorkforceRoutePage() {
   return (
     <div className="flex flex-col h-screen bg-[#F5F0E3] text-[#181816] antialiased w-full min-w-0 overflow-hidden select-none font-body text-[13px]">
       <Header
-        activeModule="workforce"
-        onModuleClick={handleModuleClick}
+        currentRole={currentRole}
+        onLogout={() => router.push('/?tab=login')}
         onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
-        activeScenario="breakdown"
-        onScenarioChange={() => {}}
-        onSimulateDisruption={() => router.push('/')}
-        onTriggerReplan={() => router.push('/')}
-        isResolved={false}
-        disruptionText="1 Breakdown (WEAVE-03)"
-        solverStatus="CP-SAT: OPTIMAL (3.4s)"
+        onBrandClick={() => router.push('/')}
       />
 
       <div className="flex-1 flex overflow-hidden relative">
@@ -49,6 +45,7 @@ export default function WorkforceRoutePage() {
           onSelectDisruption={() => router.push('/')}
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          currentRole={currentRole}
         />
 
         <WorkforceAttendance />

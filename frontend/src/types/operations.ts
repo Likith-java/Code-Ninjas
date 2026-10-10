@@ -1,4 +1,4 @@
-export type ApiStateMode = 'demo' | 'loading' | 'empty' | 'error'
+export type ApiStateMode = 'live' | 'demo' | 'loading' | 'empty' | 'error'
 
 export interface DashboardOrder {
   id: string
