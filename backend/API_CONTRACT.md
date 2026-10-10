@@ -139,7 +139,7 @@ SQLAlchemy exceptions are intercepted by a global exception handler to protect c
 | **Dispatches**| Create Dispatch | `POST` | `/dispatches` | **Implemented** | Dispatch | Quality-gated; prevents duplicate allocations; calculates invoice total |
 | **Dispatches**| List Dispatches | `GET` | `/dispatches` | **Implemented** | Dispatch | Filterable by `order_id`, `confirmed`, `skip`, `limit` |
 | **Dispatches**| Get Dispatch Detail| `GET` | `/dispatches/{id}` | **Implemented** | Dispatch | Line items, roll codes, invoice details |
-| **Dispatches**| Confirm Dispatch | `POST` | `/dispatches/{id}/confirm` | **Implemented** | Dispatch | Atomic confirmation; sets `confirmed_at`; marks rolls dispatched; rejects duplicates with 409 |
+| **Dispatches**| Confirm Dispatch | `POST` | `/dispatches/{id}/confirm` | **Implemented** | Dispatch | Atomic confirmation; sets `confirmed_at`; marks rolls dispatched; idempotent on repeat (200) |
 | **Scheduler**| Automated Scheduling | `POST` | `/schedules/optimize` | **Unimplemented (Ext)** | Member 1 | OR-Tools / Earliest Deadline First optimization |
 | **Scheduler**| Disruption Simulation | `POST` | `/schedules/simulate-disruption`| **Unimplemented (Ext)** | Member 1 | Machine breakdown rescheduling simulator |
 | **Scheduler**| Get Schedule Detail | `GET` | `/schedules/{id}` | **Unimplemented (Ext)** | Member 1 | Schedule timeline Gantt chart payload |
@@ -609,7 +609,7 @@ SQLAlchemy exceptions are intercepted by a global exception handler to protect c
   - Re-validates that referenced rolls are still `passed` and have sufficient undispatched metres.
   - Sets `confirmed = true` and `confirmed_at = utc_now()`.
   - For each roll whose cumulative confirmed metres >= total metres, updates roll status to `dispatched`.
-  - Rejects duplicate confirmation with `409 Conflict` if the dispatch is already confirmed.
+  - Idempotent repeat confirmation: Returns 200 OK with the existing confirmed dispatch representation without duplicate mutations or stock deductions.
 - **Response `200 OK`**:
 ```json
 {

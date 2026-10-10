@@ -373,12 +373,12 @@ def update_production_run(
     effective_start = (
         ensure_utc(payload.start_time)
         if payload.start_time is not None
-        else run.start_time
+        else ensure_utc(run.start_time)
     )
     effective_end = (
         ensure_utc(payload.end_time)
         if payload.end_time is not None
-        else run.end_time
+        else ensure_utc(run.end_time)
     )
 
     if new_status == "running" and effective_start is None:

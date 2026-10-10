@@ -219,12 +219,9 @@ def confirm_dispatch(
     if dispatch is None:
         raise HTTPException(status_code=404, detail="Dispatch not found")
 
-    # Reject duplicate confirmation
+    # Idempotent response: If already confirmed, return current state without mutations
     if dispatch.confirmed:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Dispatch {dispatch_id} has already been confirmed",
-        )
+        return build_dispatch_out(db, dispatch)
 
     # Lock order
     order = db.scalar(
