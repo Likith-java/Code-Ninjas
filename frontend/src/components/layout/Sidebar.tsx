@@ -3,6 +3,8 @@
 import { Button, MaterialIcon, Card } from '@/components/ui'
 import { UserRole, ROLE_PROFILES } from '@/lib/permissions'
 
+import { getUser } from '@/lib/auth-storage'
+
 interface SidebarProps {
   onModuleClick: (module: string) => void
   onOrderSelect: (orderId: string) => void
@@ -25,6 +27,7 @@ const allModules = [
   { id: 'validator', label: 'Schedule Validator', icon: 'verified', count: '0 Viol', badgeBg: '#D7F4E5', badgeColor: '#0B382F' },
   { id: 'rolls', label: 'Rolls & Traceability', icon: 'qr_code' },
   { id: 'dispatch', label: 'Finished Dispatches', icon: 'local_shipping' },
+  { id: 'reports', label: 'Reports & Export', icon: 'description', count: 'PDF/XLSX', badgeBg: '#E0E7FF', badgeColor: '#3730A3' },
 ]
 
 export function Sidebar({
@@ -37,6 +40,9 @@ export function Sidebar({
   const roleProfile = ROLE_PROFILES[currentRole]
   const allowed = roleProfile.allowedModules
   const visibleModules = allModules.filter((m) => allowed.includes(m.id))
+  const user = getUser()
+  const buyerIdText = user?.buyer_id ? `#${user.buyer_id}` : 'Direct Account'
+  const accountName = user?.name || roleProfile.name
 
   const handleSelectModule = (id: string) => {
     onModuleClick(id)
@@ -70,7 +76,7 @@ export function Sidebar({
                   {currentRole === 'customer' ? 'Buyer Tracking Portal' : 'Production Operations'}
                 </span>
                 <span className="font-mono text-[10px] text-[#1E3A2F] font-semibold truncate">
-                  {currentRole === 'customer' ? 'ZARA Sourcing Orders' : 'Operations Navigation'}
+                  {currentRole === 'customer' ? accountName : 'Operations Navigation'}
                 </span>
               </div>
             </div>
@@ -135,14 +141,15 @@ export function Sidebar({
                   <span>Authenticated Client</span>
                 </div>
                 <div className="text-[11px] text-stone-600 space-y-1 font-mono">
-                  <div>Buyer ID: <strong>#1</strong></div>
-                  <div>Account: <strong>ZARA Sourcing</strong></div>
-                  <div>Contract: <strong>FY2026 Batch</strong></div>
+                  <div>Buyer ID: <strong>{buyerIdText}</strong></div>
+                  <div>Account: <strong className="truncate">{accountName}</strong></div>
+                  <div>Email: <strong className="truncate">{user?.email || 'N/A'}</strong></div>
                 </div>
               </Card>
             </div>
           )}
         </div>
+
 
         {/* Clean, compact footer */}
         <div className="border-t-2 border-[#181816] p-2.5 bg-[#718D80] font-mono text-[10px] space-y-0.5">

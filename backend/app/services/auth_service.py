@@ -23,11 +23,30 @@ def register_user(db: Session, *, name: str, email: str, password: str, role: st
     if db.query(User).filter(func.lower(User.email) == email).first():
         raise HTTPException(400, "An account with this email already exists.")
 
+    norm_role = _normalise_role(role)
+    buyer_id = None
+    if norm_role == "customer":
+        from app.models import Buyer
+        matching_buyer = db.query(Buyer).filter(func.lower(Buyer.email) == email).first()
+        if matching_buyer:
+            buyer_id = matching_buyer.id
+        else:
+            new_buyer = Buyer(
+                name=name.strip(),
+                email=email,
+                contact=name.strip(),
+            )
+            db.add(new_buyer)
+            db.flush()
+            buyer_id = new_buyer.id
+
+
     user = User(
         name=name.strip(),
         email=email,
         password_hash=hash_password(password),
-        role=_normalise_role(role),
+        role=norm_role,
+        buyer_id=buyer_id,
     )
     db.add(user)
     db.commit()

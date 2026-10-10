@@ -9,8 +9,12 @@ import { ToastContainer } from '@/components/ui/Toast'
 import { ModulePendingView } from '@/components/layout/ModulePendingView'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { UserRole, ROLE_PROFILES } from '@/lib/permissions'
-import { useAppState } from '@/hooks/useAppState'
 import { clearSession, getUser } from '@/lib/auth-storage'
+import { useAppState } from '@/hooks/useAppState'
+import { MaterialIcon, Button } from '@/components/ui'
+
+
+
 
 export default function AppLayout({
   children,
@@ -26,25 +30,49 @@ export default function AppLayout({
 
   useEffect(() => {
     const user = getUser()
-    if (user?.role && ROLE_PROFILES[user.role as UserRole]) {
-      setCurrentRole(user.role as UserRole)
-    }
+    const role: UserRole = user?.role && ROLE_PROFILES[user.role as UserRole] ? (user.role as UserRole) : 'admin'
+    setCurrentRole(role)
+    const roleProfile = ROLE_PROFILES[role]
 
+    let target = roleProfile.defaultModule
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const tab = params.get('tab')
       if (tab && tab !== 'login') {
-        setActiveModule(tab)
+        target = tab
       } else if (window.location.pathname.includes('dashboard')) {
-        setActiveModule('dashboard')
+        target = 'dashboard'
       } else if (window.location.pathname.includes('workforce')) {
-        setActiveModule('workforce')
+        target = 'workforce'
+      } else if (window.location.pathname.includes('reports')) {
+        target = 'reports'
       }
     }
 
+    // Direct route protection: Verify target module is authorized for current role
+    if (!roleProfile.allowedModules.includes(target)) {
+      target = roleProfile.defaultModule
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        if (target === 'floor') {
+          url.searchParams.delete('tab')
+        } else {
+          url.searchParams.set('tab', target)
+        }
+        window.history.replaceState({}, '', url.toString())
+      }
+    }
+    setActiveModule(target)
+
     const handlePopState = () => {
+      const currentUser = getUser()
+      const currentR: UserRole = currentUser?.role && ROLE_PROFILES[currentUser.role as UserRole] ? (currentUser.role as UserRole) : role
+      const currentProfile = ROLE_PROFILES[currentR]
       const params = new URLSearchParams(window.location.search)
-      const tab = params.get('tab') || 'floor'
+      let tab = params.get('tab') || currentProfile.defaultModule
+      if (!currentProfile.allowedModules.includes(tab)) {
+        tab = currentProfile.defaultModule
+      }
       setActiveModule(tab)
     }
 
@@ -53,14 +81,16 @@ export default function AppLayout({
   }, [])
 
   const handleModuleClick = (module: string) => {
-    setActiveModule(module)
+    const roleProfile = ROLE_PROFILES[currentRole] || ROLE_PROFILES.admin
+    const safeModule = roleProfile.allowedModules.includes(module) ? module : roleProfile.defaultModule
+    setActiveModule(safeModule)
     setIsMobileSidebarOpen(false)
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
-      if (module === 'floor') {
+      if (safeModule === 'floor') {
         url.searchParams.delete('tab')
       } else {
-        url.searchParams.set('tab', module)
+        url.searchParams.set('tab', safeModule)
       }
       window.history.pushState({}, '', url.toString())
     }
@@ -109,6 +139,7 @@ export default function AppLayout({
   } = useAppState()
 
   const disruptionText = isResolved ? '0 Disruption Alerts' : '1 Breakdown (WEAVE-03)'
+  const roleProfile = ROLE_PROFILES[currentRole] || ROLE_PROFILES.admin
 
   return (
     <ProtectedRoute>
@@ -117,7 +148,7 @@ export default function AppLayout({
           currentRole={currentRole}
           onLogout={handleLogout}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
-          onBrandClick={() => handleModuleClick('floor')}
+          onBrandClick={() => handleModuleClick(roleProfile.defaultModule)}
         />
 
         <div className="flex-1 flex overflow-hidden relative">
@@ -135,7 +166,7 @@ export default function AppLayout({
             currentRole={currentRole}
           />
 
-          {activeModule === 'floor' && (
+          {activeModule === 'floor' && roleProfile.allowedModules.includes('floor') && (
             <ProductionBoard
               selectedOrder={selectedOrder}
               onOrderSelect={selectOrder}
@@ -147,22 +178,52 @@ export default function AppLayout({
             />
           )}
 
-          {activeModule === 'dashboard' && <OperationsDashboard currentRole={currentRole} />}
-          {activeModule === 'workforce' && <WorkforceAttendance />}
-          {activeModule === 'yarn' && <YarnInventoryView />}
-          {activeModule === 'rolls' && <FabricRollsView />}
-          {activeModule === 'dispatch' && <DispatchesView />}
-          {activeModule === 'validator' && <ScheduleValidatorView />}
-          {activeModule !== 'floor' &&
-            activeModule !== 'dashboard' &&
-            activeModule !== 'workforce' &&
-            activeModule !== 'yarn' &&
-            activeModule !== 'rolls' &&
-            activeModule !== 'dispatch' &&
-            activeModule !== 'validator' && (
-              <ModulePendingView moduleId={activeModule} onSwitchModule={handleModuleClick} />
-            )}
+          {activeModule === 'dashboard' && roleProfile.allowedModules.includes('dashboard') && (
+            <OperationsDashboard currentRole={currentRole} />
+          )}
+
+          {activeModule === 'workforce' && roleProfile.allowedModules.includes('workforce') && (
+            <WorkforceAttendance />
+          )}
+
+          {activeModule === 'yarn' && roleProfile.allowedModules.includes('yarn') && (
+            <YarnInventoryView />
+          )}
+
+          {activeModule === 'rolls' && roleProfile.allowedModules.includes('rolls') && (
+            <FabricRollsView />
+          )}
+
+          {activeModule === 'dispatch' && roleProfile.allowedModules.includes('dispatch') && (
+            <DispatchesView />
+          )}
+
+          {activeModule === 'validator' && roleProfile.allowedModules.includes('validator') && (
+            <ScheduleValidatorView />
+          )}
+
+          {activeModule === 'reports' && roleProfile.allowedModules.includes('reports') && (
+            <ReportsView currentRole={currentRole} />
+          )}
+
+          {!roleProfile.allowedModules.includes(activeModule) && (
+            <div className="flex-1 p-8 flex items-center justify-center">
+              <div className="max-w-md w-full bg-white border-2 border-[#181816] rounded-2xl p-6 pop-shadow-md text-center space-y-3 font-mono">
+                <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center mx-auto text-red-600 border border-[#181816]">
+                  <MaterialIcon name="lock" size="lg" />
+                </div>
+                <h2 className="text-base font-black text-[#181816]">Access Restricted</h2>
+                <p className="text-xs text-stone-600">
+                  Your current role ({roleProfile.name}) is not authorized to view module &ldquo;{activeModule}&rdquo;.
+                </p>
+                <Button variant="primary" size="sm" onClick={() => handleModuleClick(roleProfile.defaultModule)}>
+                  Go to {roleProfile.name} Workspace
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
+
 
         <DisruptionModal
           isOpen={simModalOpen}
@@ -184,3 +245,4 @@ import { YarnInventoryView } from '@/components/modules/YarnInventoryView'
 import { FabricRollsView } from '@/components/modules/FabricRollsView'
 import { DispatchesView } from '@/components/modules/DispatchesView'
 import { ScheduleValidatorView } from '@/components/modules/ScheduleValidatorView'
+import { ReportsView } from '@/components/modules/ReportsView'

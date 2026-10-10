@@ -45,6 +45,16 @@ def get_current_user(
     return user
 
 
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if not credentials:
+        return None
+    return get_current_user(credentials=credentials, db=db)
+
+
+
 def require_roles(*allowed_roles: str):
     def _checker(user: User = Depends(get_current_user)) -> User:
         if user.role not in allowed_roles:

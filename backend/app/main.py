@@ -17,6 +17,7 @@ from app.routers import (
     materials,
     orders,
     production_runs,
+    reports,
     rolls,
     suppliers,
 )
@@ -92,3 +93,4 @@ app.include_router(production_runs.router)
 app.include_router(downtimes.router)
 app.include_router(rolls.router)
 app.include_router(dispatches.router)
+app.include_router(reports.router)

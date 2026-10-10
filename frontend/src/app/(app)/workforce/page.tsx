@@ -15,10 +15,13 @@ export default function WorkforceRoutePage() {
 
   useEffect(() => {
     const user = getUser()
-    if (user?.role && ROLE_PROFILES[user.role as UserRole]) {
-      setCurrentRole(user.role as UserRole)
+    const role: UserRole = user?.role && ROLE_PROFILES[user.role as UserRole] ? (user.role as UserRole) : 'admin'
+    setCurrentRole(role)
+    if (!ROLE_PROFILES[role]?.allowedModules.includes('workforce')) {
+      router.replace('/dashboard')
     }
-  }, [])
+  }, [router])
+
 
   const handleLogout = () => {
     clearSession()

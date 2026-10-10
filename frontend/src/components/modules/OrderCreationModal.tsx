@@ -3,19 +3,30 @@
 import { useState, useEffect } from 'react'
 import { Card, Button, MaterialIcon } from '@/components/ui'
 import { api, BackendBuyer, ApiClientError } from '@/lib/api'
+import { UserRole } from '@/lib/permissions'
+import { getUser } from '@/lib/auth-storage'
 
 interface OrderCreationModalProps {
   isOpen: boolean
   onClose: () => void
   onOrderCreated: () => void
+  currentRole?: UserRole
 }
 
-export function OrderCreationModal({ isOpen, onClose, onOrderCreated }: OrderCreationModalProps) {
+export function OrderCreationModal({
+  isOpen,
+  onClose,
+  onOrderCreated,
+  currentRole = 'admin',
+}: OrderCreationModalProps) {
   const [buyers, setBuyers] = useState<BackendBuyer[]>([])
   const [loadingBuyers, setLoadingBuyers] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  const user = getUser()
+  const isCustomer = currentRole === 'customer' || user?.role === 'customer'
 
   // Toggle for adding a new buyer inline
   const [isAddingBuyer, setIsAddingBuyer] = useState(false)
@@ -25,10 +36,10 @@ export function OrderCreationModal({ isOpen, onClose, onOrderCreated }: OrderCre
 
   // Order form state
   const [orderForm, setOrderForm] = useState({
-    buyer_id: '',
-    fabric_type: 'Cotton Twill',
-    colour: 'Deep Navy',
-    quantity_metres: '1500',
+    buyer_id: isCustomer && user?.buyer_id ? String(user.buyer_id) : '',
+    fabric_type: 'Cotton',
+    colour: 'Navy Blue',
+    quantity_metres: '500',
     agreed_rate: '45.50',
     deadlineDays: '14',
     priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
@@ -36,14 +47,23 @@ export function OrderCreationModal({ isOpen, onClose, onOrderCreated }: OrderCre
 
   useEffect(() => {
     if (!isOpen) return
+
+    if (isCustomer && user?.buyer_id) {
+      setOrderForm((prev) => ({ ...prev, buyer_id: String(user.buyer_id) }))
+      setLoadingBuyers(false)
+      return
+    }
+
     const fetchBuyers = async () => {
       setLoadingBuyers(true)
       try {
         const b = await api.getBuyers()
         setBuyers(b)
-        if (b.length > 0 && !orderForm.buyer_id) {
-          setOrderForm((prev) => ({ ...prev, buyer_id: String(b[0].id) }))
+        if (b.length > 0) {
+          setOrderForm((prev) => (prev.buyer_id ? prev : { ...prev, buyer_id: String(b[0].id) }))
         }
+
+
       } catch (err: unknown) {
         console.error('Error fetching buyers:', err)
       } finally {
@@ -51,7 +71,8 @@ export function OrderCreationModal({ isOpen, onClose, onOrderCreated }: OrderCre
       }
     }
     fetchBuyers()
-  }, [isOpen])
+  }, [isOpen, isCustomer, user?.buyer_id])
+
 
   if (!isOpen) return null
 
@@ -89,8 +110,13 @@ export function OrderCreationModal({ isOpen, onClose, onOrderCreated }: OrderCre
       const deadlineDate = new Date()
       deadlineDate.setDate(deadlineDate.getDate() + Number(orderForm.deadlineDays || 7))
 
+      const targetBuyerId = isCustomer && user?.buyer_id ? Number(user.buyer_id) : Number(orderForm.buyer_id)
+      if (!targetBuyerId) {
+        throw new Error('Valid buyer account is required to place an order.')
+      }
+
       await api.createOrder({
-        buyer_id: Number(orderForm.buyer_id),
+        buyer_id: targetBuyerId,
         fabric_type: orderForm.fabric_type,
         colour: orderForm.colour,
         quantity_metres: Number(orderForm.quantity_metres),
@@ -160,31 +186,46 @@ export function OrderCreationModal({ isOpen, onClose, onOrderCreated }: OrderCre
         ) : (
           <form onSubmit={handleCreateOrder} className="space-y-3 font-mono text-xs">
             <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="text-stone-600 font-bold">Buyer Account *</label>
-                <button
-                  type="button"
-                  onClick={() => setIsAddingBuyer(true)}
-                  className="text-[11px] text-[#0E4B3E] font-bold underline hover:text-emerald-700"
-                >
-                  + New Buyer
-                </button>
-              </div>
-              <select
-                required
-                value={orderForm.buyer_id}
-                onChange={(e) => setOrderForm({ ...orderForm, buyer_id: e.target.value })}
-                className="w-full p-2 border-2 border-[#181816] rounded-xl font-mono text-xs"
-              >
-                {loadingBuyers ? (
-                  <option value="">Loading buyers...</option>
-                ) : (
-                  buyers.map((b) => (
-                    <option key={b.id} value={b.id}>{b.name} (ID #{b.id})</option>
-                  ))
-                )}
-              </select>
+              {isCustomer ? (
+                <div>
+                  <label className="text-stone-600 font-bold block mb-1">Authenticated Buyer Account</label>
+                  <div className="p-2 bg-stone-100 border border-stone-300 rounded-xl text-stone-800 font-bold flex items-center justify-between">
+                    <span>{user?.name || 'Customer Account'} (Buyer #{user?.buyer_id || 'N/A'})</span>
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                      Verified
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-stone-600 font-bold">Buyer Account *</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingBuyer(true)}
+                      className="text-[11px] text-[#0E4B3E] font-bold underline hover:text-emerald-700"
+                    >
+                      + New Buyer
+                    </button>
+                  </div>
+                  <select
+                    required
+                    value={orderForm.buyer_id}
+                    onChange={(e) => setOrderForm({ ...orderForm, buyer_id: e.target.value })}
+                    className="w-full p-2 border-2 border-[#181816] rounded-xl font-mono text-xs"
+                  >
+                    {loadingBuyers ? (
+                      <option value="">Loading buyers...</option>
+                    ) : (
+                      buyers.map((b) => (
+                        <option key={b.id} value={b.id}>{b.name} (ID #{b.id})</option>
+                      ))
+                    )}
+                  </select>
+                </>
+              )}
             </div>
+
 
             <div className="grid grid-cols-2 gap-2">
               <div>

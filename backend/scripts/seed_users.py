@@ -38,6 +38,7 @@ DEMO_USERS = [
         "password": "customer123",
         "name": "Customer Demo",
         "role": "customer",
+        "buyer_id": 1,
     },
 ]
 
@@ -51,6 +52,9 @@ def seed_users(db: Session) -> None:
     for user_data in DEMO_USERS:
         existing = db.query(User).filter(User.email == user_data["email"]).first()
         if existing:
+            if user_data.get("buyer_id") and existing.buyer_id != user_data["buyer_id"]:
+                existing.buyer_id = user_data["buyer_id"]
+                db.commit()
             print(f"[SKIP] Skipping {user_data['email']} - already exists")
             continue
 
@@ -59,6 +63,7 @@ def seed_users(db: Session) -> None:
             email=user_data["email"],
             password_hash=hash_password(user_data["password"]),
             role=user_data["role"],
+            buyer_id=user_data.get("buyer_id"),
             is_active=True,
         )
         db.add(user)
