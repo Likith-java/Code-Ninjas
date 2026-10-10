@@ -25,7 +25,7 @@ const allModules = [
   { id: 'dashboard', label: 'Operations Dashboard', icon: 'dashboard', count: 'Executive', color: '#0E4B3E', badgeBg: '#D7F4E5', badgeColor: '#0B382F' },
   { id: 'workforce', label: 'Workforce & Attendance', icon: 'badge', count: '10 Workers', color: '#0E4B3E', badgeBg: '#D7F4E5', badgeColor: '#0B382F' },
   { id: 'yarn', label: 'Yarn Stock & Lots', icon: 'inventory_2', count: '1 Delay', badgeBg: '#FEF08A', badgeColor: '#713F12' },
-  { id: 'validator', label: 'Schedule Validator', icon: 'verified', count: '0 Viol', badgeBg: '#D7F4E5', badgeColor: '#0B382F' },
+  { id: 'validator', label: 'Production Scheduling', icon: 'verified' },
   { id: 'rolls', label: 'Rolls & Traceability', icon: 'qr_code' },
   { id: 'dispatch', label: 'Finished Dispatches', icon: 'local_shipping' },
   { id: 'reports', label: 'Reports & Export', icon: 'description', count: 'PDF/XLSX', badgeBg: '#E0E7FF', badgeColor: '#3730A3' },

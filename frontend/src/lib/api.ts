@@ -6,6 +6,7 @@
  */
 
 import { getToken, clearSession } from "./auth-storage";
+import { buildCompareRequest } from './scheduler-view-model.mjs'
 
 // Read base URL from environment, defaulting to standard local FastAPI port 8000
 export const API_BASE_URL =
@@ -800,10 +801,48 @@ export const api = {
       if (match && match[1]) {
         filename = match[1]
       }
-    }
+  }
 
-    const blob = await response.blob()
-    return { blob, filename }
+  const blob = await response.blob()
+  return { blob, filename }
+  },
+
+  // Scheduler
+  listScenarios: (options?: { signal?: AbortSignal }) => request<ScenarioListItem[]>('/scheduler/scenarios', options),
+  getScenario: (scenarioId: string, options?: { signal?: AbortSignal }) =>
+    request<ScenarioDetail>(`/scheduler/scenarios/${scenarioId}`, options),
+  runScheduler: (req: RunSchedulerRequest, options?: { signal?: AbortSignal }) => request<RunSchedulerResponse>('/scheduler/run', {
+    method: 'POST',
+    body: JSON.stringify(req),
+    signal: options?.signal,
+  }),
+  validateSchedule: (req: ValidationRequest, options?: { signal?: AbortSignal }) => request<ValidationResponse>('/scheduler/validate', {
+    method: 'POST',
+    body: JSON.stringify(req),
+    signal: options?.signal,
+  }),
+  simulateDisruption: (req: DisruptionRequest, options?: { signal?: AbortSignal }) => request<DisruptionResponse>('/scheduler/disruption', {
+    method: 'POST',
+    body: JSON.stringify(req),
+    signal: options?.signal,
+  }),
+  getGanttData: (scenarioId: string, params?: { solver?: 'edf' | 'cpsat'; time_limit_seconds?: number; seed?: number; workers?: number; warm_start?: boolean }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.solver) searchParams.set('solver', params.solver)
+    if (params?.time_limit_seconds) searchParams.set('time_limit_seconds', String(params.time_limit_seconds))
+    if (params?.seed) searchParams.set('seed', String(params.seed))
+    if (params?.workers) searchParams.set('workers', String(params.workers))
+    if (params?.warm_start !== undefined) searchParams.set('warm_start', String(params.warm_start))
+    const qs = searchParams.toString()
+    return request<GanttResponse>(`/scheduler/gantt/${scenarioId}${qs ? `?${qs}` : ''}`)
+  },
+  compareSchedulers: (req: CompareSchedulersRequest, options?: { signal?: AbortSignal }) => {
+    const mapped = buildCompareRequest(req)
+    return request<CompareSchedulersResponse>(mapped.url, {
+      method: 'POST',
+      body: JSON.stringify(mapped.body),
+      signal: options?.signal,
+    })
   },
 
   async getNotifications(orderId?: number, status?: string): Promise<BackendEmailNotification[]> {
@@ -854,3 +893,243 @@ export interface ReportGeneratePayload {
   machine_id?: number | null
 }
 
+// -------------------------------------------------------------
+// SCHEDULER TYPES (Mirrored from textile-scheduler contract v1)
+// -------------------------------------------------------------
+
+export type SolverStatus = 'OPTIMAL' | 'FEASIBLE' | 'INFEASIBLE' | 'UNKNOWN' | 'MODEL_INVALID'
+export type ValidationStatus = 'valid' | 'invalid'
+export type Severity = 'error' | 'warning'
+export type Stage = 'spinning' | 'weaving' | 'dyeing'
+export type SchedulerType = 'edf' | 'cpsat'
+export type DisruptionType = 'machine_down' | 'yarn_delay'
+
+export interface ScheduledOperation {
+  order: string
+  stage: Stage
+  machine: string
+  start: number
+  end: number
+  duration?: number | null
+  quantity_metres?: number | null
+}
+
+export interface ValidationViolation {
+  code: string
+  rule: number
+  severity: Severity
+  message: string
+  order?: string | null
+  machine?: string | null
+  stage?: Stage | null
+}
+
+export interface ValidationResult {
+  status: ValidationStatus
+  violations: ValidationViolation[]
+}
+
+export interface ScheduleMetrics {
+  weighted_tardiness?: number | null
+  on_time_rate?: number | null
+  utilisation?: number | null
+  makespan?: number | null
+}
+
+export interface Schedule {
+  id: string
+  scenario_id: string
+  solver: SchedulerType
+  status: SolverStatus
+  compute_seconds?: number | null
+  validation: ValidationResult
+  metrics: ScheduleMetrics
+  operations: ScheduledOperation[]
+  warnings: string[]
+  diagnostics: Record<string, string | number | boolean | null>
+}
+
+export interface ScenarioListItem {
+  id: string
+  name: string
+  description: string
+  orders: number
+  machines: number
+  machines_by_stage: Record<string, number>
+  horizon: number
+  now: number
+  total_metres: number
+  downtime_windows: number
+  frozen_operations: number
+}
+
+export interface ScenarioDetail {
+  scenario_id: string
+  description: string
+  synthetic_data: boolean
+  start?: string | null
+  now: number | null
+  horizon: number | null
+  route: Stage[]
+  machines: ScenarioMachine[]
+  orders: ScenarioOrder[]
+  frozen: FrozenOperation[]
+  stats: Record<string, unknown>
+  consistency_warnings: string[]
+}
+
+export interface ScenarioDowntime {
+  start: number
+  end: number
+  reason: string | null
+}
+
+export interface ScenarioMachine {
+  id: string
+  stage: Stage
+  rate_m_per_hour: number
+  downtime?: ScenarioDowntime[] | null
+  available_until: number | null
+  status: string
+  current_order: string | null
+  progress_pct: number
+}
+
+export interface ScenarioOrder {
+  id: string
+  buyer: string | null
+  fabric: string | null
+  colour: string | null
+  metres: number
+  ordered_at: number
+  due: number
+  priority_weight: number
+  yarn_ready?: number | null
+  eligible: Record<Stage, string[]>
+}
+
+export interface FrozenOperation {
+  order: string
+  stage: Stage
+  machine: string
+  start: number
+  end: number
+  quantity_metres: number | null
+}
+
+export interface RunSchedulerRequest {
+  scenario_id: string
+  solver: 'edf' | 'cpsat'
+  time_limit_seconds: number
+  seed: number
+  workers: number
+  warm_start: boolean
+}
+
+export interface RunSchedulerResponse {
+  schedule: Schedule
+  warning: string | null
+}
+
+export interface ValidationRequest {
+  scenario_id: string
+  schedule: Schedule
+}
+
+export interface ValidationResponse {
+  status: ValidationStatus
+  violations: ValidationViolation[]
+  violation_count: number
+}
+
+export interface DisruptionRequest {
+  scenario_id: string
+  current_schedule: Schedule
+  disruption_type: DisruptionType
+  machine?: string | null
+  from_minute?: number | null
+  to_minute?: number | null
+  reason?: string | null
+  order?: string | null
+  hours?: number | null
+  delay_minutes?: number | null
+  now: number
+  solver: 'edf' | 'cpsat'
+  time_limit_seconds: number
+  seed: number
+}
+
+export interface DisruptionResponse {
+  ok: boolean
+  schedule: Schedule | null
+  error: string | null
+  diff: {
+    frozen_count: number
+    split_count: number
+    interrupted: any[]
+    moved_orders: string[]
+    now_late: string[]
+    now_at_risk: string[]
+    recovered: string[]
+    unchanged: string[]
+  } | null
+  previous_metrics: ScheduleMetrics | null
+  new_metrics: ScheduleMetrics | null
+}
+
+export interface GanttResponse {
+  scenario_id: string
+  schedule_id: string
+  solver: string
+  status: string
+  validation: ValidationResult
+  time: {
+    scenario_start: string | null
+    unit: string
+    origin_minute: number
+    now: number
+    horizon: number
+  }
+  metrics: ScheduleMetrics
+  rows: Array<{
+    machine_id: string
+    stage: Stage | null
+    rate_m_per_hour: number | null
+    bars: Array<{
+      kind: 'operation' | 'downtime'
+      order_id?: string
+      stage?: Stage
+      machine_id?: string
+      start: number
+      end: number
+      duration: number
+      quantity_metres?: number | null
+      late?: boolean
+      frozen?: boolean
+      reason?: string | null
+    }>
+  }>
+}
+
+export interface CompareSchedulersRequest {
+  scenario_id: string
+  time_limit_seconds: number
+  seed: number
+  workers: number
+}
+
+export interface CompareSchedulersResponse {
+  scenario_id: string
+  results: {
+    edf: Schedule | { error: string }
+    cpsat: Schedule | { error: string }
+  }
+  comparison: Partial<Record<
+    'weighted_tardiness' | 'on_time_rate' | 'makespan' | 'utilisation',
+    { edf: number | null; cpsat: number | null; absolute_change: number | null; percent_improvement: number | null }
+  >> & {
+    compute_seconds?: { edf: number | null; cpsat: number | null }
+    validation?: { edf: { status: string; violations: number }; cpsat: { status: string; violations: number } }
+    solver_status?: { edf: string; cpsat: string }
+  }
+}

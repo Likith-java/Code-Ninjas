@@ -32,6 +32,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
   const [machineTypeFilter, setMachineTypeFilter] = useState<'all' | 'spinning' | 'weaving' | 'dyeing'>('all')
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false)
   const [isEmailAuditOpen, setIsEmailAuditOpen] = useState(false)
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
 
   // Anchored Floating Order Details Popover
   const [popoverOrder, setPopoverOrder] = useState<OrderDetailsData | null>(null)

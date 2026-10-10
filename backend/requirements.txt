@@ -13,3 +13,4 @@ httpx
 reportlab
 openpyxl
 qrcode[pil]
+ortools

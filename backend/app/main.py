@@ -20,6 +20,7 @@ from app.routers import (
     production_runs,
     reports,
     rolls,
+    scheduler,
     suppliers,
 )
 
@@ -96,3 +97,4 @@ app.include_router(rolls.router)
 app.include_router(dispatches.router)
 app.include_router(reports.router)
 app.include_router(notifications.router)
+app.include_router(scheduler.router)
