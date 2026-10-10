@@ -12,3 +12,4 @@ pytest
 httpx
 reportlab
 openpyxl
+qrcode[pil]

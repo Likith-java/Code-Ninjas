@@ -201,6 +201,7 @@ class InventoryMovementOut(BaseModel):
 class InventoryLotOut(BaseModel):
     lot_id: int
     lot_code: str
+    qr_token: str | None = None
     material_id: int
     material_type: str
     colour: str
@@ -209,6 +210,30 @@ class InventoryLotOut(BaseModel):
     available_kg: Decimal
     reorder_threshold_kg: Decimal
     low_stock: bool
+
+
+class MaterialLotDetailOut(BaseModel):
+    lot_id: int
+    lot_code: str
+    qr_token: str | None = None
+    qr_code_url: str
+    material_id: int
+    material_type: str
+    colour: str
+    specification: str
+    yarn_kg_per_metre: Decimal | None = None
+    supplier_id: int
+    supplier_name: str | None = None
+    supplier_contact: str | None = None
+    initial_received_kg: Decimal
+    available_kg: Decimal
+    intended_order_id: int | None = None
+    intended_order_code: str | None = None
+    lot_cost: Decimal
+    unit: str = "kg"
+    received_at: datetime
+    movements: list[InventoryMovementOut] = []
+    quality_status: str = "Released"
 
 
 class InventorySummaryOut(BaseModel):

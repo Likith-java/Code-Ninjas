@@ -6,6 +6,7 @@ import {
   api,
   BackendInventorySummary,
   BackendInventoryLot,
+  BackendLotDetail,
   BackendInventoryMovement,
   BackendMaterial,
   BackendSupplier,
@@ -13,6 +14,9 @@ import {
   FeasibilityOut,
   ApiClientError,
 } from '@/lib/api'
+import { LotQrModal } from '@/components/modals/LotQrModal'
+import { YarnQrScannerModal } from '@/components/modals/YarnQrScannerModal'
+import { ScannedLotDetailModal } from '@/components/modals/ScannedLotDetailModal'
 
 export function YarnInventoryView() {
   const [inventory, setInventory] = useState<BackendInventorySummary | null>(null)
@@ -23,6 +27,13 @@ export function YarnInventoryView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lowStockFilter, setLowStockFilter] = useState(false)
+
+  // QR Modal States
+  const [selectedQrLot, setSelectedQrLot] = useState<BackendInventoryLot | null>(null)
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false)
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
+  const [scannedLotDetail, setScannedLotDetail] = useState<BackendLotDetail | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
 
   // Modals state
   const [activeModal, setActiveModal] = useState<'receipt' | 'issue' | 'adjust' | 'feasibility' | null>(null)
@@ -91,6 +102,52 @@ export function YarnInventoryView() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const paramLotId = params.get('lotId')
+      const paramScan = params.get('scan')
+      if (paramScan === 'true') {
+        setIsScannerOpen(true)
+      } else if (paramLotId) {
+        const id = parseInt(paramLotId, 10)
+        if (!isNaN(id)) {
+          api.getLotDetail(id).then((detail) => {
+            setScannedLotDetail(detail)
+            setIsDetailOpen(true)
+          }).catch((err) => console.warn('Failed to load lot from URL param:', err))
+        }
+      }
+    }
+  }, [])
+
+  const handleLotResolved = (detail: BackendLotDetail) => {
+    setScannedLotDetail(detail)
+    setIsDetailOpen(true)
+  }
+
+  const handleOpenQrLabelFromDetail = (detail: BackendLotDetail) => {
+    const matching = inventory?.lots.find((l) => l.lot_id === detail.lot_id)
+    if (matching) {
+      setSelectedQrLot(matching)
+    } else {
+      setSelectedQrLot({
+        lot_id: detail.lot_id,
+        lot_code: detail.lot_code,
+        qr_token: detail.qr_token,
+        material_id: detail.material_id,
+        material_type: detail.material_type,
+        colour: detail.colour,
+        specification: detail.specification,
+        supplier_id: detail.supplier_id,
+        available_kg: detail.available_kg,
+        reorder_threshold_kg: 0,
+        low_stock: false,
+      })
+    }
+    setIsQrModalOpen(true)
+  }
 
   const handleCreateReceipt = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -201,6 +258,15 @@ export function YarnInventoryView() {
         {/* Global Module Actions */}
         <div className="flex flex-wrap items-center gap-2">
           <Button
+            variant="primary"
+            size="xs"
+            className="bg-[#0E4B3E] text-white hover:bg-[#0B382F] pop-shadow-xs"
+            icon={<MaterialIcon name="qr_code_scanner" size="xs" />}
+            onClick={() => setIsScannerOpen(true)}
+          >
+            Scan Yarn QR
+          </Button>
+          <Button
             variant="pop"
             size="xs"
             icon={<MaterialIcon name="calculate" size="xs" color="#0E4B3E" />}
@@ -300,6 +366,7 @@ export function YarnInventoryView() {
                   <th className="py-2 px-3 text-right">Available (kg)</th>
                   <th className="py-2 px-3 text-right">Threshold</th>
                   <th className="py-2 px-3 text-center">Status</th>
+                  <th className="py-2 px-3 text-center">QR Tracking</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-200">
@@ -323,6 +390,41 @@ export function YarnInventoryView() {
                             Available
                           </Badge>
                         )}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            className="px-2 py-0.5 text-[10.5px] border-[#181816] hover:bg-stone-100"
+                            icon={<MaterialIcon name="qr_code_2" size="xs" />}
+                            onClick={() => {
+                              setSelectedQrLot(lot)
+                              setIsQrModalOpen(true)
+                            }}
+                            title="View and print QR label"
+                          >
+                            QR Label
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            className="px-1.5 py-0.5 text-stone-600 hover:text-[#0E4B3E]"
+                            icon={<MaterialIcon name="visibility" size="xs" />}
+                            onClick={async () => {
+                              try {
+                                const detail = await api.getLotDetail(lot.lot_id)
+                                setScannedLotDetail(detail)
+                                setIsDetailOpen(true)
+                              } catch (e) {
+                                console.error(e)
+                              }
+                            }}
+                            title="Inspect lot tracking & issue yarn"
+                          >
+                            View
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -719,6 +821,29 @@ export function YarnInventoryView() {
           </Card>
         </div>
       )}
+
+      {/* QR MODALS */}
+      <LotQrModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        lot={selectedQrLot}
+        supplier={selectedQrLot ? suppliers.find((s) => s.id === selectedQrLot.supplier_id) : null}
+      />
+
+      <YarnQrScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onLotResolved={handleLotResolved}
+      />
+
+      <ScannedLotDetailModal
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        lotDetail={scannedLotDetail}
+        orders={orders}
+        onStockChanged={loadData}
+        onOpenQrLabel={handleOpenQrLabelFromDetail}
+      />
     </div>
   )
 }

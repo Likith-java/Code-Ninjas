@@ -309,6 +309,9 @@ class MaterialLot(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     lot_code: Mapped[str] = mapped_column(String(100), nullable=False)
+    qr_token: Mapped[str | None] = mapped_column(
+        String(64), unique=True, index=True, nullable=True
+    )
     material_id: Mapped[int] = mapped_column(
         ForeignKey("materials.id", ondelete="RESTRICT"), nullable=False, index=True
     )
