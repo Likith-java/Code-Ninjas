@@ -2,22 +2,21 @@
 
 import pytest
 
+from textile_scheduler.baseline import run_edf_baseline
+from textile_scheduler.metrics import compute_metrics
 from textile_scheduler.models import (
     Machine,
     Order,
     OrderEligibility,
     Scenario,
-    ScheduledOperation,
-    Stage,
+    Schedule,
     SchedulerType,
     SolverStatus,
+    Stage,
     ValidationResult,
 )
-from textile_scheduler.baseline import run_edf_baseline
 from textile_scheduler.optimizer import run_cpsat_optimizer
 from textile_scheduler.validator import validate_schedule
-from textile_scheduler.metrics import compute_metrics
-from textile_scheduler.models import Schedule
 
 
 def create_feasible_scenario() -> Scenario:

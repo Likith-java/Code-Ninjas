@@ -2,19 +2,22 @@
 
 import pytest
 
+from textile_scheduler.baseline import EDFScheduler, run_edf_baseline
+from textile_scheduler.metrics import compute_metrics
 from textile_scheduler.models import (
+    DowntimeWindow,
+    FrozenOperation,
     Machine,
     Order,
     OrderEligibility,
     Scenario,
+    Schedule,
+    SchedulerType,
+    SolverStatus,
     Stage,
-    DowntimeWindow,
-    FrozenOperation,
+    ValidationResult,
 )
-from textile_scheduler.baseline import EDFScheduler, run_edf_baseline
 from textile_scheduler.validator import validate_schedule
-from textile_scheduler.models import Schedule, SchedulerType, SolverStatus, ValidationResult
-from textile_scheduler.metrics import compute_metrics
 
 
 def create_simple_scenario(

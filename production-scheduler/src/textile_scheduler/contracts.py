@@ -10,19 +10,18 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Type
 
 from pydantic import BaseModel
 
 from .models import CONTRACT_VERSION, FailureResult, Scenario, Schedule
 
 #: Public input models keyed by schema file stem.
-PUBLIC_INPUT_MODELS: dict[str, Type[BaseModel]] = {
+PUBLIC_INPUT_MODELS: dict[str, type[BaseModel]] = {
     "scenario": Scenario,
 }
 
 #: Public output models keyed by schema file stem.
-PUBLIC_OUTPUT_MODELS: dict[str, Type[BaseModel]] = {
+PUBLIC_OUTPUT_MODELS: dict[str, type[BaseModel]] = {
     "schedule": Schedule,
     "failure": FailureResult,
 }

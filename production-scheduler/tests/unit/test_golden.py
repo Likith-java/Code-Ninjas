@@ -8,20 +8,18 @@ route usability) are pydantic-only and documented as such.
 
 from __future__ import annotations
 
-import glob
 import json
-import os
 from pathlib import Path
 
 import jsonschema
 import pytest
 
+from textile_scheduler.baseline import run_edf
 from textile_scheduler.benchmark import (
     BenchmarkConfig,
     SolverRun,
     compare_runs,
 )
-from textile_scheduler.baseline import run_edf
 from textile_scheduler.gantt import build_gantt_data
 from textile_scheduler.loader import load_scenario_file
 from textile_scheduler.models import (
@@ -176,7 +174,7 @@ class TestJsonSchema:
             load_scenario_file(FIXTURES / name)
 
     def test_all_fixture_files_accounted(self) -> None:
-        names = {os.path.basename(p) for p in glob.glob(str(FIXTURES / "*.json"))}
+        names = {p.name for p in FIXTURES.glob("*.json")}
         assert names == {
             "valid_scenario_minimal.json",
             "valid_scenario_full.json",

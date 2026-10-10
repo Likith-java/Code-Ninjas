@@ -320,7 +320,7 @@ class TestReportOutputs:
         assert json.loads(json_path.read_text())["summary"]["target_met"] == 1
 
         csv_path = comparison_to_csv(report, tmp_path / "comparison.csv")
-        with open(csv_path, newline="") as f:
+        with csv_path.open(newline="") as f:
             rows = list(csv.DictReader(f))
         assert len(rows) == 9  # one row per compared metric
         tardiness = next(r for r in rows if r["metric"] == "weighted_tardiness")

@@ -20,7 +20,6 @@ from textile_scheduler.models import (
     OrderEligibility,
     Scenario,
     ScheduledOperation,
-    SolverStatus,
     Stage,
 )
 

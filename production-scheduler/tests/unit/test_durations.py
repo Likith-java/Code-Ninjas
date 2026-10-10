@@ -3,7 +3,6 @@
 import pytest
 
 from textile_scheduler.durations import compute_duration, compute_end_time
-from textile_scheduler.models import Stage
 
 
 class TestComputeDuration:

@@ -1,7 +1,10 @@
 """Unit tests for metrics module."""
 
-import pytest
-
+from textile_scheduler.metrics import (
+    compute_machine_utilisation,
+    compute_metrics,
+    compute_order_details,
+)
 from textile_scheduler.models import (
     Machine,
     Order,
@@ -9,11 +12,6 @@ from textile_scheduler.models import (
     Scenario,
     ScheduledOperation,
     Stage,
-)
-from textile_scheduler.metrics import (
-    compute_metrics,
-    compute_order_details,
-    compute_machine_utilisation,
 )
 
 

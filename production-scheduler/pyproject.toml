@@ -48,6 +48,8 @@ include = ["textile_scheduler*"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "UP", "W", "C4", "PTH", "RUF", "RET", "SIM", "TID", "ARG"]
 ignore = ["S101", "ARG001", "ARG002"]
 

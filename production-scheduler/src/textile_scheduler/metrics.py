@@ -20,7 +20,6 @@ from __future__ import annotations
 from collections import defaultdict
 
 from .models import Machine, Order, Scenario, ScheduledOperation, ScheduleMetrics
-from .durations import compute_duration
 
 
 def compute_metrics(

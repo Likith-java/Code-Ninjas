@@ -1,7 +1,7 @@
 """Smoke test for textile_scheduler package."""
 
 import textile_scheduler
-from textile_scheduler.models import Scenario, Machine, Order, OrderEligibility, Stage
+from textile_scheduler.models import Machine, Order, OrderEligibility, Scenario, Stage
 
 
 def test_import() -> None:

@@ -16,19 +16,20 @@ from typing import NoReturn
 import click
 from pydantic import ValidationError as PydanticValidationError
 
+from .baseline import run_edf, run_edf_baseline
+from .durations import compute_duration
+from .gantt import export_gantt_json
+from .loader import load_scenario_file
 from .models import (
     Disruption,
     DisruptionType,
     FailureResult,
     Scenario,
+    Schedule,
     SchedulerType,
     SolverStatus,
 )
-from .loader import load_scenario_file
-from .baseline import run_edf_baseline, run_edf
 from .optimizer import optimize as run_cpsat_optimize
-from .durations import compute_duration
-from .gantt import export_gantt_json
 
 EXIT_USAGE = 1
 EXIT_SOLVER = 2
@@ -55,7 +56,7 @@ def _load_or_exit(scenario_path: Path) -> Scenario:
     raise AssertionError("unreachable")
 
 
-def _emit_json(model, output: str | None) -> None:
+def _emit_json(model: Schedule | FailureResult, output: str | None) -> None:
     """Write machine-readable JSON to stdout or the requested file."""
     text = json.dumps(model.model_dump(mode="json", by_alias=True), indent=2)
     if output:
@@ -65,7 +66,7 @@ def _emit_json(model, output: str | None) -> None:
         click.echo(text)
 
 
-def save_schedule(schedule, output: str | None) -> None:
+def save_schedule(schedule: Schedule, output: str | None) -> None:
     """Save schedule to file or stdout (JSON only)."""
     _emit_json(schedule, output)
 
@@ -167,14 +168,14 @@ def optimize(
         try:
             warm_start_ops = run_edf_baseline(scenario)
         except RuntimeError as exc:
-            _emit_failure(
-                scenario.scenario_id,
-                SchedulerType.CP_SAT,
-                SolverStatus.UNKNOWN,
-                f"EDF warm start failed: {exc}",
-                str(output) if output else None,
+            # Hints are optional guidance: a failed baseline must not abort
+            # the optimisation itself.
+            click.echo(
+                f"WARNING: EDF warm start failed ({exc}); continuing without hints.", err=True
             )
-        click.echo(f"EDF scheduled {len(warm_start_ops)} operations", err=True)
+            warm_start_ops = None
+        else:
+            click.echo(f"EDF scheduled {len(warm_start_ops)} operations", err=True)
 
     click.echo(
         f"Running CP-SAT optimizer (time_limit={time_limit}s, seed={seed}, workers={workers})...",
@@ -436,7 +437,8 @@ def validate(scenario_path: Path) -> None:
                 missing = [m for m in eligible if m not in {mm.id for mm in scenario.machines}]
                 if missing:
                     click.echo(
-                        f"  WARNING: Order {order.id} references unknown machines for {stage.value}: {missing}",
+                        f"  WARNING: Order {order.id} references unknown machines "
+                        f"for {stage.value}: {missing}",
                         err=True,
                     )
 
@@ -485,7 +487,7 @@ def benchmark(
     )
 
     if scenarios:
-        paths = [str(p) for p in scenarios]
+        paths: list[str | Path] = [str(p) for p in scenarios]
     else:
         base = Path("scenarios")
         paths = [

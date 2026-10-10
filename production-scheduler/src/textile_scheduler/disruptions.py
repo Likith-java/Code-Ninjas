@@ -95,10 +95,9 @@ def apply_disruption(
     """
     if disruption.type == DisruptionType.MACHINE_DOWN:
         return _apply_machine_breakdown(scenario, schedule_operations, disruption)
-    elif disruption.type == DisruptionType.YARN_DELAY:
+    if disruption.type == DisruptionType.YARN_DELAY:
         return _apply_yarn_delay(scenario, schedule_operations, disruption)
-    else:
-        raise ValueError(f"Unknown disruption type: {disruption.type}")
+    raise ValueError(f"Unknown disruption type: {disruption.type}")
 
 
 def _split_quantities(
@@ -258,7 +257,7 @@ def _apply_machine_breakdown(
             and op.stage == broken_op.stage
         ):
             continue  # interrupted or blocked: re-solved, never kept as-is
-        elif op.machine == machine_id and op.start >= dt_to:
+        if op.machine == machine_id and op.start >= dt_to:
             pass  # entirely after downtime: re-solved
         elif op.end <= now:
             completed_order = order_by_id.get(op.order)
@@ -430,7 +429,7 @@ def _compute_diff(
     new_ops: list[ScheduledOperation],
     frozen_ops: list[FrozenOperation],
     split_count: int,
-    disruption=None,
+    disruption: Disruption | None = None,
     interrupted: list[dict] | None = None,
 ) -> ReplanDiff:
     """Compute the before-and-after difference between two operation lists."""

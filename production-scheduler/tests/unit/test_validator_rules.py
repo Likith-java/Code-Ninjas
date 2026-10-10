@@ -192,14 +192,15 @@ class TestRules:
         assert not result.is_valid
 
     def test_r02_duplicate_operation(self) -> None:
-        ops = valid_ops() + [
+        ops = [
+            *valid_ops(),
             ScheduledOperation(
                 order="ORD-001",
                 stage=Stage.SPINNING,
                 machine="SPIN-01",
                 start=0,
                 end=1200,
-            )
+            ),
         ]
         result, _ = validate_ops(create_scenario(), ops)
         assert "R02_DUPLICATE_OPERATION" in codes(result)

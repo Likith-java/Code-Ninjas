@@ -251,6 +251,138 @@ class TestStatusSemantics:
         assert schedule.status == SolverStatus.INFEASIBLE
         assert schedule.operations == []
 
+
+@needs_ortools
+class TestHardConstraints:
+    """CP-SAT honors the same hard constraints as EDF and the validator."""
+
+    def test_machine_eligibility_honored(self) -> None:
+        scenario = tiny_scenario(
+            machines=[
+                Machine(id="SPIN-01", stage=Stage.SPINNING, rate_m_per_hour=60),
+                Machine(id="SPIN-02", stage=Stage.SPINNING, rate_m_per_hour=60),
+                Machine(id="WEAVE-01", stage=Stage.WEAVING, rate_m_per_hour=40),
+                Machine(id="DYE-01", stage=Stage.DYEING, rate_m_per_hour=30),
+            ]
+        )
+        schedule = optimize(scenario, time_limit_seconds=10)
+        assert schedule.validation.is_valid
+        for op in schedule.operations:
+            order = next(o for o in scenario.orders if o.id == op.order)
+            assert op.machine in order.eligible.get_machines(op.stage)
+
+    def test_yarn_ready_honored(self) -> None:
+        scenario = tiny_scenario(
+            orders=[
+                Order(
+                    id="ORD-001",
+                    metres=600,
+                    due=4000,
+                    priority_weight=2,
+                    yarn_ready=1000,
+                    eligible=OrderEligibility(
+                        spinning=["SPIN-01"],
+                        weaving=["WEAVE-01"],
+                        dyeing=["DYE-01"],
+                    ),
+                )
+            ]
+        )
+        schedule = optimize(scenario, time_limit_seconds=10)
+        assert schedule.validation.is_valid
+        first = min(op for op in schedule.operations if op.stage == Stage.SPINNING)
+        assert first.start >= 1000
+
+    def test_availability_horizon_honored(self) -> None:
+        scenario = tiny_scenario(
+            machines=[
+                Machine(
+                    id="SPIN-01",
+                    stage=Stage.SPINNING,
+                    rate_m_per_hour=60,
+                    available_until=2000,
+                ),
+                Machine(id="WEAVE-01", stage=Stage.WEAVING, rate_m_per_hour=40),
+                Machine(id="DYE-01", stage=Stage.DYEING, rate_m_per_hour=30),
+            ]
+        )
+        schedule = optimize(scenario, time_limit_seconds=10)
+        assert schedule.validation.is_valid
+        for op in schedule.operations:
+            if op.machine == "SPIN-01":
+                assert op.end <= 2000
+
+    def test_frozen_operations_preserved(self) -> None:
+        scenario = tiny_scenario(
+            frozen=[
+                FrozenOperation(
+                    order="ORD-001",
+                    stage=Stage.SPINNING,
+                    machine="SPIN-01",
+                    start=100,
+                    end=700,
+                )
+            ]
+        )
+        schedule = optimize(scenario, time_limit_seconds=10)
+        assert schedule.validation.is_valid
+        spin = next(op for op in schedule.operations if op.stage == Stage.SPINNING)
+        assert (spin.start, spin.end, spin.machine) == (100, 700, "SPIN-01")
+
+    def test_unfrozen_work_starts_after_now(self) -> None:
+        scenario = tiny_scenario(now=500)
+        schedule = optimize(scenario, time_limit_seconds=10)
+        assert schedule.validation.is_valid
+        assert all(op.start >= 500 for op in schedule.operations)
+
+
+@needs_ortools
+class TestOptimalityComparison:
+    """CP-SAT at OPTIMAL is no worse than EDF under the same objective."""
+
+    @pytest.mark.parametrize("metres,due", [(600, 4000), (1200, 9000), (300, 2000)])
+    def test_optimal_dominates_edf_primary(self, metres: int, due: int) -> None:
+        from textile_scheduler.baseline import run_edf
+        from textile_scheduler.metrics import order_completions
+        from textile_scheduler.optimizer import objective_terms
+
+        scenario = tiny_scenario(
+            horizon=20000,
+            orders=[
+                Order(
+                    id="ORD-001",
+                    metres=metres,
+                    due=due,
+                    priority_weight=2,
+                    eligible=OrderEligibility(
+                        spinning=["SPIN-01"],
+                        weaving=["WEAVE-01"],
+                        dyeing=["DYE-01"],
+                    ),
+                )
+            ],
+        )
+        edf = run_edf(scenario)
+        cpsat = optimize(scenario, time_limit_seconds=10)
+        assert cpsat.status == SolverStatus.OPTIMAL
+        edf_primary, _, _ = objective_terms(
+            {
+                oid: c
+                for oid, c in order_completions(scenario, edf.operations).items()
+                if c is not None
+            },
+            scenario,
+        )
+        cpsat_primary, _, _ = objective_terms(
+            {
+                oid: c
+                for oid, c in order_completions(scenario, cpsat.operations).items()
+                if c is not None
+            },
+            scenario,
+        )
+        assert cpsat_primary <= edf_primary
+
     def test_measures_against_edf_without_promises(self) -> None:
         """Correctness first: CP-SAT tardiness is measured, not promised."""
         scenario = load_scenario_file(ROOT / "scenarios" / "feasible_load.json")

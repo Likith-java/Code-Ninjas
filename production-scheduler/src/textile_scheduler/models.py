@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from itertools import pairwise
 from typing import Annotated
 from uuid import uuid4
 
@@ -30,6 +31,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    ValidationInfo,
     field_validator,
     model_validator,
 )
@@ -115,7 +117,7 @@ class DowntimeWindow(BaseModel):
 
     @field_validator("end")
     @classmethod
-    def _end_after_start(cls, v: int, info) -> int:
+    def _end_after_start(cls, v: int, info: ValidationInfo) -> int:
         if "start" in info.data and v <= info.data["start"]:
             raise ValueError("end must be greater than start")
         return v
@@ -139,7 +141,7 @@ class Machine(BaseModel):
     @classmethod
     def _downtime_must_not_overlap(cls, v: list[DowntimeWindow]) -> list[DowntimeWindow]:
         ordered = sorted(v, key=lambda w: (w.start, w.end))
-        for first, second in zip(ordered, ordered[1:]):
+        for first, second in pairwise(ordered):
             if second.start < first.end:
                 raise ValueError(
                     f"downtime windows overlap: {first.start}-{first.end} "
@@ -158,7 +160,8 @@ class OrderEligibility(BaseModel):
     dyeing: list[str] = Field(default_factory=list)
 
     def get_machines(self, stage: Stage) -> list[str]:
-        return getattr(self, stage.value)
+        machines: list[str] = getattr(self, stage.value)
+        return machines
 
 
 class Order(BaseModel):
@@ -220,7 +223,7 @@ class FrozenOperation(BaseModel):
 
     @field_validator("end")
     @classmethod
-    def _end_after_start(cls, v: int, info) -> int:
+    def _end_after_start(cls, v: int, info: ValidationInfo) -> int:
         if "start" in info.data and v <= info.data["start"]:
             raise ValueError("end must be greater than start")
         return v
@@ -279,7 +282,9 @@ class Scenario(BaseModel):
 
     @field_validator("frozen")
     @classmethod
-    def _frozen_refs_exist(cls, v: list[FrozenOperation], info) -> list[FrozenOperation]:
+    def _frozen_refs_exist(
+        cls, v: list[FrozenOperation], info: ValidationInfo
+    ) -> list[FrozenOperation]:
         if not info.data:
             return v
         order_ids = {o.id for o in info.data.get("orders", [])}
@@ -317,7 +322,7 @@ class ScheduledOperation(BaseModel):
 
     @field_validator("end")
     @classmethod
-    def _end_after_start(cls, v: int, info) -> int:
+    def _end_after_start(cls, v: int, info: ValidationInfo) -> int:
         if "start" in info.data and v <= info.data["start"]:
             raise ValueError("end must be greater than start")
         return v
@@ -461,7 +466,7 @@ class Disruption(BaseModel):
 
     @field_validator("from_minute", "to_minute", mode="before")
     @classmethod
-    def _allow_none(cls, v):
+    def _allow_none(cls, v: object) -> object:
         return v
 
     @property
@@ -471,7 +476,7 @@ class Disruption(BaseModel):
             return self.delay_minutes
         return (self.hours or 0) * 60
 
-    def model_post_init(self, __context) -> None:
+    def model_post_init(self, __context: object) -> None:
         if self.type == DisruptionType.MACHINE_DOWN:
             if not self.machine:
                 raise ValueError("machine_down requires machine")

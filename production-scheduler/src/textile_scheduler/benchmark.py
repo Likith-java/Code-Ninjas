@@ -20,7 +20,7 @@ import hashlib
 import io
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -320,19 +320,22 @@ def run_benchmark(scenario_paths: list[str | Path], config: BenchmarkConfig) -> 
 
     applicable = [c for c in comparisons if c.tardiness_improvement_pct is not None]
     met = [c for c in applicable if c.target_met]
+    improvements = [
+        pct
+        for c in applicable
+        if (pct := c.tardiness_improvement_pct) is not None
+    ]
     summary: dict[str, str | int | float | bool | None] = {
         "scenarios_compared": len(comparisons),
         "scenarios_failed": len(failures),
         "target_applicable": len(applicable),
         "target_met": len(met),
         "mean_improvement_pct": (
-            sum(c.tardiness_improvement_pct for c in applicable) / len(applicable)
-            if applicable
-            else None
+            sum(improvements) / len(improvements) if improvements else None
         ),
     }
     return BenchmarkReport(
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=datetime.now(UTC).isoformat(),
         target_pct=config.target_improvement_pct,
         comparisons=comparisons,
         failures=failures,
@@ -384,8 +387,10 @@ def comparison_to_csv(report: BenchmarkReport, path: str | Path) -> Path:
     return out
 
 
-def _fmt(value: float | None, digits: int = 2) -> str:
-    return "N/A" if value is None else f"{value:.{digits}f}"
+def _fmt(value: object, digits: int = 2) -> str:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return "N/A"
+    return f"{value:.{digits}f}"
 
 
 def report_to_markdown(report: BenchmarkReport) -> str:
@@ -399,7 +404,7 @@ def report_to_markdown(report: BenchmarkReport) -> str:
         "## Summary",
         "",
         f"- Scenarios compared: {report.summary['scenarios_compared']}",
-        f"- Scenarios failed/infeasible (reported separately): {report.summary['scenarios_failed']}",
+        f"- Failed/infeasible (reported separately): {report.summary['scenarios_failed']}",
         f"- Target applicable: {report.summary['target_applicable']}",
         f"- Target met: {report.summary['target_met']}",
         f"- Mean tardiness improvement: {_fmt(report.summary['mean_improvement_pct'])}%",

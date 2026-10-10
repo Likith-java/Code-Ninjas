@@ -93,9 +93,6 @@ class ScheduleValidator:
             by_pair[(op.order, op.stage)].append(op)
         return by_pair
 
-    def _known(self, op: ScheduledOperation) -> bool:
-        return op.order in self.orders and op.machine in self.machine_by_id
-
     def _violation(
         self,
         code: str,
@@ -498,7 +495,7 @@ class ScheduleValidator:
 
     def _check_frozen(self, operations: list[ScheduledOperation]) -> list[ValidationViolation]:
         """R15: frozen/completed operations remain unchanged during replanning."""
-        violations = []
+        violations: list[ValidationViolation] = []
         if not self.frozen:
             return violations
         by_key = {(op.order, op.stage, op.machine): op for op in operations}

@@ -2,19 +2,18 @@
 
 import pytest
 
+from textile_scheduler.baseline import run_edf_baseline
+from textile_scheduler.disruptions import ReplanDiff, apply_disruption
 from textile_scheduler.models import (
+    Disruption,
+    DisruptionType,
     Machine,
     Order,
     OrderEligibility,
     Scenario,
     ScheduledOperation,
     Stage,
-    Disruption,
-    DisruptionType,
-    DowntimeWindow,
 )
-from textile_scheduler.disruptions import apply_disruption, ReplanDiff
-from textile_scheduler.baseline import run_edf_baseline
 
 
 def create_scenario_with_schedule() -> tuple[Scenario, list[ScheduledOperation]]:
@@ -85,7 +84,7 @@ class TestMachineBreakdown:
             now=500,
         )
 
-        new_scenario, new_ops, diff = apply_disruption(scenario, operations, disruption)
+        new_scenario, _, _ = apply_disruption(scenario, operations, disruption)
 
         # Check new scenario has downtime on WEAVE-01
         weave01 = next(m for m in new_scenario.machines if m.id == "WEAVE-01")
@@ -106,7 +105,7 @@ class TestMachineBreakdown:
             now=500,
         )
 
-        new_scenario, new_ops, diff = apply_disruption(scenario, operations, disruption)
+        new_scenario, _, diff = apply_disruption(scenario, operations, disruption)
 
         # Should have frozen operations
         assert diff.frozen_count > 0
@@ -124,7 +123,7 @@ class TestMachineBreakdown:
             now=500,
         )
 
-        new_scenario, new_ops, diff = apply_disruption(scenario, operations, disruption)
+        _, _, diff = apply_disruption(scenario, operations, disruption)
 
         # The affected operation should be split
         assert diff.split_count >= 0  # May or may not split depending on schedule
@@ -140,7 +139,7 @@ class TestMachineBreakdown:
             now=500,
         )
 
-        new_scenario, new_ops, diff = apply_disruption(scenario, operations, disruption)
+        new_scenario, _, _ = apply_disruption(scenario, operations, disruption)
 
         # ORD-001 yarn_ready should increase by 120 minutes
         ord1 = next(o for o in new_scenario.orders if o.id == "ORD-001")
@@ -157,14 +156,14 @@ class TestMachineBreakdown:
             now=500,
         )
 
-        new_scenario, new_ops, diff = apply_disruption(scenario, operations, disruption)
+        new_scenario, _, diff = apply_disruption(scenario, operations, disruption)
 
         assert diff.frozen_count > 0
         assert len(new_scenario.frozen) == diff.frozen_count
 
     def test_invalid_disruption_raises(self) -> None:
         """Invalid disruption should raise error."""
-        scenario, operations = create_scenario_with_schedule()
+        create_scenario_with_schedule()
 
         # Machine down without from/to
         with pytest.raises(ValueError, match="machine_down requires from and to"):
@@ -194,7 +193,7 @@ class TestMachineBreakdown:
             now=500,
         )
 
-        new_scenario, new_ops, diff = apply_disruption(scenario, operations, disruption)
+        _, _, diff = apply_disruption(scenario, operations, disruption)
 
         assert isinstance(diff, ReplanDiff)
         assert isinstance(diff.moved_orders, list)
@@ -215,7 +214,7 @@ class TestMachineBreakdown:
             now=700,
         )
 
-        new_scenario, new_ops, diff = apply_disruption(scenario, operations, disruption)
+        new_scenario, _, _ = apply_disruption(scenario, operations, disruption)
 
         completed = [op for op in operations if op.end <= 700]
         assert completed, "test needs operations completed before now"

@@ -9,8 +9,10 @@ scenario start timestamp is echoed explicitly when the scenario defines one.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from .metrics import order_completions
-from .models import Schedule, Scenario, ScheduledOperation
+from .models import Scenario, Schedule, ScheduledOperation
 
 
 def _late_orders(scenario: Scenario, operations: list[ScheduledOperation]) -> set[str]:
@@ -37,9 +39,9 @@ def build_gantt_data(schedule: Schedule, scenario: Scenario) -> dict:
     for op in schedule.operations:
         ops_by_machine.setdefault(op.machine, []).append(op)
 
-    rows = []
+    rows: list[dict[str, object]] = []
     for machine in sorted(scenario.machines, key=lambda m: m.id):
-        bars: list[dict] = []
+        bars: list[dict[str, object]] = []
         for op in ops_by_machine.get(machine.id, []):
             bars.append(
                 {
@@ -192,11 +194,11 @@ def export_gantt_json(
     import json
 
     if format == "standard":
-        data = build_gantt_data(schedule, scenario)
+        data: object = build_gantt_data(schedule, scenario)
     elif format == "frappe":
         data = gantt_to_frappe_gantt(schedule, scenario)
     else:
         raise ValueError(f"Unknown format: {format}")
 
-    with open(output_path, "w") as f:
+    with Path(output_path).open("w") as f:
         json.dump(data, f, indent=2)

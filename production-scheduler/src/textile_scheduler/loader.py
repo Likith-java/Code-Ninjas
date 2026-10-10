@@ -19,7 +19,7 @@ from .models import Scenario
 
 def load_scenario_file(path: str | Path) -> Scenario:
     """Load a scenario JSON file into a validated Scenario model."""
-    with open(path) as f:
+    with Path(path).open() as f:
         data = json.load(f)
     return Scenario.model_validate(data)
 

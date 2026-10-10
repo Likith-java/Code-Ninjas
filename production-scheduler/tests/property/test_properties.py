@@ -1,24 +1,26 @@
 """Property-based tests using Hypothesis."""
 
 import pytest
-from hypothesis import HealthCheck, given, settings, strategies as st
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
 from hypothesis.strategies import integers, lists, sampled_from, text
 
+from textile_scheduler.baseline import run_edf_baseline
+from textile_scheduler.durations import compute_duration
+from textile_scheduler.metrics import compute_metrics
 from textile_scheduler.models import (
     Machine,
     Order,
     OrderEligibility,
     Scenario,
+    Schedule,
     ScheduledOperation,
+    SchedulerType,
+    SolverStatus,
     Stage,
-    DowntimeWindow,
+    ValidationResult,
 )
-from textile_scheduler.durations import compute_duration
-from textile_scheduler.baseline import run_edf_baseline
 from textile_scheduler.validator import validate_schedule
-from textile_scheduler.metrics import compute_metrics
-from textile_scheduler.models import Schedule, SchedulerType, SolverStatus, ValidationResult
-
 
 # Hypothesis strategies for generating test data
 
