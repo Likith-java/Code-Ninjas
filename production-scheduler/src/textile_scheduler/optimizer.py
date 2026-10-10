@@ -98,13 +98,17 @@ class CPSATOptimizer:
                 for machine_id in eligible_machines:
                     machine = self.machine_by_id[machine_id]
                     duration = compute_duration(order.metres, machine.rate_m_per_hour)
+                    if machine.available_until is None:
+                        latest_end = self.scenario.horizon
+                    else:
+                        latest_end = min(self.scenario.horizon, machine.available_until)
 
                     # Start variable (0 to horizon)
                     start_var = model.NewIntVar(
                         0, self.scenario.horizon, f"start_{order.id}_{stage.value}_{machine_id}"
                     )
                     end_var = model.NewIntVar(
-                        0, self.scenario.horizon, f"end_{order.id}_{stage.value}_{machine_id}"
+                        0, latest_end, f"end_{order.id}_{stage.value}_{machine_id}"
                     )
 
                     # Presence literal for this machine
@@ -180,10 +184,10 @@ class CPSATOptimizer:
                     start_var = interval.start_expr()
                     end_var = interval.end_expr()
                     # Use reification
-                    before = model.NewBoolVar(f"before_{machine_id}_{dt.from_minute}")
-                    after = model.NewBoolVar(f"after_{machine_id}_{dt.to_minute}")
-                    model.Add(end_var <= dt.from_minute).OnlyEnforceIf(before)
-                    model.Add(start_var >= dt.to_minute).OnlyEnforceIf(after)
+                    before = model.NewBoolVar(f"before_{machine_id}_{dt.start}")
+                    after = model.NewBoolVar(f"after_{machine_id}_{dt.end}")
+                    model.Add(end_var <= dt.start).OnlyEnforceIf(before)
+                    model.Add(start_var >= dt.end).OnlyEnforceIf(after)
                     model.Add(before + after >= 1).OnlyEnforceIf(presence)
 
         # 4. Yarn ready and now constraints
@@ -321,6 +325,7 @@ class CPSATOptimizer:
             if self._solver.Value(presence):
                 start = self._solver.Value(start_var)
                 end = self._solver.Value(end_var)
+                order_obj = self.order_by_id.get(order_id)
                 operations.append(
                     ScheduledOperation(
                         order=order_id,
@@ -328,6 +333,7 @@ class CPSATOptimizer:
                         machine=machine_id,
                         start=start,
                         end=end,
+                        quantity_metres=order_obj.metres if order_obj else None,
                     )
                 )
 

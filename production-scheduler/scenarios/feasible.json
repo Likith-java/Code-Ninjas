@@ -1,16 +1,29 @@
 {
-  "name": "feasible",
-  "synthetic": true,
+  "scenario_id": "feasible",
+  "description": "Small feasible two-order scenario for smoke tests.",
+  "synthetic_data": true,
+  "start": "2026-01-05T06:00:00",
   "now": 0,
   "horizon": 10080,
   "route": ["spinning", "weaving", "dyeing"],
   "machines": [
     {"id": "SPIN-01", "stage": "spinning", "rate_m_per_hour": 60, "downtime": []},
-    {"id": "SPIN-02", "stage": "spinning", "rate_m_per_hour": 55, "downtime": []},
+    {
+      "id": "SPIN-02",
+      "stage": "spinning",
+      "rate_m_per_hour": 55,
+      "downtime": [{"start": 9000, "end": 9060, "reason": "planned maintenance"}]
+    },
     {"id": "WEAVE-01", "stage": "weaving", "rate_m_per_hour": 40, "downtime": []},
     {"id": "WEAVE-02", "stage": "weaving", "rate_m_per_hour": 45, "downtime": []},
     {"id": "DYE-01", "stage": "dyeing", "rate_m_per_hour": 30, "downtime": []},
-    {"id": "DYE-02", "stage": "dyeing", "rate_m_per_hour": 32, "downtime": []}
+    {
+      "id": "DYE-02",
+      "stage": "dyeing",
+      "rate_m_per_hour": 32,
+      "downtime": [],
+      "available_until": 10080
+    }
   ],
   "orders": [
     {
@@ -19,6 +32,7 @@
       "fabric": "cotton twill",
       "colour": "navy",
       "metres": 1200,
+      "ordered_at": 0,
       "due": 9000,
       "priority_weight": 3,
       "yarn_ready": 0,
@@ -34,6 +48,7 @@
       "fabric": "linen",
       "colour": "natural",
       "metres": 1000,
+      "ordered_at": 0,
       "due": 8000,
       "priority_weight": 2,
       "yarn_ready": 0,

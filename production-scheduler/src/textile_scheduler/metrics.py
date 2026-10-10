@@ -81,7 +81,8 @@ def _compute_utilisation(
 ) -> float:
     """Productive machine hours / available machine hours in horizon.
 
-    Available hours excludes downtime.
+    Available hours excludes downtime and respects each machine's
+    ``available_until`` horizon when set.
     """
     # Total productive minutes
     productive_minutes = 0
@@ -91,10 +92,8 @@ def _compute_utilisation(
     # Available machine minutes (horizon * num_machines - downtime)
     total_available = 0
     for machine in scenario.machines:
-        machine_available = scenario.horizon
-        for dt in machine.downtime:
-            machine_available -= dt.to_minute - dt.from_minute
-        total_available += max(0, machine_available)
+        machine_available = _machine_available_minutes(scenario, machine)
+        total_available += machine_available
 
     if total_available == 0:
         return 0.0
@@ -107,6 +106,17 @@ def _compute_makespan(operations: list[ScheduledOperation]) -> int:
     if not operations:
         return 0
     return max(op.end for op in operations)
+
+
+def _machine_available_minutes(scenario: Scenario, machine: Machine) -> int:
+    """Available minutes for one machine: capped horizon minus downtime."""
+    limit = scenario.horizon
+    if machine.available_until is not None:
+        limit = min(limit, machine.available_until)
+    available = limit
+    for dt in machine.downtime:
+        available -= dt.end - dt.start
+    return max(0, available)
 
 
 def compute_order_details(
@@ -169,10 +179,7 @@ def compute_machine_utilisation(
     details = []
     for machine in scenario.machines:
         busy = machine_busy.get(machine.id, 0)
-        available = scenario.horizon
-        for dt in machine.downtime:
-            available -= dt.to_minute - dt.from_minute
-        available = max(0, available)
+        available = _machine_available_minutes(scenario, machine)
 
         details.append(
             {

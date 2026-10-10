@@ -188,6 +188,20 @@ class ScheduleValidator:
                     )
                 )
 
+            if op.quantity_metres is not None and op.quantity_metres != order.metres:
+                violations.append(
+                    ValidationViolation(
+                        rule=3,
+                        message=(
+                            f"Quantity mismatch for {op.order} on {op.machine}: "
+                            f"expected {order.metres}m, got {op.quantity_metres}m"
+                        ),
+                        order=op.order,
+                        machine=op.machine,
+                        stage=op.stage,
+                    )
+                )
+
         return violations
 
     def _check_route_order(self, operations: list[ScheduledOperation]) -> list[ValidationViolation]:
@@ -267,7 +281,7 @@ class ScheduleValidator:
         return violations
 
     def _check_downtime(self, operations: list[ScheduledOperation]) -> list[ValidationViolation]:
-        """Rule 6: No operation overlaps a downtime window."""
+        """Rule 6: No operation overlaps a downtime window or availability horizon."""
         violations = []
 
         for op in operations:
@@ -276,21 +290,36 @@ class ScheduleValidator:
                 continue
 
             for dt in machine.downtime:
-                # Check overlap: not (op.end <= dt.from or op.start >= dt.to)
-                if op.start < dt.to_minute and op.end > dt.from_minute:
+                # Check overlap: not (op.end <= dt.start or op.start >= dt.end)
+                if op.start < dt.end and op.end > dt.start:
                     violations.append(
                         ValidationViolation(
                             rule=6,
                             message=(
                                 f"Operation overlaps downtime on {op.machine}: "
                                 f"op {op.start}-{op.end}, "
-                                f"downtime {dt.from_minute}-{dt.to_minute}"
+                                f"downtime {dt.start}-{dt.end}"
                             ),
                             order=op.order,
                             machine=op.machine,
                             stage=op.stage,
                         )
                     )
+
+            if machine.available_until is not None and op.end > machine.available_until:
+                violations.append(
+                    ValidationViolation(
+                        rule=6,
+                        message=(
+                            f"Operation exceeds availability horizon on {op.machine}: "
+                            f"op ends at {op.end}, "
+                            f"available until {machine.available_until}"
+                        ),
+                        order=op.order,
+                        machine=op.machine,
+                        stage=op.stage,
+                    )
+                )
 
         return violations
 

@@ -1,11 +1,40 @@
-"""Pydantic models for scenario input and schedule output."""
+"""Typed domain models and JSON contracts for the textile production scheduler.
+
+Contract version: 1 (see ``CONTRACT_VERSION``).
+
+Design notes
+------------
+- All times are integer minutes relative to ``Scenario.start`` (when set) or
+  relative to minute 0. Durations are computed ONLY by
+  :func:`textile_scheduler.durations.compute_duration` as
+  ``ceil(quantity_metres / rate_m_per_hour * 60)``.
+- Models are frozen Pydantic models with ``extra="forbid"``: unknown fields
+  are rejected so the external JSON format stays explicit and stable.
+- Canonical JSON keys are the field names below. ``validation_alias`` entries
+  accept a small set of legacy spellings (``name`` for ``scenario_id``,
+  ``synthetic`` for ``synthetic_data``, ``from``/``to`` for downtime
+  ``start``/``end``) so files written against contract 0 parse unchanged.
+- The model layer is independent of persistence and HTTP frameworks: it only
+  depends on Pydantic and the standard library.
+"""
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum
-from typing import Annotated, Literal
+from typing import Annotated
+from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
+
+CONTRACT_VERSION = "1"
 
 
 class Stage(str, Enum):
@@ -16,21 +45,32 @@ class Stage(str, Enum):
     DYEING = "dyeing"
 
 
+#: Default three-stage route required by the domain.
+DEFAULT_ROUTE: list[Stage] = [Stage.SPINNING, Stage.WEAVING, Stage.DYEING]
+
+
 class SchedulerType(str, Enum):
-    """Scheduler algorithm identifier."""
+    """Scheduler/solver algorithm identifier (solver name vocabulary)."""
 
     EDF = "edf"
     CP_SAT = "cpsat"
 
 
 class SolverStatus(str, Enum):
-    """OR-Tools solver termination status."""
+    """Solver termination status (stable vocabulary, never fabricated)."""
 
     OPTIMAL = "OPTIMAL"
     FEASIBLE = "FEASIBLE"
     INFEASIBLE = "INFEASIBLE"
     UNKNOWN = "UNKNOWN"
     MODEL_INVALID = "MODEL_INVALID"
+
+
+class ValidationStatus(str, Enum):
+    """Independent validation outcome derived from the violation list."""
+
+    VALID = "valid"
+    INVALID = "invalid"
 
 
 class MachineStatus(str, Enum):
@@ -52,34 +92,53 @@ class Priority(str, Enum):
 
 
 class DowntimeWindow(BaseModel):
-    """Machine downtime window."""
+    """Machine downtime window with start, end, and reason.
+
+    Canonical keys are ``start``/``end``. The legacy spellings ``from``,
+    ``to``, ``from_minute`` and ``to_minute`` are accepted on input.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
 
-    from_minute: Annotated[int, Field(ge=0, alias="from")]
-    to_minute: Annotated[int, Field(ge=0, alias="to")]
+    start: Annotated[
+        int, Field(ge=0, validation_alias=AliasChoices("start", "from", "from_minute"))
+    ]
+    end: Annotated[int, Field(ge=0, validation_alias=AliasChoices("end", "to", "to_minute"))]
     reason: str | None = None
 
-    @field_validator("to_minute")
+    @field_validator("end")
     @classmethod
     def _end_after_start(cls, v: int, info) -> int:
-        if "from_minute" in info.data and v <= info.data["from_minute"]:
-            raise ValueError("to_minute must be greater than from_minute")
+        if "start" in info.data and v <= info.data["start"]:
+            raise ValueError("end must be greater than start")
         return v
 
 
 class Machine(BaseModel):
-    """Machine definition with eligibility and downtime."""
+    """Machine definition with stage, rate, downtime, and availability."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
 
     id: Annotated[str, Field(min_length=1, pattern=r"^[A-Z0-9\-]+$")]
     stage: Stage
     rate_m_per_hour: Annotated[int, Field(gt=0, le=1000)]
     downtime: list[DowntimeWindow] = Field(default_factory=list)
+    available_until: Annotated[int | None, Field(ge=0)] = None
     status: MachineStatus = MachineStatus.IDLE
     current_order: str | None = None
     progress_pct: Annotated[int, Field(ge=0, le=100)] = 0
+
+    @field_validator("downtime")
+    @classmethod
+    def _downtime_must_not_overlap(cls, v: list[DowntimeWindow]) -> list[DowntimeWindow]:
+        ordered = sorted(v, key=lambda w: (w.start, w.end))
+        for first, second in zip(ordered, ordered[1:]):
+            if second.start < first.end:
+                raise ValueError(
+                    f"downtime windows overlap: {first.start}-{first.end} "
+                    f"and {second.start}-{second.end}"
+                )
+        return v
 
 
 class OrderEligibility(BaseModel):
@@ -98,16 +157,32 @@ class OrderEligibility(BaseModel):
 class Order(BaseModel):
     """Production order with routing and timing constraints."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
 
     id: Annotated[str, Field(min_length=1, pattern=r"^[A-Z0-9\-]+$")]
-    buyer: str
-    fabric: str
-    colour: str
-    metres: Annotated[int, Field(gt=0, le=100000)]
-    due: Annotated[int, Field(ge=0)]
+    buyer: str | None = None
+    fabric: str | None = None
+    colour: str | None = None
+    metres: Annotated[
+        int,
+        Field(
+            gt=0,
+            le=100000,
+            validation_alias=AliasChoices("metres", "quantity_metres", "quantity"),
+        ),
+    ]
+    ordered_at: Annotated[
+        int,
+        Field(
+            ge=0,
+            validation_alias=AliasChoices("ordered_at", "order_time", "order_timestamp"),
+        ),
+    ] = 0
+    due: Annotated[int, Field(ge=0, validation_alias=AliasChoices("due", "due_time"))]
     priority_weight: Annotated[int, Field(ge=1, le=10)]
-    yarn_ready: Annotated[int, Field(ge=0, alias="yarn_ready")]
+    yarn_ready: Annotated[
+        int, Field(ge=0, validation_alias=AliasChoices("yarn_ready", "yarn_ready_time"))
+    ] = 0
     eligible: OrderEligibility
 
     @field_validator("eligible", mode="before")
@@ -138,20 +213,39 @@ class FrozenOperation(BaseModel):
 
 
 class Scenario(BaseModel):
-    """Complete scheduling scenario input."""
+    """Complete scheduling scenario input (public contract)."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
 
-    name: Annotated[str, Field(min_length=1)]
-    synthetic: bool = True
-    now: Annotated[int, Field(ge=0)] = 0
-    horizon: Annotated[int, Field(gt=0, le=100000)] = 10080
-    route: list[Stage] = Field(
-        default_factory=lambda: [Stage.SPINNING, Stage.WEAVING, Stage.DYEING]
+    scenario_id: Annotated[
+        str, Field(min_length=1, validation_alias=AliasChoices("scenario_id", "name"))
+    ]
+    description: str = ""
+    synthetic_data: bool = Field(
+        default=True, validation_alias=AliasChoices("synthetic_data", "synthetic")
     )
+    start: Annotated[
+        datetime | None,
+        Field(validation_alias=AliasChoices("start", "start_time", "scenario_start")),
+    ] = None
+    now: Annotated[int, Field(ge=0)] = 0
+    horizon: Annotated[
+        int,
+        Field(gt=0, le=100000, validation_alias=AliasChoices("horizon", "planning_horizon")),
+    ] = 10080
+    route: list[Stage] = Field(default_factory=lambda: list(DEFAULT_ROUTE))
     machines: list[Machine]
     orders: list[Order]
     frozen: list[FrozenOperation] = Field(default_factory=list)
+
+    @field_validator("route")
+    @classmethod
+    def _route_must_be_usable(cls, v: list[Stage]) -> list[Stage]:
+        if not v:
+            raise ValueError("route must list at least one stage")
+        if len(set(v)) != len(v):
+            raise ValueError("route stages must be unique")
+        return v
 
     @field_validator("orders")
     @classmethod
@@ -183,17 +277,29 @@ class Scenario(BaseModel):
                 raise ValueError(f"Frozen operation references unknown machine: {f.machine}")
         return v
 
+    @property
+    def is_default_route(self) -> bool:
+        """Whether the scenario uses the required three-stage route."""
+        return list(self.route) == list(DEFAULT_ROUTE)
+
 
 class ScheduledOperation(BaseModel):
-    """Single scheduled operation in the output plan."""
+    """Single scheduled operation in the output plan.
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    ``duration`` is filled from ``end - start`` when omitted and is rejected
+    when it contradicts ``end - start``. ``quantity_metres`` echoes the
+    order quantity processed by this operation when known.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
 
     order: str
     stage: Stage
     machine: str
     start: Annotated[int, Field(ge=0)]
     end: Annotated[int, Field(ge=0)]
+    duration: Annotated[int | None, Field(gt=0)] = None
+    quantity_metres: Annotated[int | None, Field(gt=0, le=100000)] = None
 
     @field_validator("end")
     @classmethod
@@ -201,6 +307,15 @@ class ScheduledOperation(BaseModel):
         if "start" in info.data and v <= info.data["start"]:
             raise ValueError("end must be greater than start")
         return v
+
+    @model_validator(mode="after")
+    def _fill_or_check_duration(self) -> ScheduledOperation:
+        actual = self.end - self.start
+        if self.duration is None:
+            object.__setattr__(self, "duration", actual)
+        elif self.duration != actual:
+            raise ValueError(f"duration {self.duration} contradicts start/end ({actual} minutes)")
+        return self
 
 
 class ValidationViolation(BaseModel):
@@ -216,11 +331,21 @@ class ValidationViolation(BaseModel):
 
 
 class ValidationResult(BaseModel):
-    """Validation outcome."""
+    """Independent validation outcome: status derived from the violation list."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    status: ValidationStatus = ValidationStatus.VALID
     violations: list[ValidationViolation] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _derive_status(self) -> ValidationResult:
+        object.__setattr__(
+            self,
+            "status",
+            ValidationStatus.INVALID if self.violations else ValidationStatus.VALID,
+        )
+        return self
 
     @property
     def is_valid(self) -> bool:
@@ -239,17 +364,44 @@ class ScheduleMetrics(BaseModel):
 
 
 class Schedule(BaseModel):
-    """Complete schedule output with validation and metrics."""
+    """Complete schedule output with validation and metrics (public contract)."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
 
-    scenario: str
-    scheduler: SchedulerType
+    id: str = Field(default_factory=lambda: uuid4().hex[:12])
+    scenario_id: Annotated[
+        str, Field(min_length=1, validation_alias=AliasChoices("scenario_id", "scenario"))
+    ]
+    solver: SchedulerType = Field(
+        validation_alias=AliasChoices("solver", "scheduler", "solver_name")
+    )
     status: SolverStatus
-    compute_seconds: Annotated[float, Field(ge=0)]
+    compute_seconds: Annotated[
+        float,
+        Field(
+            ge=0,
+            validation_alias=AliasChoices(
+                "compute_seconds", "solve_time_seconds", "wall_clock_seconds"
+            ),
+        ),
+    ]
     validation: ValidationResult
     metrics: ScheduleMetrics
     operations: list[ScheduledOperation]
+    warnings: list[str] = Field(default_factory=list)
+    diagnostics: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+
+
+class FailureResult(BaseModel):
+    """Machine-readable failure result when no schedule can be produced."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
+
+    scenario_id: str | None = None
+    solver: SchedulerType | None = None
+    status: SolverStatus = SolverStatus.MODEL_INVALID
+    error: Annotated[str, Field(min_length=1)]
+    details: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
 
 
 class DisruptionType(str, Enum):

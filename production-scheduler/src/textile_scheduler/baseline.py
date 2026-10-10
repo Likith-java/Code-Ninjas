@@ -62,6 +62,12 @@ class EDFScheduler:
         # Sort by rate descending (faster machines first)
         return sorted(machines, key=lambda m: m.rate_m_per_hour, reverse=True)
 
+    def _machine_limit(self, machine: Machine) -> int:
+        """Latest minute an operation may end on this machine."""
+        if machine.available_until is not None:
+            return min(self.scenario.horizon, machine.available_until)
+        return self.scenario.horizon
+
     def _find_earliest_slot(
         self,
         machine: Machine,
@@ -74,9 +80,10 @@ class EDFScheduler:
         Returns start time or None if no slot within horizon.
         """
         timeline = sorted(self.machine_timeline[machine.id])
+        limit = self._machine_limit(machine)
         if not timeline:
             start = max(earliest_start, 0)
-            if start + duration > self.scenario.horizon:
+            if start + duration > limit:
                 return None
             return start
 
@@ -95,7 +102,7 @@ class EDFScheduler:
         # Check after last operation
         last_end = timeline[-1][1]
         start = max(earliest_start, last_end)
-        if start + duration <= self.scenario.horizon:
+        if start + duration <= self._machine_limit(machine):
             return start
 
         return None
@@ -103,7 +110,7 @@ class EDFScheduler:
     def _check_downtime(self, machine: Machine, start: int, end: int) -> bool:
         """Check if [start, end) overlaps any downtime window."""
         for dt in machine.downtime:
-            if start < dt.to_minute and end > dt.from_minute:
+            if start < dt.end and end > dt.start:
                 return False
         return True
 
@@ -132,8 +139,8 @@ class EDFScheduler:
 
             # Push past the conflicting downtime
             for dt in machine.downtime:
-                if slot < dt.to_minute and end > dt.from_minute:
-                    start = dt.to_minute
+                if slot < dt.end and end > dt.start:
+                    start = dt.end
                     break
             else:
                 return slot  # No conflict found
@@ -164,6 +171,7 @@ class EDFScheduler:
                     machine=frozen.machine,
                     start=frozen.start,
                     end=frozen.end,
+                    quantity_metres=order.metres,
                 )
                 operations.append(op)
                 prev_end = frozen.end
@@ -194,6 +202,7 @@ class EDFScheduler:
                         machine=machine.id,
                         start=start,
                         end=end,
+                        quantity_metres=order.metres,
                     )
                     operations.append(op)
                     prev_end = end

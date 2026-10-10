@@ -1,7 +1,7 @@
 """Property-based tests using Hypothesis."""
 
 import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import HealthCheck, given, settings, strategies as st
 from hypothesis.strategies import integers, lists, sampled_from, text
 
 from textile_scheduler.models import (
@@ -111,7 +111,7 @@ class TestDurationProperties:
         dur = compute_duration(metres, rate)
         assert dur > 0
 
-    @given(integers(min_value=1, max_value=10000), integers(min_value=1, max_value=100))
+    @given(integers(min_value=1, max_value=100))
     @settings(max_examples=100)
     def test_duration_monotonic_metres(self, rate: int) -> None:
         """Duration should increase with metres."""
@@ -119,7 +119,7 @@ class TestDurationProperties:
         m2 = 2000
         assert compute_duration(m2, rate) >= compute_duration(m1, rate)
 
-    @given(integers(min_value=1, max_value=10000), integers(min_value=1, max_value=100))
+    @given(integers(min_value=1, max_value=10000))
     @settings(max_examples=100)
     def test_duration_monotonic_rate(self, metres: int) -> None:
         """Duration should decrease with rate."""
@@ -141,7 +141,7 @@ class TestBaselineProperties:
     """Property tests for EDF baseline scheduler."""
 
     @given(scenario_strategy())
-    @settings(max_examples=20, suppress_health_check=[pytest.FunctionScopedFixture])
+    @settings(max_examples=20, suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_baseline_schedules_all_stages(self, scenario: Scenario | None) -> None:
         """If scenario is valid, baseline should schedule all stages for each order."""
         if scenario is None:
@@ -247,8 +247,8 @@ class TestValidatorProperties:
         validation = validate_schedule(
             scenario,
             Schedule(
-                scenario=scenario.name,
-                scheduler=SchedulerType.EDF,
+                scenario_id=scenario.scenario_id,
+                solver=SchedulerType.EDF,
                 status=SolverStatus.FEASIBLE,
                 compute_seconds=0.1,
                 validation=ValidationResult(violations=[]),

@@ -1,0 +1,297 @@
+{
+  "$defs": {
+    "ScheduleMetrics": {
+      "additionalProperties": false,
+      "description": "Key performance metrics for a schedule.",
+      "properties": {
+        "weighted_tardiness": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Weighted Tardiness",
+          "type": "number"
+        },
+        "on_time_rate": {
+          "default": 1.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "On Time Rate",
+          "type": "number"
+        },
+        "utilisation": {
+          "default": 0.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Utilisation",
+          "type": "number"
+        },
+        "makespan": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Makespan",
+          "type": "integer"
+        }
+      },
+      "title": "ScheduleMetrics",
+      "type": "object"
+    },
+    "ScheduledOperation": {
+      "additionalProperties": false,
+      "description": "Single scheduled operation in the output plan.\n\n``duration`` is filled from ``end - start`` when omitted and is rejected\nwhen it contradicts ``end - start``. ``quantity_metres`` echoes the\norder quantity processed by this operation when known.",
+      "properties": {
+        "order": {
+          "title": "Order",
+          "type": "string"
+        },
+        "stage": {
+          "$ref": "#/$defs/Stage"
+        },
+        "machine": {
+          "title": "Machine",
+          "type": "string"
+        },
+        "start": {
+          "minimum": 0,
+          "title": "Start",
+          "type": "integer"
+        },
+        "end": {
+          "minimum": 0,
+          "title": "End",
+          "type": "integer"
+        },
+        "duration": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration"
+        },
+        "quantity_metres": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 100000,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quantity Metres"
+        }
+      },
+      "required": [
+        "order",
+        "stage",
+        "machine",
+        "start",
+        "end"
+      ],
+      "title": "ScheduledOperation",
+      "type": "object"
+    },
+    "SchedulerType": {
+      "description": "Scheduler/solver algorithm identifier (solver name vocabulary).",
+      "enum": [
+        "edf",
+        "cpsat"
+      ],
+      "title": "SchedulerType",
+      "type": "string"
+    },
+    "SolverStatus": {
+      "description": "Solver termination status (stable vocabulary, never fabricated).",
+      "enum": [
+        "OPTIMAL",
+        "FEASIBLE",
+        "INFEASIBLE",
+        "UNKNOWN",
+        "MODEL_INVALID"
+      ],
+      "title": "SolverStatus",
+      "type": "string"
+    },
+    "Stage": {
+      "description": "Production route stages in order.",
+      "enum": [
+        "spinning",
+        "weaving",
+        "dyeing"
+      ],
+      "title": "Stage",
+      "type": "string"
+    },
+    "ValidationResult": {
+      "additionalProperties": false,
+      "description": "Independent validation outcome: status derived from the violation list.",
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/ValidationStatus",
+          "default": "valid"
+        },
+        "violations": {
+          "items": {
+            "$ref": "#/$defs/ValidationViolation"
+          },
+          "title": "Violations",
+          "type": "array"
+        }
+      },
+      "title": "ValidationResult",
+      "type": "object"
+    },
+    "ValidationStatus": {
+      "description": "Independent validation outcome derived from the violation list.",
+      "enum": [
+        "valid",
+        "invalid"
+      ],
+      "title": "ValidationStatus",
+      "type": "string"
+    },
+    "ValidationViolation": {
+      "additionalProperties": false,
+      "description": "Single validation rule violation.",
+      "properties": {
+        "rule": {
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Rule",
+          "type": "integer"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "order": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Order"
+        },
+        "machine": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Machine"
+        },
+        "stage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Stage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "rule",
+        "message"
+      ],
+      "title": "ValidationViolation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Complete schedule output with validation and metrics (public contract).",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "scenario_id": {
+      "minLength": 1,
+      "title": "Scenario Id",
+      "type": "string"
+    },
+    "solver": {
+      "$ref": "#/$defs/SchedulerType"
+    },
+    "status": {
+      "$ref": "#/$defs/SolverStatus"
+    },
+    "compute_seconds": {
+      "minimum": 0,
+      "title": "Compute Seconds",
+      "type": "number"
+    },
+    "validation": {
+      "$ref": "#/$defs/ValidationResult"
+    },
+    "metrics": {
+      "$ref": "#/$defs/ScheduleMetrics"
+    },
+    "operations": {
+      "items": {
+        "$ref": "#/$defs/ScheduledOperation"
+      },
+      "title": "Operations",
+      "type": "array"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    },
+    "diagnostics": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "title": "Diagnostics",
+      "type": "object"
+    }
+  },
+  "required": [
+    "scenario_id",
+    "solver",
+    "status",
+    "compute_seconds",
+    "validation",
+    "metrics",
+    "operations"
+  ],
+  "title": "Schedule",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "textile-scheduler contract version 1"
+}

@@ -54,7 +54,7 @@ def run(scenario_path: Path, output: Path | None, validate: bool) -> None:
     try:
         scenario = load_scenario(str(scenario_path))
         click.echo(
-            f"Loaded scenario: {scenario.name} ({len(scenario.orders)} orders, {len(scenario.machines)} machines)"
+            f"Loaded scenario: {scenario.scenario_id} ({len(scenario.orders)} orders, {len(scenario.machines)} machines)"
         )
 
         operations = run_edf_baseline(scenario)
@@ -68,8 +68,8 @@ def run(scenario_path: Path, output: Path | None, validate: bool) -> None:
             validate_schedule(
                 scenario,
                 Schedule(
-                    scenario=scenario.name,
-                    scheduler=SchedulerType.EDF,
+                    scenario_id=scenario.scenario_id,
+                    solver=SchedulerType.EDF,
                     status=SolverStatus.FEASIBLE,
                     compute_seconds=0.0,
                     validation=ValidationResult(violations=[]),
@@ -82,8 +82,8 @@ def run(scenario_path: Path, output: Path | None, validate: bool) -> None:
         )
 
         schedule = Schedule(
-            scenario=scenario.name,
-            scheduler=SchedulerType.EDF,
+            scenario_id=scenario.scenario_id,
+            solver=SchedulerType.EDF,
             status=SolverStatus.FEASIBLE,
             compute_seconds=0.0,
             validation=validation,
@@ -120,7 +120,7 @@ def optimize(
     try:
         scenario = load_scenario(str(scenario_path))
         click.echo(
-            f"Loaded scenario: {scenario.name} ({len(scenario.orders)} orders, {len(scenario.machines)} machines)"
+            f"Loaded scenario: {scenario.scenario_id} ({len(scenario.orders)} orders, {len(scenario.machines)} machines)"
         )
 
         warm_start_ops = None
@@ -146,8 +146,8 @@ def optimize(
         validation = validate_schedule(
             scenario,
             Schedule(
-                scenario=scenario.name,
-                scheduler=SchedulerType.CP_SAT,
+                scenario_id=scenario.scenario_id,
+                solver=SchedulerType.CP_SAT,
                 status=status,
                 compute_seconds=solve_time,
                 validation=ValidationResult(violations=[]),
@@ -157,8 +157,8 @@ def optimize(
         )
 
         schedule = Schedule(
-            scenario=scenario.name,
-            scheduler=SchedulerType.CP_SAT,
+            scenario_id=scenario.scenario_id,
+            solver=SchedulerType.CP_SAT,
             status=status,
             compute_seconds=solve_time,
             validation=validation,
@@ -212,7 +212,7 @@ def replan(
     """Re-plan after a disruption (machine breakdown or yarn delay)."""
     try:
         scenario = load_scenario(str(scenario_path))
-        click.echo(f"Loaded scenario: {scenario.name}")
+        click.echo(f"Loaded scenario: {scenario.scenario_id}")
 
         # Build disruption object
         if machine_down:
@@ -273,8 +273,8 @@ def replan(
         validation = validate_schedule(
             new_scenario,
             Schedule(
-                scenario=new_scenario.name,
-                scheduler=SchedulerType.CP_SAT,
+                scenario_id=new_scenario.scenario_id,
+                solver=SchedulerType.CP_SAT,
                 status=status,
                 compute_seconds=solve_time,
                 validation=ValidationResult(violations=[]),
@@ -284,8 +284,8 @@ def replan(
         )
 
         schedule = Schedule(
-            scenario=new_scenario.name,
-            scheduler=SchedulerType.CP_SAT,
+            scenario_id=new_scenario.scenario_id,
+            solver=SchedulerType.CP_SAT,
             status=status,
             compute_seconds=solve_time,
             validation=validation,
@@ -316,8 +316,8 @@ def gantt(scenario_path: Path, output: Path | None, format: str) -> None:
         validation = validate_schedule(
             scenario,
             Schedule(
-                scenario=scenario.name,
-                scheduler=SchedulerType.EDF,
+                scenario_id=scenario.scenario_id,
+                solver=SchedulerType.EDF,
                 status=SolverStatus.FEASIBLE,
                 compute_seconds=0.0,
                 validation=ValidationResult(violations=[]),
@@ -327,8 +327,8 @@ def gantt(scenario_path: Path, output: Path | None, format: str) -> None:
         )
 
         schedule = Schedule(
-            scenario=scenario.name,
-            scheduler=SchedulerType.EDF,
+            scenario_id=scenario.scenario_id,
+            solver=SchedulerType.EDF,
             status=SolverStatus.FEASIBLE,
             compute_seconds=0.0,
             validation=validation,
@@ -338,7 +338,7 @@ def gantt(scenario_path: Path, output: Path | None, format: str) -> None:
 
         gantt_data = schedule_to_gantt(schedule, scenario)
 
-        output_path = str(output) if output else f"{scenario.name}_gantt.json"
+        output_path = str(output) if output else f"{scenario.scenario_id}_gantt.json"
         export_gantt_json(schedule, scenario, output_path, format)
         click.echo(f"Gantt data exported to {output_path}")
 
@@ -353,7 +353,7 @@ def validate(scenario_path: Path) -> None:
     """Validate a scenario for basic consistency."""
     try:
         scenario = load_scenario(str(scenario_path))
-        click.echo(f"Scenario: {scenario.name}")
+        click.echo(f"Scenario: {scenario.scenario_id}")
         click.echo(f"  Orders: {len(scenario.orders)}")
         click.echo(f"  Machines: {len(scenario.machines)}")
         click.echo(f"  Horizon: {scenario.horizon} minutes")

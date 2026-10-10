@@ -90,8 +90,8 @@ class TestMachineBreakdown:
         # Check new scenario has downtime on WEAVE-01
         weave01 = next(m for m in new_scenario.machines if m.id == "WEAVE-01")
         assert len(weave01.downtime) == 1
-        assert weave01.downtime[0].from_minute == 1000
-        assert weave01.downtime[0].to_minute == 2000
+        assert weave01.downtime[0].start == 1000
+        assert weave01.downtime[0].end == 2000
 
     def test_breakdown_freezes_running_ops(self) -> None:
         """Operations running at 'now' on healthy machines should be frozen."""

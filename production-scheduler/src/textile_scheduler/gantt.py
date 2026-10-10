@@ -29,8 +29,10 @@ def schedule_to_gantt(schedule: Schedule, scenario: Scenario) -> dict:
             {
                 "id": f"{op.order}_{op.stage.value}_{op.machine}",
                 "order_id": op.order,
-                "order_name": f"{order.fabric} {order.colour}" if order else op.order,
-                "buyer": order.buyer if order else "Unknown",
+                "order_name": f"{order.fabric or ''} {order.colour or ''}".strip()
+                if order
+                else op.order,
+                "buyer": order.buyer if order and order.buyer else "Unknown",
                 "stage": op.stage.value,
                 "machine": op.machine,
                 "machine_stage": machine.stage.value if machine else op.stage.value,
@@ -54,15 +56,14 @@ def schedule_to_gantt(schedule: Schedule, scenario: Scenario) -> dict:
                 "stage": m.stage.value,
                 "rate_m_per_hour": m.rate_m_per_hour,
                 "downtime": [
-                    {"from": dt.from_minute, "to": dt.to_minute, "reason": dt.reason}
-                    for dt in m.downtime
+                    {"start": dt.start, "end": dt.end, "reason": dt.reason} for dt in m.downtime
                 ],
             }
         )
 
     return {
-        "scenario": schedule.scenario,
-        "scheduler": schedule.scheduler.value,
+        "scenario": schedule.scenario_id,
+        "solver": schedule.solver.value,
         "status": schedule.status.value,
         "compute_seconds": schedule.compute_seconds,
         "now": scenario.now,

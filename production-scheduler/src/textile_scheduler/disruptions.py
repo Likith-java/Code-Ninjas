@@ -95,7 +95,7 @@ def _apply_machine_breakdown(
             # Add the breakdown downtime, preserving existing windows
             new_downtime = [
                 *m.downtime,
-                DowntimeWindow(from_minute=dt_from, to_minute=dt_to, reason="Breakdown"),
+                DowntimeWindow(start=dt_from, end=dt_to, reason="Breakdown"),
             ]
             new_machines.append(
                 Machine(
@@ -103,6 +103,7 @@ def _apply_machine_breakdown(
                     stage=m.stage,
                     rate_m_per_hour=m.rate_m_per_hour,
                     downtime=new_downtime,
+                    available_until=m.available_until,
                     status=m.status,
                     current_order=m.current_order,
                     progress_pct=m.progress_pct,
@@ -152,7 +153,9 @@ def _apply_machine_breakdown(
             new_operations.append(op)
 
     # Add frozen operations to the list
+    order_by_id = {o.id: o for o in scenario.orders}
     for fo in frozen_ops:
+        fo_order = order_by_id.get(fo.order)
         new_operations.append(
             ScheduledOperation(
                 order=fo.order,
@@ -160,14 +163,15 @@ def _apply_machine_breakdown(
                 machine=fo.machine,
                 start=fo.start,
                 end=fo.end,
+                quantity_metres=fo_order.metres if fo_order else None,
             )
         )
 
     # Create modified orders list (the split order has reduced metres for remaining)
     # For simplicity, we keep original orders and let solver handle it
     new_scenario = Scenario(
-        name=f"{scenario.name}_replan",
-        synthetic=True,
+        scenario_id=f"{scenario.scenario_id}_replan",
+        synthetic_data=True,
         now=now,
         horizon=scenario.horizon,
         route=scenario.route,
@@ -225,6 +229,7 @@ def _apply_yarn_delay(
                     fabric=order.fabric,
                     colour=order.colour,
                     metres=order.metres,
+                    ordered_at=order.ordered_at,
                     due=order.due,
                     priority_weight=order.priority_weight,
                     yarn_ready=new_yarn_ready,
@@ -235,8 +240,8 @@ def _apply_yarn_delay(
             new_orders.append(order)
 
     new_scenario = Scenario(
-        name=f"{scenario.name}_replan",
-        synthetic=True,
+        scenario_id=f"{scenario.scenario_id}_replan",
+        synthetic_data=True,
         now=now,
         horizon=scenario.horizon,
         route=scenario.route,

@@ -1,0 +1,29 @@
+{
+  "scenario_id": "overlapping-windows",
+  "machines": [
+    {
+      "id": "SPIN-01",
+      "stage": "spinning",
+      "rate_m_per_hour": 60,
+      "downtime": [
+        {"start": 1000, "end": 2000, "reason": "maintenance"},
+        {"start": 1500, "end": 2500, "reason": "breakdown"}
+      ]
+    },
+    {"id": "WEAVE-01", "stage": "weaving", "rate_m_per_hour": 40},
+    {"id": "DYE-01", "stage": "dyeing", "rate_m_per_hour": 30}
+  ],
+  "orders": [
+    {
+      "id": "ORD-001",
+      "metres": 600,
+      "due": 9000,
+      "priority_weight": 1,
+      "eligible": {
+        "spinning": ["SPIN-01"],
+        "weaving": ["WEAVE-01"],
+        "dyeing": ["DYE-01"]
+      }
+    }
+  ]
+}

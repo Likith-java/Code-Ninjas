@@ -1,0 +1,91 @@
+{
+  "$defs": {
+    "SchedulerType": {
+      "description": "Scheduler/solver algorithm identifier (solver name vocabulary).",
+      "enum": [
+        "edf",
+        "cpsat"
+      ],
+      "title": "SchedulerType",
+      "type": "string"
+    },
+    "SolverStatus": {
+      "description": "Solver termination status (stable vocabulary, never fabricated).",
+      "enum": [
+        "OPTIMAL",
+        "FEASIBLE",
+        "INFEASIBLE",
+        "UNKNOWN",
+        "MODEL_INVALID"
+      ],
+      "title": "SolverStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Machine-readable failure result when no schedule can be produced.",
+  "properties": {
+    "scenario_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scenario Id"
+    },
+    "solver": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SchedulerType"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "status": {
+      "$ref": "#/$defs/SolverStatus",
+      "default": "MODEL_INVALID"
+    },
+    "error": {
+      "minLength": 1,
+      "title": "Error",
+      "type": "string"
+    },
+    "details": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "title": "Details",
+      "type": "object"
+    }
+  },
+  "required": [
+    "error"
+  ],
+  "title": "FailureResult",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "textile-scheduler contract version 1"
+}

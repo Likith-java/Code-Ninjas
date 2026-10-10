@@ -39,7 +39,7 @@ def test_models_import() -> None:
         machines=[machine],
         orders=[order],
     )
-    assert scenario.name == "test"
+    assert scenario.scenario_id == "test"
     assert len(scenario.machines) == 1
     assert len(scenario.orders) == 1
 

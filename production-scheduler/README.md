@@ -38,15 +38,16 @@ textile-scheduler replan scenarios/feasible.json --machine-down WEAVE-03 --from 
 production-scheduler/
 ├── pyproject.toml
 ├── README.md
+├── CONTRACT.md          # stable external JSON contract (version 1)
 ├── scenarios/           # JSON scenario files
-│   ├── feasible.json
-│   ├── machine_breakdown.json
-│   ├── late_yarn.json
-│   └── infeasible.json
+│   └── feasible.json
+├── fixtures/            # representative valid/invalid contract fixtures
+├── schemas/             # generated JSON Schemas (see scripts/generate_schemas.py)
 ├── src/
 │   └── textile_scheduler/
 │       ├── __init__.py
-│       ├── models.py          # Pydantic models for Scenario, Schedule, Disruption
+│       ├── models.py          # Pydantic domain models (Scenario, Schedule, ...)
+│       ├── contracts.py       # public contract registry + schema generation
 │       ├── time_utils.py      # Time conversion utilities
 │       ├── durations.py       # Shared duration function
 │       ├── exceptions.py      # Custom exceptions
@@ -62,19 +63,30 @@ production-scheduler/
 │   ├── integration/
 │   └── property/
 └── scripts/
+    └── generate_schemas.py
 ```
 
 ## Scenario Format
 
+See `CONTRACT.md` for the stable contract (version 1). Canonical keys:
+
 ```json
 {
-  "name": "feasible",
-  "synthetic": true,
+  "scenario_id": "feasible",
+  "description": "Small feasible two-order scenario.",
+  "synthetic_data": true,
+  "start": "2026-01-05T06:00:00",
   "now": 0,
   "horizon": 10080,
   "route": ["spinning", "weaving", "dyeing"],
   "machines": [
-    {"id": "WEAVE-01", "stage": "weaving", "rate_m_per_hour": 40, "downtime": []}
+    {
+      "id": "WEAVE-01",
+      "stage": "weaving",
+      "rate_m_per_hour": 40,
+      "downtime": [{"start": 9000, "end": 9060, "reason": "planned maintenance"}],
+      "available_until": 10080
+    }
   ],
   "orders": [
     {
@@ -83,6 +95,7 @@ production-scheduler/
       "fabric": "cotton twill",
       "colour": "navy",
       "metres": 2400,
+      "ordered_at": 0,
       "due": 5760,
       "priority_weight": 3,
       "yarn_ready": 0,
@@ -101,11 +114,12 @@ production-scheduler/
 
 ```json
 {
-  "scenario": "feasible",
-  "scheduler": "cpsat",
+  "id": "a1b2c3d4e5f6",
+  "scenario_id": "feasible",
+  "solver": "cpsat",
   "status": "OPTIMAL",
   "compute_seconds": 3.4,
-  "validation": {"violations": []},
+  "validation": {"status": "valid", "violations": []},
   "metrics": {
     "weighted_tardiness": 0,
     "on_time_rate": 1.0,
@@ -113,9 +127,30 @@ production-scheduler/
     "makespan": 8400
   },
   "operations": [
-    {"order": "ORD-001", "stage": "spinning", "machine": "SPIN-01", "start": 0, "end": 360}
-  ]
+    {
+      "order": "ORD-001",
+      "stage": "spinning",
+      "machine": "SPIN-01",
+      "start": 0,
+      "end": 360,
+      "duration": 360,
+      "quantity_metres": 2400
+    }
+  ],
+  "warnings": [],
+  "diagnostics": {}
 }
+```
+
+## Contracts, Schemas, Fixtures
+
+```bash
+# Regenerate the checked-in JSON Schemas from the Pydantic models
+python scripts/generate_schemas.py
+
+# Representative valid/invalid fixtures live in fixtures/
+# Contract tests pin parsing, serialization, boundaries, and errors:
+pytest tests/unit/test_contracts.py
 ```
 
 ## Testing

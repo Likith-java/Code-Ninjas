@@ -105,8 +105,8 @@ class TestFullPipeline:
         validation = validate_schedule(
             scenario,
             Schedule(
-                scenario=scenario.name,
-                scheduler=SchedulerType.EDF,
+                scenario_id=scenario.scenario_id,
+                solver=SchedulerType.EDF,
                 status=SolverStatus.FEASIBLE,
                 compute_seconds=0.1,
                 validation=ValidationResult(violations=[]),
@@ -142,8 +142,8 @@ class TestFullPipeline:
             validation = validate_schedule(
                 scenario,
                 Schedule(
-                    scenario=scenario.name,
-                    scheduler=SchedulerType.CP_SAT,
+                    scenario_id=scenario.scenario_id,
+                    solver=SchedulerType.CP_SAT,
                     status=status,
                     compute_seconds=solve_time,
                     validation=ValidationResult(violations=[]),
@@ -204,8 +204,8 @@ class TestFullPipeline:
             validation = validate_schedule(
                 new_scenario,
                 Schedule(
-                    scenario=new_scenario.name,
-                    scheduler=SchedulerType.CP_SAT,
+                    scenario_id=new_scenario.scenario_id,
+                    solver=SchedulerType.CP_SAT,
                     status=status,
                     compute_seconds=solve_time,
                     validation=ValidationResult(violations=[]),
@@ -231,7 +231,7 @@ class TestFullPipeline:
         # Deserialize
         restored = Scenario.model_validate_json(json_str)
 
-        assert restored.name == scenario.name
+        assert restored.scenario_id == scenario.scenario_id
         assert len(restored.orders) == len(scenario.orders)
         assert len(restored.machines) == len(scenario.machines)
         assert restored.horizon == scenario.horizon
@@ -246,8 +246,8 @@ class TestFullPipeline:
         validation = validate_schedule(
             scenario,
             Schedule(
-                scenario=scenario.name,
-                scheduler=SchedulerType.EDF,
+                scenario_id=scenario.scenario_id,
+                solver=SchedulerType.EDF,
                 status=SolverStatus.FEASIBLE,
                 compute_seconds=0.1,
                 validation=ValidationResult(violations=[]),
@@ -257,8 +257,8 @@ class TestFullPipeline:
         )
 
         schedule = Schedule(
-            scenario=scenario.name,
-            scheduler=SchedulerType.EDF,
+            scenario_id=scenario.scenario_id,
+            solver=SchedulerType.EDF,
             status=SolverStatus.FEASIBLE,
             compute_seconds=0.1,
             validation=validation,
@@ -272,7 +272,7 @@ class TestFullPipeline:
         # Deserialize
         restored = Schedule.model_validate_json(json_str)
 
-        assert restored.scenario == schedule.scenario
-        assert restored.scheduler == schedule.scheduler
+        assert restored.scenario_id == schedule.scenario_id
+        assert restored.solver == schedule.solver
         assert restored.status == schedule.status
         assert len(restored.operations) == len(schedule.operations)
