@@ -16,7 +16,7 @@ const weavingOrders = mockOrders.filter(o =>
 
 export function WeavingColumn({ onOrderSelect, selectedOrder, isResolved }: WeavingColumnProps) {
   return (
-    <div className="w-80 flex flex-col bg-[#FAF7F0] border-2 border-[#181816] rounded-3xl h-full shrink-0 pop-shadow-md">
+    <div className="flex-1 min-w-[320px] max-w-2xl flex flex-col bg-[#FAF7F0] border-2 border-[#181816] rounded-3xl h-full shrink-0 pop-shadow-md">
       <div className="p-3 border-b-2 border-[#181816] flex items-center justify-between bg-[#EFE8D8] rounded-t-3xl">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-[#E05326] border border-[#181816]" />

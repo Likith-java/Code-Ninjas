@@ -5,29 +5,40 @@ import { useAppState } from '@/hooks/useAppState'
 import { Header } from '@/components/layout/Header'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { ProductionBoard } from '@/components/board/ProductionBoard'
-import { InspectorPanel } from '@/components/inspector/InspectorPanel'
 import { DisruptionModal } from '@/components/modals/DisruptionModal'
 import { ToastContainer } from '@/components/ui/Toast'
 import { OperationsDashboard } from '@/components/dashboard/OperationsDashboard'
 import { WorkforceAttendance } from '@/components/workforce/WorkforceAttendance'
 import { ModulePendingView } from '@/components/layout/ModulePendingView'
+import { LoginScreen } from '@/components/auth/LoginScreen'
+import { UserRole, ROLE_PROFILES } from '@/lib/permissions'
 
 export default function Home() {
   const [activeModule, setActiveModule] = useState<string>('floor')
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [currentRole, setCurrentRole] = useState<UserRole>('admin')
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const tab = params.get('tab')
-      if (tab) {
+      if (tab === 'login') {
+        setIsAuthenticated(false)
+        setActiveModule('login')
+      } else if (tab) {
         setActiveModule(tab)
+      } else {
+        setActiveModule('floor')
       }
     }
 
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search)
       const tab = params.get('tab') || 'floor'
+      if (tab === 'login') {
+        setIsAuthenticated(false)
+      }
       setActiveModule(tab)
     }
 
@@ -49,51 +60,67 @@ export default function Home() {
     }
   }
 
+  const handleLogout = () => {
+    setIsAuthenticated(false)
+    setActiveModule('login')
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('tab', 'login')
+      window.history.pushState({}, '', url.toString())
+    }
+  }
+
+  const handleLoginSuccess = (role: UserRole) => {
+    setCurrentRole(role)
+    setIsAuthenticated(true)
+    const defaultMod = ROLE_PROFILES[role].defaultModule
+    setActiveModule(defaultMod)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      if (defaultMod === 'floor') {
+        url.searchParams.delete('tab')
+      } else {
+        url.searchParams.set('tab', defaultMod)
+      }
+      window.history.pushState({}, '', url.toString())
+    }
+  }
+
   const {
     selectedOrder,
-    rightTab,
-    inspectorOpen,
-    activeScenario,
     simModalOpen,
     toasts,
     isResolved,
     currentTime,
     currentShift,
-    disruption,
-    mockOrders,
-    mockMachines,
-    orderDetails,
     selectOrder,
-    setRightTab,
-    setInspectorOpen,
     setSimModalOpen,
     selectDisruption,
-    switchScenario,
-    applyReplan,
-    triggerReplan,
     executeSimDisruption,
     onFilterStage,
     removeToast,
   } = useAppState()
 
   const disruptionText = isResolved ? '0 Disruption Alerts' : '1 Breakdown (WEAVE-03)'
-  const solverStatus = isResolved ? 'CP-SAT: RE-PLAN COMMITTED' : 'CP-SAT: OPTIMAL (3.4s)'
 
-  const currentOrderDetail = selectedOrder ? orderDetails[selectedOrder] || null : null
+  // Unauthenticated / Login View
+  if (!isAuthenticated || activeModule === 'login') {
+    return (
+      <LoginScreen
+        currentRole={currentRole}
+        onLoginSuccess={handleLoginSuccess}
+        isStandalone={true}
+      />
+    )
+  }
 
   return (
     <div className="flex flex-col h-screen bg-[#F5F0E3] text-[#181816] antialiased w-full min-w-0 overflow-hidden select-none font-body text-[13px]">
       <Header
-        activeModule={activeModule}
-        onModuleClick={handleModuleClick}
+        currentRole={currentRole}
+        onLogout={handleLogout}
         onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
-        activeScenario={activeScenario}
-        onScenarioChange={switchScenario}
-        onSimulateDisruption={() => setSimModalOpen(true)}
-        onTriggerReplan={triggerReplan}
-        isResolved={isResolved}
-        disruptionText={disruptionText}
-        solverStatus={solverStatus}
+        onBrandClick={() => handleModuleClick('floor')}
       />
 
       <div className="flex-1 flex overflow-hidden relative">
@@ -108,33 +135,22 @@ export default function Home() {
           onSelectDisruption={selectDisruption}
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          currentRole={currentRole}
         />
 
         {activeModule === 'floor' && (
-          <>
-            <ProductionBoard
-              selectedOrder={selectedOrder}
-              onOrderSelect={selectOrder}
-              activeScenario={activeScenario}
-              onScenarioChange={switchScenario}
-              onFilterStage={onFilterStage}
-              onSelectDisruption={selectDisruption}
-              isResolved={isResolved}
-            />
-
-            <InspectorPanel
-              isOpen={inspectorOpen}
-              onToggle={() => setInspectorOpen(!inspectorOpen)}
-              activeTab={rightTab}
-              onTabChange={setRightTab}
-              isResolved={isResolved}
-              onApplyReplan={applyReplan}
-              orderDetail={currentOrderDetail}
-            />
-          </>
+          <ProductionBoard
+            selectedOrder={selectedOrder}
+            onOrderSelect={selectOrder}
+            onFilterStage={onFilterStage}
+            onSelectDisruption={selectDisruption}
+            onSimulateDisruption={() => setSimModalOpen(true)}
+            isResolved={isResolved}
+            disruptionText={disruptionText}
+          />
         )}
 
-        {activeModule === 'dashboard' && <OperationsDashboard />}
+        {activeModule === 'dashboard' && <OperationsDashboard currentRole={currentRole} />}
 
         {activeModule === 'workforce' && <WorkforceAttendance />}
 

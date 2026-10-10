@@ -41,8 +41,8 @@ const config: Config = {
         full: '9999px',
       },
       fontFamily: {
-        body: ['Hanken Grotesk', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        body: ['Hanken Grotesk', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Menlo', 'monospace'],
       },
       boxShadow: {
         'pop-xs': '1.5px 1.5px 0px #181816',

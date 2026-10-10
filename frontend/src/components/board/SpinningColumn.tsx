@@ -10,12 +10,12 @@ interface SpinningColumnProps {
 }
 
 const spinningOrders = mockOrders.filter(o => 
-  o.currentStage === 'spinning' || (o.status === 'not_started' && o.eligible.spinning.length > 0 && o.id !== 'ORD-007' && o.id !== 'ORD-009')
+  o.currentStage === 'spinning' || (o.status === 'not_started' && o.eligible.spinning.length > 0)
 )
 
 export function SpinningColumn({ onOrderSelect, selectedOrder }: SpinningColumnProps) {
   return (
-    <div className="w-80 flex flex-col bg-[#FAF7F0] border-2 border-[#181816] rounded-3xl h-full shrink-0 pop-shadow-md">
+    <div className="flex-1 min-w-[320px] max-w-2xl flex flex-col bg-[#FAF7F0] border-2 border-[#181816] rounded-3xl h-full shrink-0 pop-shadow-md">
       <div className="p-3 border-b-2 border-[#181816] flex items-center justify-between bg-[#EFE8D8] rounded-t-3xl">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-[#0E4B3E] border border-[#181816]" />
@@ -25,7 +25,7 @@ export function SpinningColumn({ onOrderSelect, selectedOrder }: SpinningColumnP
           </Badge>
         </div>
         <Badge variant="success" size="xs" dotColor="#15803D" className="bg-[#D7F4E5] border border-[#181816] px-2 py-0.5 rounded-full text-[#0B382F] font-bold">
-          3/3 Active
+          {spinningOrders.length} Orders
         </Badge>
       </div>
 
@@ -64,21 +64,29 @@ function SpinningOrderCard({ order, isSelected, onSelect }: { order: Order; isSe
         Buyer: <span className="font-bold text-[#181816]">{order.buyer}</span> • {order.metres.toLocaleString()}m
       </div>
 
-      <div className="mt-2.5 flex items-center justify-between bg-[#FAF7F0] border-2 border-[#181816] rounded-xl px-2 py-1 font-mono text-[10.5px]">
-        <span className="font-bold text-[#181816] flex items-center gap-1">
-          <MaterialIcon name="settings" size="sm" color="#0E4B3E" />
-          {order.assignedMachine || order.eligible.spinning[0]} (60 m/hr)
-        </span>
-        <span className="text-[#0E4B3E] font-bold">Dur: {Math.ceil(order.metres / 60 * 60)}m</span>
-      </div>
-
       {isActive && (
-        <Progress value={progress} color="primary" size="md" className="mt-2" />
+        <div className="mt-2.5 space-y-1">
+          <div className="flex justify-between text-[10.5px] font-mono">
+            <span className="text-[#4E4B47]">Frame: <span className="font-bold text-[#181816]">{order.assignedMachine || 'SPIN-01'}</span></span>
+            <span className="font-bold text-[#0E4B3E]">{order.metres ? Math.round((order.metres * progress) / 100) : 0}m / {order.metres}m</span>
+          </div>
+          <Progress value={progress} color="primary" size="sm" />
+        </div>
+      )}
+
+      {isQueued && (
+        <div className="mt-2.5 flex items-center justify-between bg-[#FAF7F0] border-2 border-[#181816] rounded-xl px-2 py-1 font-mono text-[10.5px] text-[#4E4B47]">
+          <span>Assigned: <strong className="text-[#181816]">{order.eligible.spinning[0]}</strong></span>
+          <span className="text-[#0E4B3E] font-bold">Yarn Ready</span>
+        </div>
       )}
 
       <div className="flex items-center justify-between mt-2.5 pt-2 border-t-2 border-[#E7DFCE] text-[10.5px] font-mono text-[#4E4B47]">
-        <span>Next: {order.eligible.weaving[0]}</span>
-        <span className="font-bold text-[#15803D]">Route Feasible</span>
+        <span>Due: t = {order.due}m</span>
+        <span className="text-[#15803D] font-bold flex items-center gap-0.5">
+          <MaterialIcon name="schedule" size="xs" />
+          Optimal
+        </span>
       </div>
     </Card>
   )

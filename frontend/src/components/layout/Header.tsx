@@ -1,43 +1,31 @@
 'use client'
 
-import { Button, Badge, MaterialIcon } from '@/components/ui'
-import type { ScenarioName } from '@/types'
+import { useState } from 'react'
+import { MaterialIcon } from '@/components/ui'
+import { UserRole, ROLE_PROFILES } from '@/lib/permissions'
 
 interface HeaderProps {
-  activeModule?: string
-  onModuleClick?: (module: string) => void
+  currentRole: UserRole
+  onLogout?: () => void
   onToggleMobileSidebar?: () => void
-  activeScenario: ScenarioName
-  onScenarioChange: (scenario: ScenarioName) => void
-  onSimulateDisruption: () => void
-  onTriggerReplan: () => void
-  isResolved: boolean
-  disruptionText: string
-  solverStatus: string
+  onBrandClick?: () => void
 }
 
-const scenarios: { id: ScenarioName; label: string }[] = [
-  { id: 'feasible', label: 'feasible.json' },
-  { id: 'breakdown', label: 'breakdown.json' },
-  { id: 'late_yarn', label: 'late_yarn.json' },
-]
-
 export function Header({
-  activeModule = 'floor',
-  onModuleClick,
+  currentRole = 'admin',
+  onLogout,
   onToggleMobileSidebar,
-  activeScenario,
-  onScenarioChange,
-  onSimulateDisruption,
-  onTriggerReplan,
-  isResolved,
-  disruptionText,
-  solverStatus,
+  onBrandClick,
 }: HeaderProps) {
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const safeRole: UserRole = currentRole && ROLE_PROFILES[currentRole] ? currentRole : 'admin'
+  const currentProfile = ROLE_PROFILES[safeRole]
+
   return (
-    <header className="flex justify-between items-center w-full px-3 sm:px-5 h-12 z-40 border-b-2 border-[#181816] bg-[#FFFFFF] shrink-0">
+    <header className="flex justify-between items-center w-full px-3 sm:px-5 h-12 z-40 border-b-2 border-[#181816] bg-[#FFFFFF] shrink-0 select-none">
+      {/* Left: Brand Identity */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        {/* Mobile Sidebar Hamburger Toggle */}
+        {/* Mobile Hamburger */}
         <button
           type="button"
           onClick={onToggleMobileSidebar}
@@ -48,106 +36,88 @@ export function Header({
           <MaterialIcon name="menu" size="sm" />
         </button>
 
-        <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => onModuleClick?.('floor')}>
+        {/* Brand */}
+        <div
+          className="flex items-center gap-2 cursor-pointer shrink-0"
+          onClick={onBrandClick}
+          title="Everest Textile Mills — Home"
+        >
           <span className="w-7 h-7 bg-[#0E4B3E] text-white rounded-xl border-2 border-[#181816] pop-shadow-xs flex items-center justify-center font-mono text-[13px] font-bold shrink-0">
             ET
           </span>
-          <div className="flex flex-col min-w-0">
-            <span className="font-bold text-[13.5px] sm:text-[14px] text-[#181816] tracking-tight leading-none truncate">
-              Everest Textile Mills
-            </span>
-            <span className="font-mono text-[9px] sm:text-[9.5px] text-[#4E4B47] leading-none mt-0.5 truncate hidden sm:block">
-              Code-Ninjas Intelligence Platform
-            </span>
-          </div>
+          <span className="font-bold text-[14px] text-[#181816] tracking-tight leading-none truncate">
+            Everest Textile Mills
+          </span>
         </div>
-
-        <div className="h-5 w-0.5 bg-[#181816]/30 mx-1 hidden xl:block" />
-
-        <Button
-          variant="pop"
-          size="sm"
-          icon={<MaterialIcon name="factory" size="sm" color="#0E4B3E" />}
-          onClick={() => onModuleClick?.('dashboard')}
-          title="Unit 1 Spinning, Weaving & Dyeing Operations"
-          className="hidden 2xl:inline-flex"
-        >
-          <span>Unit 1: Spinning • Weaving • Dyeing</span>
-        </Button>
-
-        <nav className="hidden xl:flex items-center gap-1 ml-1 text-[12px]">
-          <Button
-            variant={activeModule === 'dashboard' ? 'primary' : 'ghost'}
-            size="xs"
-            className={activeModule === 'dashboard' ? 'pop-shadow-xs font-bold' : ''}
-            onClick={() => onModuleClick?.('dashboard')}
-          >
-            Operations Dashboard
-          </Button>
-          <Button
-            variant={activeModule === 'floor' ? 'primary' : 'ghost'}
-            size="xs"
-            className={activeModule === 'floor' ? 'pop-shadow-xs font-bold' : ''}
-            onClick={() => onModuleClick?.('floor')}
-          >
-            Production Floor
-          </Button>
-          <Button
-            variant={activeModule === 'workforce' ? 'primary' : 'ghost'}
-            size="xs"
-            className={activeModule === 'workforce' ? 'pop-shadow-xs font-bold' : ''}
-            onClick={() => onModuleClick?.('workforce')}
-          >
-            Workforce & Attendance
-          </Button>
-        </nav>
       </div>
 
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        <Badge variant="success" size="xs" dotColor="#15803D" className="gap-1.5 px-2 sm:px-2.5 py-1 rounded-full border-2 border-[#181816] pop-shadow-xs font-mono text-[10px] sm:text-[11px] font-bold">
-          <span className="w-2 h-2 rounded-full bg-[#15803D] border border-[#181816] live-dot shrink-0" />
-          <span className="hidden md:inline">{solverStatus}</span>
-          <span className="md:hidden">OPTIMAL</span>
-        </Badge>
-
-        <Button
-          variant="outline"
-          size="xs"
-          className={`flex items-center gap-1 bg-[#FFEFEA] hover:bg-[#FEDCCE] text-[#962C0B] border-2 border-[#181816] rounded-full px-2 sm:px-2.5 py-1 font-mono text-[10px] sm:text-[11px] btn-pop font-bold ${isResolved ? 'hidden' : ''}`}
-          icon={<MaterialIcon name="broken_image" size="sm" color="#E05326" />}
-          title={disruptionText}
+      {/* Right: Authenticated Profile Avatar & Menu (No Role-Switching buttons) */}
+      <div className="flex items-center gap-2 shrink-0 relative">
+        <button
+          type="button"
+          onClick={() => setProfileMenuOpen((prev) => !prev)}
+          className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full border-2 border-[#181816] bg-[#FAF7F0] hover:bg-[#E7DFCE] pop-shadow-xs btn-pop transition-all font-mono text-xs"
+          title="User Profile & Account"
+          aria-haspopup="true"
+          aria-expanded={profileMenuOpen}
         >
-          <span className="hidden sm:inline">{disruptionText}</span>
-          <span className="sm:hidden">Alert</span>
-        </Button>
+          <span className="w-6 h-6 rounded-full bg-[#0E4B3E] text-white flex items-center justify-center font-bold text-[11px]">
+            {currentProfile.initials}
+          </span>
+          <span className="font-bold text-[#181816] text-xs hidden sm:inline">
+            {currentProfile.name}
+          </span>
+          <MaterialIcon name={profileMenuOpen ? 'expand_less' : 'expand_more'} size="xs" color="#181816" />
+        </button>
 
-        <Badge variant="warning" size="xs" className="hidden lg:inline-flex px-2 py-0.5 rounded-full border-2 border-[#181816] font-mono text-[10px] font-bold pop-shadow-xs">
-          synthetic: true
-        </Badge>
+        {/* Compact Profile Dropdown with Logout Action */}
+        {profileMenuOpen && (
+          <div
+            className="absolute right-0 top-full mt-2 w-64 bg-white border-2 border-[#181816] rounded-2xl pop-shadow-md z-50 p-2 space-y-1 font-body text-xs"
+            onMouseLeave={() => setProfileMenuOpen(false)}
+          >
+            {/* User role and status */}
+            <div className="p-2 border-b border-stone-200">
+              <span className="font-mono text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                Authenticated Account
+              </span>
+              <div className="font-bold text-sm text-[#181816] flex items-center justify-between mt-0.5">
+                <span>{currentProfile.name}</span>
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#D7F4E5] text-[#0B382F] border border-[#181816]">
+                  Active
+                </span>
+              </div>
+              <span className="text-[10.5px] text-stone-600 block mt-0.5">
+                {currentProfile.title}
+              </span>
+            </div>
 
-        <Button
-          variant="pop"
-          size="sm"
-          icon={<MaterialIcon name="warning" size="sm" color="#E05326" />}
-          onClick={onSimulateDisruption}
-          className="hidden md:inline-flex text-[11px]"
-        >
-          <span>Disrupt</span>
-        </Button>
+            {/* Profile Options */}
+            <div className="py-1 space-y-0.5">
+              <div className="px-2 py-1.5 rounded-xl font-mono text-[10.5px] text-stone-600 bg-[#FAF7F0] border border-stone-200 flex items-center justify-between">
+                <span>Scope:</span>
+                <strong className="text-[#0E4B3E]">
+                  {currentRole === 'customer' ? 'ZARA Sourcing Only' : 'Factory Operational'}
+                </strong>
+              </div>
+            </div>
 
-        <Button
-          variant="primary"
-          size="sm"
-          icon={<MaterialIcon name="refresh" size="md" />}
-          onClick={onTriggerReplan}
-          className="text-[11px]"
-        >
-          <span className="hidden sm:inline">Re-Solve</span>
-        </Button>
-
-        <div className="w-7 h-7 rounded-full bg-[#E7DFCE] text-[#181816] flex items-center justify-center font-mono text-[11px] font-bold border-2 border-[#181816] pop-shadow-xs ml-0.5 sm:ml-1 shrink-0" title="Shift Supervisor: Likith">
-          LK
-        </div>
+            {/* Actions: Sign Out (Returns to Role Login Screen) */}
+            <div className="pt-1.5 border-t border-stone-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false)
+                  onLogout?.()
+                }}
+                className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-[#FFEFEA] text-[#962C0B] font-bold text-left transition-all"
+              >
+                <MaterialIcon name="logout" size="xs" color="#962C0B" />
+                <span>Log Out</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   )
