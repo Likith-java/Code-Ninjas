@@ -106,6 +106,15 @@
       "title": "SchedulerType",
       "type": "string"
     },
+    "Severity": {
+      "description": "Violation severity.",
+      "enum": [
+        "error",
+        "warning"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
     "SolverStatus": {
       "description": "Solver termination status (stable vocabulary, never fabricated).",
       "enum": [
@@ -158,13 +167,22 @@
     },
     "ValidationViolation": {
       "additionalProperties": false,
-      "description": "Single validation rule violation.",
+      "description": "Single validation rule violation.\n\n``code`` is the stable contract identifier (e.g. ``R06_DURATION_MISMATCH``);\n``rule`` is the numeric rule order 1-17 kept for readability.",
       "properties": {
+        "code": {
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
         "rule": {
-          "maximum": 8,
+          "maximum": 17,
           "minimum": 1,
           "title": "Rule",
           "type": "integer"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "error"
         },
         "message": {
           "title": "Message",
@@ -207,6 +225,7 @@
         }
       },
       "required": [
+        "code",
         "rule",
         "message"
       ],

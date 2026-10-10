@@ -36,7 +36,7 @@
     },
     "FrozenOperation": {
       "additionalProperties": false,
-      "description": "Pre-fixed operation that cannot be moved during re-plan.",
+      "description": "Pre-fixed operation that cannot be moved during re-plan.\n\n``quantity_metres`` optionally records the completed quantity for a\npartially finished operation; the validator checks it against the\nschedule when both are present. There is no cumulative inventory model:\nthis field tracks per-operation progress only.",
       "properties": {
         "order": {
           "title": "Order",
@@ -58,6 +58,20 @@
           "minimum": 0,
           "title": "End",
           "type": "integer"
+        },
+        "quantity_metres": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 100000,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quantity Metres"
         }
       },
       "required": [

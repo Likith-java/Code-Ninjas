@@ -93,16 +93,43 @@ non-positive, flagged by validation rule 3 when it contradicts the order).
 ### Validation result
 
 `status` (`valid` \| `invalid`, derived from the violation list) plus
-`violations` (`rule` 1–8, `message`, optional `order`/`machine`/`stage`).
-The validator imports nothing from solver modules. Rule summary:
-1. no duplicate order-stage operations;
-2. machine eligible and stage-compatible;
-3. duration matches `compute_duration` (and quantity matches the order);
-4. route order within each order, no stage overlap;
-5. no machine overlap;
-6. no downtime overlap, respects `available_until`;
-7. no start before `yarn_ready` or `now`;
-8. frozen operations unchanged.
+`violations`. Each violation carries a stable `code` (the contract),
+a numeric `rule` (1–17), a `severity` (`error`; `warning` reserved),
+a human-readable `message`, and the applicable `order`/`machine`/`stage`.
+The validator imports only domain models and the shared duration utility —
+never solver code. It collects every discoverable violation, never repairs
+schedules, and never declares scenarios (in)feasible. Machine conflicts use
+half-open `[start, end)` intervals, so adjacent operations never overlap.
+Completeness (R01/R02) is checked separately from the status claim (R14):
+a non-success status explains missing work instead of duplicating it.
+
+| Code | Rule | Check |
+|---|---|---|
+| `R01_MISSING_OPERATION` | 1 | every required order-stage appears exactly once |
+| `R02_DUPLICATE_OPERATION` | 2 | no duplicate order-stage operations |
+| `R03_MACHINE_INELIGIBLE` | 3 | machine eligible for the order and stage |
+| `R04_STAGE_MISMATCH` | 4 | machine supports the operation's stage |
+| `R05_BAD_INTERVAL` | 5 | start earlier than end (schema-enforced, defensive) |
+| `R06_DURATION_MISMATCH` | 6 | duration matches `ceil(quantity / rate * 60)` for the assigned machine and scheduled quantity |
+| `R07_ROUTE_PRECEDENCE` | 7 | route order respected, no stage overlap within an order |
+| `R08_MACHINE_OVERLAP` | 8 | no overlap on one machine |
+| `R09_DOWNTIME_OVERLAP` | 9 | no downtime or `available_until` overlap |
+| `R10_YARN_READY` | 10 | no start before the order's yarn-ready time |
+| `R11_START_BEFORE_NOW` | 11 | no unfrozen start before `scenario.now` (frozen work belongs to the past) |
+| `R12_BEYOND_HORIZON` | 12 | no operation ends past the horizon |
+| `R13_QUANTITY_MISMATCH` | 13 | scheduled quantity matches the order quantity |
+| `R14_UNRESOLVED_MANDATORY` | 14 | `OPTIMAL`/`FEASIBLE` status with missing mandatory work |
+| `R15_FROZEN_CHANGED` | 15 | frozen/completed operations unchanged in replans |
+| `R16_UNKNOWN_REFERENCE` | 16 | order and machine IDs resolve in the scenario |
+| `R17_BAD_TIME_VALUE` | 17 | integer minutes ≥ 0 (schema-enforced, defensive) |
+
+Schema-enforcement notes: R05 and R17 cannot trigger through the public
+models because Pydantic rejects non-integer, negative, or inverted times at
+parse time; the validator still checks them defensively so no rule is
+silently skipped. Replanning context is `scenario.frozen` (optionally with
+per-operation `quantity_metres` for partially completed work, checked when
+both sides report it). There is no cumulative inventory model: completed
+quantities are tracked per frozen operation only.
 
 ## Failure result
 

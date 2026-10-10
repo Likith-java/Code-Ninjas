@@ -259,4 +259,4 @@ class TestValidatorProperties:
 
         # Should have Rule 3 violation (duration mismatch)
         assert not validation.is_valid
-        assert any(v.rule == 3 for v in validation.violations)
+        assert any(v.code == "R06_DURATION_MISMATCH" for v in validation.violations)

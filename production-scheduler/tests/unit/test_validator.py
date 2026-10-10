@@ -108,7 +108,7 @@ class TestValidator:
         validator = ScheduleValidator(scenario)
         result = validator.validate(_make_schedule(scenario, ops))
         assert not result.is_valid
-        assert any(v.rule == 1 for v in result.violations)
+        assert any(v.code == "R02_DUPLICATE_OPERATION" for v in result.violations)
 
     def test_wrong_machine_stage_fails(self) -> None:
         """Operation on wrong stage machine should fail Rule 2."""
@@ -122,7 +122,9 @@ class TestValidator:
         validator = ScheduleValidator(scenario)
         result = validator.validate(_make_schedule(scenario, ops))
         assert not result.is_valid
-        assert any(v.rule == 2 for v in result.violations)
+        assert any(
+            v.code in ("R03_MACHINE_INELIGIBLE", "R04_STAGE_MISMATCH") for v in result.violations
+        )
 
     def test_ineligible_machine_fails(self) -> None:
         """Operation on ineligible machine should fail Rule 2."""
@@ -139,7 +141,9 @@ class TestValidator:
         validator = ScheduleValidator(scenario)
         result = validator.validate(_make_schedule(scenario, ops))
         assert not result.is_valid
-        assert any(v.rule == 2 for v in result.violations)
+        assert any(
+            v.code in ("R03_MACHINE_INELIGIBLE", "R04_STAGE_MISMATCH") for v in result.violations
+        )
 
     def test_wrong_duration_fails(self) -> None:
         """Wrong duration should fail Rule 3."""
@@ -154,7 +158,7 @@ class TestValidator:
         validator = ScheduleValidator(scenario)
         result = validator.validate(_make_schedule(scenario, ops))
         assert not result.is_valid
-        assert any(v.rule == 3 for v in result.violations)
+        assert any(v.code == "R06_DURATION_MISMATCH" for v in result.violations)
 
     def test_route_order_violation_fails(self) -> None:
         """Stages out of order should fail Rule 4."""
@@ -171,7 +175,7 @@ class TestValidator:
         validator = ScheduleValidator(scenario)
         result = validator.validate(_make_schedule(scenario, ops))
         assert not result.is_valid
-        assert any(v.rule == 4 for v in result.violations)
+        assert any(v.code == "R07_ROUTE_PRECEDENCE" for v in result.violations)
 
     def test_machine_overlap_fails(self) -> None:
         """Overlapping operations on same machine should fail Rule 5."""
@@ -188,7 +192,7 @@ class TestValidator:
         validator = ScheduleValidator(scenario)
         result = validator.validate(_make_schedule(scenario, ops))
         assert not result.is_valid
-        assert any(v.rule == 5 for v in result.violations)
+        assert any(v.code == "R08_MACHINE_OVERLAP" for v in result.violations)
 
     def test_downtime_overlap_fails(self) -> None:
         """Operation overlapping downtime should fail Rule 6."""
@@ -202,7 +206,7 @@ class TestValidator:
         validator = ScheduleValidator(scenario)
         result = validator.validate(_make_schedule(scenario, ops))
         assert not result.is_valid
-        assert any(v.rule == 6 for v in result.violations)
+        assert any(v.code == "R09_DOWNTIME_OVERLAP" for v in result.violations)
 
     def test_starts_before_yarn_ready_fails(self) -> None:
         """Operation starting before yarn_ready should fail Rule 7."""
@@ -216,7 +220,7 @@ class TestValidator:
         validator = ScheduleValidator(scenario)
         result = validator.validate(_make_schedule(scenario, ops))
         assert not result.is_valid
-        assert any(v.rule == 7 for v in result.violations)
+        assert any(v.code == "R10_YARN_READY" for v in result.violations)
 
     def test_frozen_operation_changed_fails(self) -> None:
         """Changing a frozen operation should fail Rule 8."""
@@ -236,7 +240,7 @@ class TestValidator:
         validator = ScheduleValidator(scenario)
         result = validator.validate(_make_schedule(scenario, ops))
         assert not result.is_valid
-        assert any(v.rule == 8 for v in result.violations)
+        assert any(v.code == "R15_FROZEN_CHANGED" for v in result.violations)
 
     def test_frozen_operation_unchanged_passes(self) -> None:
         """Keeping frozen operation unchanged should pass Rule 8."""
@@ -250,6 +254,20 @@ class TestValidator:
         ops = [
             ScheduledOperation(
                 order="ORD-001", stage=Stage.SPINNING, machine="SPIN-01", start=0, end=1200
+            ),
+            ScheduledOperation(
+                order="ORD-001",
+                stage=Stage.WEAVING,
+                machine="WEAVE-01",
+                start=1200,
+                end=3000,
+            ),
+            ScheduledOperation(
+                order="ORD-001",
+                stage=Stage.DYEING,
+                machine="DYE-01",
+                start=3000,
+                end=5400,
             ),
         ]
 

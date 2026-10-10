@@ -386,7 +386,7 @@ class TestOperationContract:
             quantity_metres=600,
         )
         result = ScheduleValidator(scenario).validate(make_schedule(scenario, [op]))
-        assert any(v.rule == 3 and "Quantity" in v.message for v in result.violations)
+        assert any(v.code == "R13_QUANTITY_MISMATCH" for v in result.violations)
 
     def test_availability_horizon_flagged_by_validator(self) -> None:
         machines = [
@@ -404,7 +404,10 @@ class TestOperationContract:
             order="ORD-001", stage=Stage.SPINNING, machine="SPIN-01", start=0, end=1200
         )
         result = ScheduleValidator(scenario).validate(make_schedule(scenario, [op]))
-        assert any(v.rule == 6 and "availability" in v.message for v in result.violations)
+        assert any(
+            v.code == "R09_DOWNTIME_OVERLAP" and "availability" in v.message
+            for v in result.violations
+        )
 
 
 class TestValidationStatus:
@@ -418,7 +421,9 @@ class TestValidationStatus:
 
         result = ValidationResult(
             status=ValidationStatus.VALID,
-            violations=[ValidationViolation(rule=1, message="dupe")],
+            violations=[
+                ValidationViolation(code="R02_DUPLICATE_OPERATION", rule=2, message="dupe")
+            ],
         )
         assert result.status == ValidationStatus.INVALID
         assert result.is_valid is False

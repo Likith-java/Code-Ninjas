@@ -73,6 +73,13 @@ class ValidationStatus(str, Enum):
     INVALID = "invalid"
 
 
+class Severity(str, Enum):
+    """Violation severity."""
+
+    ERROR = "error"
+    WARNING = "warning"
+
+
 class MachineStatus(str, Enum):
     """Runtime machine state."""
 
@@ -194,7 +201,13 @@ class Order(BaseModel):
 
 
 class FrozenOperation(BaseModel):
-    """Pre-fixed operation that cannot be moved during re-plan."""
+    """Pre-fixed operation that cannot be moved during re-plan.
+
+    ``quantity_metres`` optionally records the completed quantity for a
+    partially finished operation; the validator checks it against the
+    schedule when both are present. There is no cumulative inventory model:
+    this field tracks per-operation progress only.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -203,6 +216,7 @@ class FrozenOperation(BaseModel):
     machine: str
     start: Annotated[int, Field(ge=0)]
     end: Annotated[int, Field(ge=0)]
+    quantity_metres: Annotated[int | None, Field(gt=0, le=100000)] = None
 
     @field_validator("end")
     @classmethod
@@ -319,11 +333,17 @@ class ScheduledOperation(BaseModel):
 
 
 class ValidationViolation(BaseModel):
-    """Single validation rule violation."""
+    """Single validation rule violation.
+
+    ``code`` is the stable contract identifier (e.g. ``R06_DURATION_MISMATCH``);
+    ``rule`` is the numeric rule order 1-17 kept for readability.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    rule: Annotated[int, Field(ge=1, le=8)]
+    code: Annotated[str, Field(min_length=1)]
+    rule: Annotated[int, Field(ge=1, le=17)]
+    severity: Severity = Severity.ERROR
     message: str
     order: str | None = None
     machine: str | None = None
