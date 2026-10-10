@@ -1,0 +1,48 @@
+{
+  "name": "feasible",
+  "synthetic": true,
+  "now": 0,
+  "horizon": 10080,
+  "route": ["spinning", "weaving", "dyeing"],
+  "machines": [
+    {"id": "SPIN-01", "stage": "spinning", "rate_m_per_hour": 60, "downtime": []},
+    {"id": "SPIN-02", "stage": "spinning", "rate_m_per_hour": 55, "downtime": []},
+    {"id": "WEAVE-01", "stage": "weaving", "rate_m_per_hour": 40, "downtime": []},
+    {"id": "WEAVE-02", "stage": "weaving", "rate_m_per_hour": 45, "downtime": []},
+    {"id": "DYE-01", "stage": "dyeing", "rate_m_per_hour": 30, "downtime": []},
+    {"id": "DYE-02", "stage": "dyeing", "rate_m_per_hour": 32, "downtime": []}
+  ],
+  "orders": [
+    {
+      "id": "ORD-001",
+      "buyer": "Buyer A",
+      "fabric": "cotton twill",
+      "colour": "navy",
+      "metres": 1200,
+      "due": 9000,
+      "priority_weight": 3,
+      "yarn_ready": 0,
+      "eligible": {
+        "spinning": ["SPIN-01", "SPIN-02"],
+        "weaving": ["WEAVE-01", "WEAVE-02"],
+        "dyeing": ["DYE-01"]
+      }
+    },
+    {
+      "id": "ORD-002",
+      "buyer": "Buyer B",
+      "fabric": "linen",
+      "colour": "natural",
+      "metres": 1000,
+      "due": 8000,
+      "priority_weight": 2,
+      "yarn_ready": 0,
+      "eligible": {
+        "spinning": ["SPIN-01", "SPIN-02"],
+        "weaving": ["WEAVE-01", "WEAVE-02"],
+        "dyeing": ["DYE-01", "DYE-02"]
+      }
+    }
+  ],
+  "frozen": []
+}
