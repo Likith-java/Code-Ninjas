@@ -55,7 +55,7 @@ class ScheduleValidator:
     def __init__(self, scenario: Scenario) -> None:
         self.scenario = scenario
         self.machine_by_id = {m.id: m for m in scenario.machines}
-        self.order_by_id = {o.id for o in scenario.orders}
+        self.order_by_id = {o.id: o for o in scenario.orders}
         self.orders = {o.id: o for o in scenario.orders}
         self.route_index = {stage: idx for idx, stage in enumerate(scenario.route)}
         self.frozen = {(f.order, f.stage, f.machine): f for f in scenario.frozen}
