@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.orm import Session
 from app.database import engine, SessionLocal
-from app.models.user import User
+from app.models import User
 from app.core.security import hash_password
 
 
@@ -44,14 +44,14 @@ DEMO_USERS = [
 
 def seed_users(db: Session) -> None:
     print("=" * 70)
-    print("SEEDING SYNTHETIC DEMO ACCOUNTS — HACKATHON BUILD ONLY")
+    print("SEEDING SYNTHETIC DEMO ACCOUNTS - HACKATHON BUILD ONLY")
     print("NOT FOR PRODUCTION USE")
     print("=" * 70)
 
     for user_data in DEMO_USERS:
         existing = db.query(User).filter(User.email == user_data["email"]).first()
         if existing:
-            print(f"⏭  Skipping {user_data['email']} — already exists")
+            print(f"[SKIP] Skipping {user_data['email']} - already exists")
             continue
 
         user = User(
@@ -62,7 +62,7 @@ def seed_users(db: Session) -> None:
             is_active=True,
         )
         db.add(user)
-        print(f"✅  Created {user_data['role'].upper():20} | {user_data['email']} | password: {user_data['password']}")
+        print(f"[OK] Created {user_data['role'].upper():20} | {user_data['email']} | password: {user_data['password']}")
 
     db.commit()
 

@@ -10,6 +10,7 @@ import { ModulePendingView } from '@/components/layout/ModulePendingView'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { UserRole, ROLE_PROFILES } from '@/lib/permissions'
 import { useAppState } from '@/hooks/useAppState'
+import { clearSession, getUser } from '@/lib/auth-storage'
 
 export default function AppLayout({
   children,
@@ -24,11 +25,20 @@ export default function AppLayout({
   const router = useRouter()
 
   useEffect(() => {
+    const user = getUser()
+    if (user?.role && ROLE_PROFILES[user.role as UserRole]) {
+      setCurrentRole(user.role as UserRole)
+    }
+
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const tab = params.get('tab')
       if (tab && tab !== 'login') {
         setActiveModule(tab)
+      } else if (window.location.pathname.includes('dashboard')) {
+        setActiveModule('dashboard')
+      } else if (window.location.pathname.includes('workforce')) {
+        setActiveModule('workforce')
       }
     }
 
@@ -57,12 +67,12 @@ export default function AppLayout({
   }
 
   const handleLogout = () => {
+    clearSession()
     setIsAuthenticated(false)
     setActiveModule('login')
     if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href)
-      url.searchParams.set('tab', 'login')
-      window.history.pushState({}, '', url.toString())
+      window.location.href = '/'
+    } else {
       router.replace('/')
     }
   }
@@ -139,9 +149,19 @@ export default function AppLayout({
 
           {activeModule === 'dashboard' && <OperationsDashboard currentRole={currentRole} />}
           {activeModule === 'workforce' && <WorkforceAttendance />}
-          {activeModule !== 'floor' && activeModule !== 'dashboard' && activeModule !== 'workforce' && (
-            <ModulePendingView moduleId={activeModule} onSwitchModule={handleModuleClick} />
-          )}
+          {activeModule === 'yarn' && <YarnInventoryView />}
+          {activeModule === 'rolls' && <FabricRollsView />}
+          {activeModule === 'dispatch' && <DispatchesView />}
+          {activeModule === 'validator' && <ScheduleValidatorView />}
+          {activeModule !== 'floor' &&
+            activeModule !== 'dashboard' &&
+            activeModule !== 'workforce' &&
+            activeModule !== 'yarn' &&
+            activeModule !== 'rolls' &&
+            activeModule !== 'dispatch' &&
+            activeModule !== 'validator' && (
+              <ModulePendingView moduleId={activeModule} onSwitchModule={handleModuleClick} />
+            )}
         </div>
 
         <DisruptionModal
@@ -160,3 +180,7 @@ export default function AppLayout({
 import { ProductionBoard } from '@/components/board/ProductionBoard'
 import { OperationsDashboard } from '@/components/dashboard/OperationsDashboard'
 import { WorkforceAttendance } from '@/components/workforce/WorkforceAttendance'
+import { YarnInventoryView } from '@/components/modules/YarnInventoryView'
+import { FabricRollsView } from '@/components/modules/FabricRollsView'
+import { DispatchesView } from '@/components/modules/DispatchesView'
+import { ScheduleValidatorView } from '@/components/modules/ScheduleValidatorView'
