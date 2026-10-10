@@ -100,7 +100,7 @@ export function LoginScreen({
     },
     {
       role: 'customer',
-      label: 'Buyer / Customer',
+      label: 'Customer Portal',
       icon: 'person',
       desc: 'ZARA Sourcing portal: track purchase order milestones and delivery dates only.',
     },

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.routers import (
+    auth,
     dispatches,
     downtimes,
     inventory,
@@ -27,7 +28,11 @@ app = FastAPI(
 )
 
 # Configure CORS origins from environment (comma-separated if multiple)
-raw_frontend_origins = os.getenv("FRONTEND_ORIGINS") or os.getenv("FRONTEND_ORIGIN") or "http://localhost:3000"
+raw_frontend_origins = (
+    os.getenv("FRONTEND_ORIGINS")
+    or os.getenv("FRONTEND_ORIGIN")
+    or "http://localhost:3000,http://127.0.0.1:3000"
+)
 allowed_origins = [origin.strip() for origin in raw_frontend_origins.split(",") if origin.strip()]
 
 app.add_middleware(
@@ -77,6 +82,7 @@ def readiness(db: Session = Depends(get_db)):
         )
 
 
+app.include_router(auth.router)
 app.include_router(orders.router)
 app.include_router(suppliers.router)
 app.include_router(materials.router)

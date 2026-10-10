@@ -12,7 +12,7 @@ export function OrderDetailView({ orderDetail }: OrderDetailViewProps) {
   if (!orderDetail) return null
 
   return (
-    <div className="hidden space-y-3.5" id="viewOrder">
+    <div className="space-y-3.5" id="viewOrder">
       <Card variant="elevated" padding="md" className="pop-shadow-md">
         <div className="flex items-center gap-2 mb-2">
           <Badge variant="default" size="sm" className="bg-[#FAF7F0] border-2 border-[#181816] text-[#0E4B3E] font-bold px-2 py-0.5">

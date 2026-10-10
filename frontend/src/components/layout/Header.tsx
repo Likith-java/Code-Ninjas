@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MaterialIcon } from '@/components/ui'
 import { UserRole, ROLE_PROFILES } from '@/lib/permissions'
+import { clearSession, getUser } from '@/lib/auth-storage'
 
 interface HeaderProps {
   currentRole: UserRole
@@ -18,8 +19,15 @@ export function Header({
   onBrandClick,
 }: HeaderProps) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [storedUser, setStoredUser] = useState<{ name?: string; email?: string } | null>(null)
+
+  useEffect(() => {
+    setStoredUser(getUser())
+  }, [])
+
   const safeRole: UserRole = currentRole && ROLE_PROFILES[currentRole] ? currentRole : 'admin'
   const currentProfile = ROLE_PROFILES[safeRole]
+  const displayName = storedUser?.name || currentProfile.name
 
   return (
     <header className="flex justify-between items-center w-full px-3 sm:px-5 h-12 z-40 border-b border-stone-200 bg-[#FFFFFF] shrink-0 select-none">
@@ -65,7 +73,7 @@ export function Header({
             {currentProfile.initials}
           </span>
           <span className="font-semibold text-[#181816] text-xs hidden sm:inline">
-            {currentProfile.name}
+            {displayName}
           </span>
           <MaterialIcon name={profileMenuOpen ? 'expand_less' : 'expand_more'} size="xs" color="#181816" />
         </button>
@@ -82,13 +90,13 @@ export function Header({
                 Authenticated Account
               </span>
               <div className="font-bold text-sm text-[#181816] flex items-center justify-between mt-0.5">
-                <span>{currentProfile.name}</span>
+                <span>{displayName}</span>
                 <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-[#D7F4E5] text-[#0B382F] border border-emerald-200">
                   Active
                 </span>
               </div>
               <span className="text-[11px] text-stone-600 block mt-0.5">
-                {currentProfile.title}
+                {storedUser?.email || currentProfile.title}
               </span>
             </div>
 
@@ -108,7 +116,12 @@ export function Header({
                 type="button"
                 onClick={() => {
                   setProfileMenuOpen(false)
-                  onLogout?.()
+                  clearSession()
+                  if (onLogout) {
+                    onLogout()
+                  } else {
+                    window.location.href = '/'
+                  }
                 }}
                 className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-red-50 text-red-700 font-medium text-left transition-colors cursor-pointer"
               >

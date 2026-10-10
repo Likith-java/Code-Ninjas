@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -20,6 +20,7 @@ from app.services.production import (
     validate_machine_eligibility,
     validate_run_downtime_conflict,
 )
+from app.services.scheduler_adapter import import_scheduler_output
 
 router = APIRouter(tags=["Production Operations"])
 
@@ -458,3 +459,43 @@ def update_production_run(
     except Exception:
         db.rollback()
         raise
+
+
+@router.post(
+    "/production-runs/import-schedule",
+    response_model=dict[str, Any],
+    summary="Import CP-SAT solver output schedule into planned production runs",
+)
+def import_schedule_runs(
+    payload: dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+):
+    try:
+        result = import_scheduler_output(db, payload)
+        return {
+            "status": "success",
+            "runs_created": result["runs_created"],
+            "runs_updated": result["runs_updated"],
+            "total_scheduled": result["total_scheduled"],
+            "runs": [
+                {
+                    "id": r.id,
+                    "order_id": r.order_id,
+                    "operation_id": r.operation_id,
+                    "machine_id": r.machine_id,
+                    "run_kind": r.run_kind,
+                    "status": r.status,
+                    "start_time": r.start_time.isoformat() if r.start_time else None,
+                    "end_time": r.end_time.isoformat() if r.end_time else None,
+                    "output_metres": float(r.output_metres) if r.output_metres is not None else None,
+                }
+                for r in result["runs"]
+            ],
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

@@ -167,3 +167,72 @@ def test_scheduler_adapter_infeasible_and_ineligible_rejections(db_session):
     }
     with pytest.raises(ValueError, match="not eligible"):
         import_scheduler_output(db_session, bad_assignment)
+
+
+def test_scheduler_import_api_endpoint(client, db_session):
+    uid = uuid.uuid4().hex[:6]
+    now = datetime.now(timezone.utc)
+
+    buyer = Buyer(name=f"API Buyer {uid}")
+    db_session.add(buyer)
+    db_session.flush()
+
+    order = Order(
+        buyer_id=buyer.id,
+        fabric_type="Linen",
+        colour="White",
+        quantity_metres=Decimal("500.00"),
+        agreed_rate=Decimal("120.00"),
+        order_date=now,
+        deadline=now + timedelta(days=15),
+    )
+    db_session.add(order)
+    db_session.flush()
+
+    op = Operation(
+        order_id=order.id,
+        stage="weaving",
+        sequence=1,
+    )
+    db_session.add(op)
+    db_session.flush()
+
+    mach = Machine(
+        machine_code=f"WEAV-API-{uid}",
+        machine_type="weaving",
+        capacity_rate=Decimal("30.00"),
+        state="idle",
+    )
+    db_session.add(mach)
+    db_session.flush()
+
+    op.eligible_machines.append(mach)
+    db_session.commit()
+
+    valid_payload = {
+        "status": "OPTIMAL",
+        "validation_status": "valid",
+        "schedule": [
+            {
+                "order_id": order.id,
+                "operation_id": op.id,
+                "machine_code": mach.machine_code,
+                "stage": "weaving",
+                "start_minute": 0,
+                "end_minute": 180,
+            }
+        ]
+    }
+
+    res = client.post("/production-runs/import-schedule", json=valid_payload)
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["runs_created"] == 1
+    assert data["total_scheduled"] == 1
+
+    # Infeasible payload should return 422
+    bad_payload = {"status": "INFEASIBLE", "schedule": []}
+    res_bad = client.post("/production-runs/import-schedule", json=bad_payload)
+    assert res_bad.status_code == 422
+

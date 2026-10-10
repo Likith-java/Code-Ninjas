@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 # -------------------- Buyers and orders --------------------
@@ -562,3 +562,38 @@ class DispatchConfirmOut(BaseModel):
     invoice_total: Decimal
     message: str
     dispatched_roll_codes: list[str]
+
+
+# -------------------- Users and Authentication --------------------
+
+class UserRegister(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=6, max_length=128)
+    role: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def name_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Name cannot be blank.")
+        return v.strip()
+
+
+class UserLogin(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    password: str
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    email: str
+    role: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    user: UserOut
