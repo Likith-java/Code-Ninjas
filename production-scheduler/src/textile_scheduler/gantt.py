@@ -1,83 +1,122 @@
-"""Gantt chart export for schedules.
+"""Gantt data export for schedules.
 
-Converts schedule to JSON format suitable for Gantt chart libraries.
+Canonical output is one row per machine with operation and downtime bars,
+stable-sorted for the frontend team. No colours or visual properties are
+invented here: stable order IDs let the frontend assign colours
+consistently. Times are integer minutes from the scenario start; the
+scenario start timestamp is echoed explicitly when the scenario defines one.
 """
 
 from __future__ import annotations
 
+from .metrics import order_completions
 from .models import Schedule, Scenario, ScheduledOperation
-from .time_utils import minutes_to_hm
 
 
-def schedule_to_gantt(schedule: Schedule, scenario: Scenario) -> dict:
-    """Convert schedule to Gantt-compatible JSON structure.
+def _late_orders(scenario: Scenario, operations: list[ScheduledOperation]) -> set[str]:
+    completions = order_completions(scenario, operations)
+    return {
+        order.id
+        for order in scenario.orders
+        if (c := completions.get(order.id)) is not None and c > order.due
+    }
 
-    Returns dict with:
-    - tasks: list of task objects for Gantt
-    - machines: machine definitions
-    - metadata: scenario info
+
+def build_gantt_data(schedule: Schedule, scenario: Scenario) -> dict:
+    """Build the canonical machine-row Gantt structure.
+
+    Rows are sorted by machine ID; bars within a row are sorted by
+    ``(start, kind, order/machine)``. Operation bars carry order, stage,
+    machine, start, end, duration, quantity, and late/frozen flags.
+    Downtime windows are separate bars with their reason.
     """
-    machine_by_id = {m.id: m for m in scenario.machines}
-    order_by_id = {o.id: o for o in scenario.orders}
+    frozen_keys = {(f.order, f.stage, f.machine) for f in scenario.frozen}
+    late = _late_orders(scenario, schedule.operations)
 
-    tasks = []
+    ops_by_machine: dict[str, list] = {m.id: [] for m in scenario.machines}
     for op in schedule.operations:
-        order = order_by_id.get(op.order)
-        machine = machine_by_id.get(op.machine)
+        ops_by_machine.setdefault(op.machine, []).append(op)
 
-        tasks.append(
+    rows = []
+    for machine in sorted(scenario.machines, key=lambda m: m.id):
+        bars: list[dict] = []
+        for op in ops_by_machine.get(machine.id, []):
+            bars.append(
+                {
+                    "kind": "operation",
+                    "order_id": op.order,
+                    "stage": op.stage.value,
+                    "machine_id": op.machine,
+                    "start": op.start,
+                    "end": op.end,
+                    "duration": op.end - op.start,
+                    "quantity_metres": op.quantity_metres,
+                    "late": op.order in late,
+                    "frozen": (op.order, op.stage, op.machine) in frozen_keys,
+                }
+            )
+        for dt in machine.downtime:
+            bars.append(
+                {
+                    "kind": "downtime",
+                    "start": dt.start,
+                    "end": dt.end,
+                    "reason": dt.reason,
+                }
+            )
+        bars.sort(
+            key=lambda b: (
+                b["start"],
+                b["kind"],
+                b.get("order_id", ""),
+                b.get("machine_id", ""),
+            )
+        )
+        rows.append(
             {
-                "id": f"{op.order}_{op.stage.value}_{op.machine}",
+                "machine_id": machine.id,
+                "stage": machine.stage.value,
+                "rate_m_per_hour": machine.rate_m_per_hour,
+                "bars": bars,
+            }
+        )
+
+    # Operations referencing unknown machines (validator-flagged) are still
+    # exported under their own row so no data is silently dropped.
+    known_ids = {m.id for m in scenario.machines}
+    for machine_id in sorted(set(ops_by_machine) - known_ids):
+        bars = [
+            {
+                "kind": "operation",
                 "order_id": op.order,
-                "order_name": f"{order.fabric or ''} {order.colour or ''}".strip()
-                if order
-                else op.order,
-                "buyer": order.buyer if order and order.buyer else "Unknown",
                 "stage": op.stage.value,
-                "machine": op.machine,
-                "machine_stage": machine.stage.value if machine else op.stage.value,
+                "machine_id": op.machine,
                 "start": op.start,
                 "end": op.end,
                 "duration": op.end - op.start,
-                "start_label": minutes_to_hm(op.start),
-                "end_label": minutes_to_hm(op.end),
-                "duration_label": minutes_to_hm(op.end - op.start),
-                "priority": order.priority_weight if order else 1,
-                "due": order.due if order else None,
-                "yarn_ready": order.yarn_ready if order else None,
+                "quantity_metres": op.quantity_metres,
+                "late": op.order in late,
+                "frozen": False,
             }
-        )
-
-    machines = []
-    for m in scenario.machines:
-        machines.append(
+            for op in sorted(ops_by_machine[machine_id], key=lambda o: o.start)
+        ]
+        rows.append(
             {
-                "id": m.id,
-                "stage": m.stage.value,
-                "rate_m_per_hour": m.rate_m_per_hour,
-                "downtime": [
-                    {"start": dt.start, "end": dt.end, "reason": dt.reason} for dt in m.downtime
-                ],
+                "machine_id": machine_id,
+                "stage": None,
+                "rate_m_per_hour": None,
+                "bars": bars,
             }
         )
 
+    start = scenario.start.isoformat() if scenario.start is not None else None
     return {
-        "scenario": schedule.scenario_id,
+        "scenario_id": scenario.scenario_id,
+        "schedule_id": schedule.id,
         "solver": schedule.solver.value,
         "status": schedule.status.value,
-        "compute_seconds": schedule.compute_seconds,
-        "now": scenario.now,
-        "horizon": scenario.horizon,
-        "tasks": tasks,
-        "machines": machines,
-        "metrics": {
-            "weighted_tardiness": schedule.metrics.weighted_tardiness,
-            "on_time_rate": schedule.metrics.on_time_rate,
-            "utilisation": schedule.metrics.utilisation,
-            "makespan": schedule.metrics.makespan,
-        },
         "validation": {
-            "is_valid": schedule.validation.is_valid,
+            "status": schedule.validation.status.value,
             "violations": [
                 {
                     "code": v.code,
@@ -90,16 +129,32 @@ def schedule_to_gantt(schedule: Schedule, scenario: Scenario) -> dict:
                 for v in schedule.validation.violations
             ],
         },
+        "time": {
+            "scenario_start": start,
+            "unit": "minutes",
+            "origin_minute": 0,
+            "now": scenario.now,
+            "horizon": scenario.horizon,
+        },
+        "metrics": {
+            "weighted_tardiness": schedule.metrics.weighted_tardiness,
+            "on_time_rate": schedule.metrics.on_time_rate,
+            "utilisation": schedule.metrics.utilisation,
+            "makespan": schedule.metrics.makespan,
+        },
+        "rows": rows,
     }
+
+
+def schedule_to_gantt(schedule: Schedule, scenario: Scenario) -> dict:
+    """Canonical Gantt export (machine rows)."""
+    return build_gantt_data(schedule, scenario)
 
 
 def gantt_to_frappe_gantt(schedule: Schedule, scenario: Scenario) -> list[dict]:
     """Export to Frappe Gantt format (simple array of tasks)."""
-    order_by_id = {o.id: o for o in scenario.orders}
-
     tasks = []
     for op in schedule.operations:
-        order = order_by_id.get(op.order)
         tasks.append(
             {
                 "id": f"{op.order}_{op.stage.value}_{op.machine}",
@@ -137,7 +192,7 @@ def export_gantt_json(
     import json
 
     if format == "standard":
-        data = schedule_to_gantt(schedule, scenario)
+        data = build_gantt_data(schedule, scenario)
     elif format == "frappe":
         data = gantt_to_frappe_gantt(schedule, scenario)
     else:
