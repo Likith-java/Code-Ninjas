@@ -622,4 +622,24 @@ class UserOut(BaseModel):
 
 class AuthResponse(BaseModel):
     token: str
-    user: UserOut
+    user: UserOut
+
+
+# -------------------- Email Notifications --------------------
+
+class EmailNotificationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    order_id: int
+    notification_type: str
+    recipient_email: str
+    recipient_name: str | None = None
+    recipient_role: str | None = None
+    subject: str
+    status: str
+    attempt_count: int
+    last_error: str | None = None
+    created_at: datetime
+    sent_at: datetime | None = None
+

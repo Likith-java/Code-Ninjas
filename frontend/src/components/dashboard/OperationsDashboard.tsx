@@ -15,6 +15,7 @@ import { formatCanonicalOrderId, formatLegacyOrderId, matchesOrderQuery } from '
 import { UserRole, getRolePermissions, ROLE_PROFILES } from '@/lib/permissions'
 import { OrderDetailsPopover, OrderDetailsData } from '@/components/board/OrderDetailsPopover'
 import { OrderCreationModal } from '@/components/modules/OrderCreationModal'
+import { NotificationAuditModal } from '@/components/modals/NotificationAuditModal'
 import { getUser } from '@/lib/auth-storage'
 
 interface OperationsDashboardProps {
@@ -30,6 +31,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
   const [machineSearch, setMachineSearch] = useState('')
   const [machineTypeFilter, setMachineTypeFilter] = useState<'all' | 'spinning' | 'weaving' | 'dyeing'>('all')
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false)
+  const [isEmailAuditOpen, setIsEmailAuditOpen] = useState(false)
 
   // Anchored Floating Order Details Popover
   const [popoverOrder, setPopoverOrder] = useState<OrderDetailsData | null>(null)
@@ -365,6 +367,17 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
             <MaterialIcon name="description" size="xs" color="#FFFFFF" />
             <span>Generate Reports</span>
           </button>
+
+          {(currentRole === 'admin' || currentRole === 'production_manager') && (
+            <button
+              onClick={() => setIsEmailAuditOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-stone-300 text-stone-700 hover:text-black hover:bg-stone-50 rounded-lg font-bold text-xs shadow-xs transition-all cursor-pointer"
+              title="Open Email Notification Delivery Audit"
+            >
+              <MaterialIcon name="mail" size="xs" color="#0E4B3E" />
+              <span>Email Logs</span>
+            </button>
+          )}
 
           <div className="flex items-center gap-1 bg-[#FAF7F0] border border-stone-300 rounded-lg p-0.5 text-[10.5px]">
             <button
@@ -971,6 +984,12 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
         isOpen={isCreateOrderOpen}
         onClose={() => setIsCreateOrderOpen(false)}
         onOrderCreated={fetchLiveData}
+        currentRole={currentRole}
+      />
+
+      <NotificationAuditModal
+        isOpen={isEmailAuditOpen}
+        onClose={() => setIsEmailAuditOpen(false)}
         currentRole={currentRole}
       />
 

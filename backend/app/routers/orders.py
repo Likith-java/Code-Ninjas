@@ -1,12 +1,13 @@
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user_optional
 from app.database import get_db
+from app.services.notification_service import dispatch_order_placed_notifications
 from app.models import (
     Buyer,
     DispatchItem,
@@ -124,6 +125,7 @@ def check_feasibility(
 @router.post("/orders", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
 def create_order(
     payload: OrderCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),
 ):
@@ -187,6 +189,11 @@ def create_order(
 
         db.commit()
         db.refresh(order)
+        background_tasks.add_task(
+            dispatch_order_placed_notifications,
+            order.id,
+            current_user.id if current_user else None,
+        )
         return order
     except IntegrityError:
         db.rollback()

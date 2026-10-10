@@ -805,6 +805,35 @@ export const api = {
     const blob = await response.blob()
     return { blob, filename }
   },
+
+  async getNotifications(orderId?: number, status?: string): Promise<BackendEmailNotification[]> {
+    const params = new URLSearchParams()
+    if (orderId !== undefined) params.append('order_id', String(orderId))
+    if (status) params.append('status', status)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    return request<BackendEmailNotification[]>(`/notifications${qs}`)
+  },
+
+  async retryNotification(notificationId: number): Promise<BackendEmailNotification> {
+    return request<BackendEmailNotification>(`/notifications/${notificationId}/retry`, {
+      method: 'POST',
+    })
+  },
+}
+
+export interface BackendEmailNotification {
+  id: number
+  order_id: number
+  notification_type: string
+  recipient_email: string
+  recipient_name: string | null
+  recipient_role: string | null
+  subject: string
+  status: 'sent' | 'failed' | 'skipped' | 'pending'
+  attempt_count: number
+  last_error: string | null
+  created_at: string
+  sent_at: string | null
 }
 
 export interface ReportTypeItem {
@@ -824,3 +853,4 @@ export interface ReportGeneratePayload {
   order_id?: number | null
   machine_id?: number | null
 }
+
