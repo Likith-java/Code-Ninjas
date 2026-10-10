@@ -13,10 +13,8 @@ from .loader import load_scenario_file
 from .validator import validate_schedule
 from .baseline import run_edf_baseline, run_edf
 from .optimizer import optimize as run_cpsat_optimize
-from .optimizer import run_cpsat_optimizer
 from .metrics import compute_metrics
 from .durations import compute_duration
-from .disruptions import apply_disruption
 from .gantt import schedule_to_gantt, export_gantt_json
 
 
@@ -150,6 +148,9 @@ def optimize(
 @click.option("--to", "to_minute", type=int, help="Downtime end minute")
 @click.option("--yarn-delay", help="Order ID for yarn delay")
 @click.option("--hours", type=int, help="Delay in hours")
+@click.option("--delay-minutes", type=int, help="Delay in minutes (canonical)")
+@click.option("--reason", default=None, help="Breakdown reason")
+@click.option("--solver", type=click.Choice(["cpsat", "edf"]), default="cpsat")
 @click.option("--now", type=int, default=0, help="Current time (minutes)")
 @click.option("--time-limit", default=10.0, help="Solver time limit")
 @click.option("--seed", default=42, help="Random seed")
@@ -161,6 +162,9 @@ def replan(
     to_minute: int | None,
     yarn_delay: str | None,
     hours: int | None,
+    delay_minutes: int | None,
+    reason: str | None,
+    solver: str,
     now: int,
     time_limit: float,
     seed: int,
@@ -168,6 +172,8 @@ def replan(
 ) -> None:
     """Re-plan after a disruption (machine breakdown or yarn delay)."""
     try:
+        from .disruptions import replan as run_replan
+
         scenario = load_scenario(str(scenario_path))
         click.echo(f"Loaded scenario: {scenario.scenario_id}")
 
@@ -181,74 +187,66 @@ def replan(
                 machine=machine_down,
                 from_minute=from_minute,
                 to_minute=to_minute,
+                reason=reason,
                 now=now,
             )
         elif yarn_delay:
-            if hours is None:
-                click.echo("Error: --hours required for yarn delay", err=True)
+            if hours is None and delay_minutes is None:
+                click.echo("Error: --hours or --delay-minutes required for yarn delay", err=True)
                 sys.exit(1)
             disruption = Disruption(
                 type=DisruptionType.YARN_DELAY,
                 order=yarn_delay,
                 hours=hours,
+                delay_minutes=delay_minutes,
                 now=now,
             )
         else:
             click.echo("Error: Either --machine-down or --yarn-delay required", err=True)
             sys.exit(1)
 
-        # First run baseline to get current schedule
+        # Current validated schedule, then the full replan flow
         click.echo("Computing current schedule (EDF)...")
         current_ops = run_edf_baseline(scenario)
 
         click.echo(f"Applying disruption: {disruption.type.value}...")
-        new_scenario, frozen_ops, diff = apply_disruption(scenario, current_ops, disruption)
+        result = run_replan(
+            scenario,
+            current_ops,
+            disruption,
+            solver=solver,
+            time_limit_seconds=time_limit,
+            random_seed=seed,
+        )
+        diff = result.diff
         click.echo(f"Frozen {diff.frozen_count} operations, split {diff.split_count} operations")
+        if diff.interrupted:
+            for record in diff.interrupted:
+                click.echo(
+                    f"Interrupted {record['order']} {record['stage']} on "
+                    f"{record['machine']}: {record['completed_metres']}m done, "
+                    f"{record['remaining_metres']}m -> {record['remainder_order']}"
+                )
         if diff.moved_orders:
             click.echo(f"Moved orders: {len(diff.moved_orders)}")
         if diff.now_late:
             click.echo(f"Now late: {', '.join(diff.now_late)}")
         if diff.now_at_risk:
             click.echo(f"Now at risk: {', '.join(diff.now_at_risk)}")
+        if diff.recovered:
+            click.echo(f"Recovered: {', '.join(diff.recovered)}")
 
-        # Re-solve with CP-SAT
-        click.echo("Re-solving with CP-SAT...")
-        status, new_ops, solve_time = run_cpsat_optimizer(
-            scenario=new_scenario,
-            time_limit_seconds=time_limit,
-            random_seed=seed,
-            warm_start_ops=frozen_ops,
+        if not result.ok or result.schedule is None:
+            click.echo(f"Re-plan failed: {result.error}", err=True)
+            sys.exit(1)
+
+        schedule = result.schedule
+        click.echo(
+            f"Re-plan status: {schedule.status.value} (took {schedule.compute_seconds:.2f}s)"
         )
-        click.echo(f"Re-plan status: {status.value} (took {solve_time:.2f}s)")
-
-        # Solver output is already complete: frozen operations are modelled
-        # with presence forced, so combining them again would duplicate.
-        all_ops = new_ops
-
-        from .models import Schedule, ValidationResult
-
-        metrics = compute_metrics(new_scenario, all_ops)
-        validation = validate_schedule(
-            new_scenario,
-            Schedule(
-                scenario_id=new_scenario.scenario_id,
-                solver=SchedulerType.CP_SAT,
-                status=status,
-                compute_seconds=solve_time,
-                validation=ValidationResult(violations=[]),
-                metrics=metrics,
-                operations=all_ops,
-            ),
-        )
-
-        schedule = Schedule(
-            scenario_id=new_scenario.scenario_id,
-            solver=SchedulerType.CP_SAT,
-            status=status,
-            compute_seconds=solve_time,
-            validation=validation,
-            metrics=metrics,
-            operations=all_ops,
+        click.echo(
+            f"Tardiness {result.previous_metrics.weighted_tardiness:.1f} -> "
+            f"{schedule.metrics.weighted_tardiness:.1f}"
         )
 
         save_schedule(schedule, str(output) if output else None)

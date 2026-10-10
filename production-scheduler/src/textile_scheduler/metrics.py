@@ -11,8 +11,8 @@ identical functions. Definitions:
   minutes. Availability per machine is ``min(horizon, available_until)``
   minus downtime; a zero denominator yields ``0.0`` (never divides by zero).
 - Delivery counts: completed within horizon, late (past due), at-risk
-  (within the last 10% of the ``now``-to-due window, same definition used
-  for replan diffs).
+  (within the last 10% of the order-date-to-deadline window, same definition
+  used for replan diffs).
 """
 
 from __future__ import annotations
@@ -58,17 +58,19 @@ def order_completions(
     return {order.id: done.get(order.id) for order in scenario.orders}
 
 
-def is_order_at_risk(completion: int, due: int, now: int) -> bool:
-    """An order is at risk when completion falls in the last 10% of the window.
+def is_order_at_risk(completion: int, order: Order) -> bool:
+    """An order is at risk when completion falls in the last 10% of its window.
 
-    Window is ``due - now``; at risk means
-    ``due - 0.1 * window <= completion <= due``. Zero or negative windows
-    are never at risk (they are already due or late).
+    The window runs from the order date (``ordered_at``) to the deadline
+    (``due``), per the PRD: at risk means
+    ``due - 0.1 * (due - ordered_at) <= completion <= due``. Zero or negative
+    windows are never at risk (already due or late). Lot-shortage risk is not
+    modeled: the schema has no lot-level inventory tracking.
     """
-    window = due - now
+    window = order.due - order.ordered_at
     if window <= 0:
         return False
-    return due - 0.1 * window <= completion <= due
+    return order.due - 0.1 * window <= completion <= order.due
 
 
 def count_completed_within_horizon(scenario: Scenario, operations: list[ScheduledOperation]) -> int:
@@ -96,7 +98,7 @@ def count_at_risk_orders(scenario: Scenario, operations: list[ScheduledOperation
         completion = completions[order.id]
         if completion is None or completion > order.due:
             continue
-        if is_order_at_risk(completion, order.due, scenario.now):
+        if is_order_at_risk(completion, order):
             total += 1
     return total
 

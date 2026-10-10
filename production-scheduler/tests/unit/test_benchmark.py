@@ -206,11 +206,21 @@ class TestMetricDefinitions:
         assert count_at_risk_orders(scenario, ops) == 1
 
     def test_at_risk_boundaries(self) -> None:
-        assert is_order_at_risk(900, 1000, 0) is True  # threshold inclusive
-        assert is_order_at_risk(899, 1000, 0) is False
-        assert is_order_at_risk(1000, 1000, 0) is True  # on time, at threshold end
-        assert is_order_at_risk(1001, 1000, 0) is False  # late, not at risk
-        assert is_order_at_risk(5, 5, 10) is False  # non-positive window
+        def order(due: int, ordered_at: int = 0) -> Order:
+            return Order(
+                id="ORD-X",
+                metres=100,
+                due=due,
+                ordered_at=ordered_at,
+                priority_weight=1,
+                eligible=OrderEligibility(),
+            )
+
+        assert is_order_at_risk(900, order(1000)) is True  # threshold inclusive
+        assert is_order_at_risk(899, order(1000)) is False
+        assert is_order_at_risk(1000, order(1000)) is True  # on time at window end
+        assert is_order_at_risk(1001, order(1000)) is False  # late, not at risk
+        assert is_order_at_risk(5, order(5, ordered_at=10)) is False  # negative window
 
 
 class TestImprovementMath:

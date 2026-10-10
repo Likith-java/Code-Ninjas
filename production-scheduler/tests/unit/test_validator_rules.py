@@ -445,6 +445,60 @@ class TestRules:
         result, _ = validate_ops(scenario, ops)
         assert "R10_YARN_READY" in codes(result)
 
+    def test_r10_provisioned_successor_exempt(self) -> None:
+        """A later stage fed by frozen history keeps provisioned material."""
+        scenario = create_scenario(
+            orders=[
+                Order(
+                    id="ORD-001",
+                    metres=1200,
+                    due=15000,
+                    priority_weight=3,
+                    yarn_ready=2000,
+                    eligible=OrderEligibility(
+                        spinning=["SPIN-01"],
+                        weaving=["WEAVE-01"],
+                        dyeing=["DYE-01"],
+                    ),
+                )
+            ],
+            frozen=[
+                FrozenOperation(
+                    order="ORD-001",
+                    stage=Stage.SPINNING,
+                    machine="SPIN-01",
+                    start=0,
+                    end=1200,
+                )
+            ],
+        )
+        ops = [
+            ScheduledOperation(
+                order="ORD-001",
+                stage=Stage.SPINNING,
+                machine="SPIN-01",
+                start=0,
+                end=1200,
+            ),
+            ScheduledOperation(
+                order="ORD-001",
+                stage=Stage.WEAVING,
+                machine="WEAVE-01",
+                start=1200,
+                end=3000,
+            ),
+            ScheduledOperation(
+                order="ORD-001",
+                stage=Stage.DYEING,
+                machine="DYE-01",
+                start=3000,
+                end=5400,
+            ),
+        ]
+        result, _ = validate_ops(scenario, ops)
+        assert "R10_YARN_READY" not in codes(result)
+        assert result.is_valid, result.violations
+
     def test_r11_start_before_now(self) -> None:
         scenario = create_scenario(now=500)
         ops = [

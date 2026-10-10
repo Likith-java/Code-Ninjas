@@ -432,7 +432,13 @@ class DisruptionType(str, Enum):
 
 
 class Disruption(BaseModel):
-    """Disruption event for re-planning."""
+    """Disruption event for re-planning.
+
+    Machine breakdowns carry an optional human-readable reason used for the
+    downtime window. Yarn delays carry either ``delay_minutes`` (canonical)
+    or ``hours`` (legacy). Lot-level tracking is not modeled: delays apply
+    at order level only.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
 
@@ -441,13 +447,29 @@ class Disruption(BaseModel):
     machine: str | None = None
     from_minute: Annotated[int | None, Field(ge=0, alias="from")] = None
     to_minute: Annotated[int | None, Field(ge=0, alias="to")] = None
+    reason: str | None = None
     order: str | None = None
     hours: Annotated[int | None, Field(gt=0, le=168)] = None
+    delay_minutes: Annotated[
+        int | None,
+        Field(
+            gt=0,
+            le=10080,
+            validation_alias=AliasChoices("delay_minutes", "minutes", "delay"),
+        ),
+    ] = None
 
     @field_validator("from_minute", "to_minute", mode="before")
     @classmethod
     def _allow_none(cls, v):
         return v
+
+    @property
+    def delay_total_minutes(self) -> int:
+        """Effective yarn delay in minutes (canonical field wins)."""
+        if self.delay_minutes is not None:
+            return self.delay_minutes
+        return (self.hours or 0) * 60
 
     def model_post_init(self, __context) -> None:
         if self.type == DisruptionType.MACHINE_DOWN:
@@ -458,5 +480,5 @@ class Disruption(BaseModel):
         elif self.type == DisruptionType.YARN_DELAY:
             if not self.order:
                 raise ValueError("yarn_delay requires order")
-            if self.hours is None:
-                raise ValueError("yarn_delay requires hours")
+            if self.hours is None and self.delay_minutes is None:
+                raise ValueError("yarn_delay requires hours or delay_minutes")

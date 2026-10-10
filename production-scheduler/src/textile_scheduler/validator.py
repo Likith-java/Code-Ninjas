@@ -400,12 +400,26 @@ class ScheduleValidator:
         return violations
 
     def _check_yarn_ready(self, operations: list[ScheduledOperation]) -> list[ValidationViolation]:
-        """R10: no operation starts before its order's yarn-ready time."""
+        """R10: no unprovisioned operation starts before its yarn-ready time.
+
+        Frozen operations are exempt like in R11: their material was
+        provisioned when they started. The same holds for a later stage
+        whose direct predecessor is frozen: it processes already-committed
+        material, so a later yarn delay must not retroactively invalidate it.
+        """
         violations = []
+        frozen_pairs = {(order, stage) for order, stage, _ in self.frozen}
         for op in operations:
+            if (op.order, op.stage, op.machine) in self.frozen:
+                continue
             order = self.orders.get(op.order)
             if order is None:
                 continue  # R16 already reported
+            idx = self.route_index.get(op.stage, 0)
+            if idx > 0:
+                prev_stage = self.scenario.route[idx - 1]
+                if (op.order, prev_stage) in frozen_pairs:
+                    continue  # material provisioned by committed history
             if op.start < order.yarn_ready:
                 violations.append(
                     self._violation(

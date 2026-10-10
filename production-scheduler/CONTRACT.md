@@ -114,7 +114,7 @@ a non-success status explains missing work instead of duplicating it.
 | `R07_ROUTE_PRECEDENCE` | 7 | route order respected, no stage overlap within an order |
 | `R08_MACHINE_OVERLAP` | 8 | no overlap on one machine |
 | `R09_DOWNTIME_OVERLAP` | 9 | no downtime or `available_until` overlap |
-| `R10_YARN_READY` | 10 | no start before the order's yarn-ready time |
+| `R10_YARN_READY` | 10 | no unprovisioned start before yarn-ready (frozen work and stages fed by frozen history keep provisioned material) |
 | `R11_START_BEFORE_NOW` | 11 | no unfrozen start before `scenario.now` (frozen work belongs to the past) |
 | `R12_BEYOND_HORIZON` | 12 | no operation ends past the horizon |
 | `R13_QUANTITY_MISMATCH` | 13 | scheduled quantity matches the order quantity |

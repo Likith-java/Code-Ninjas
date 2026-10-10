@@ -28,8 +28,12 @@ textile-scheduler run scenarios/feasible.json
 # Run CP-SAT optimizer (requires [optimizer] extra)
 textile-scheduler optimize scenarios/feasible.json
 
-# Re-plan after machine breakdown
-textile-scheduler replan scenarios/feasible.json --machine-down WEAVE-03 --from 480 --to 960 --now 360
+# Re-plan after machine breakdown (interruptions split into completed +
+# remainder sub-lots; history frozen; movable work re-solved and validated)
+textile-scheduler replan scenarios/feasible_load.json --machine-down WEAVE-03 --from 1200 --to 2400 --now 100 --reason "loom breakdown"
+
+# Re-plan after a yarn delay (order-level; minutes are canonical)
+textile-scheduler replan scenarios/feasible_load.json --yarn-delay ORD-007 --delay-minutes 1440 --now 100
 ```
 
 ## Project Structure
