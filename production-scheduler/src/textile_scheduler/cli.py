@@ -11,7 +11,7 @@ import click
 from .models import Scenario, Disruption, DisruptionType, SchedulerType, SolverStatus
 from .loader import load_scenario_file
 from .validator import validate_schedule
-from .baseline import run_edf_baseline
+from .baseline import run_edf_baseline, run_edf
 from .optimizer import run_cpsat_optimizer
 from .metrics import compute_metrics
 from .durations import compute_duration
@@ -56,46 +56,18 @@ def run(scenario_path: Path, output: Path | None, validate: bool) -> None:
             f"Loaded scenario: {scenario.scenario_id} ({len(scenario.orders)} orders, {len(scenario.machines)} machines)"
         )
 
-        operations = run_edf_baseline(scenario)
-        click.echo(f"Scheduled {len(operations)} operations")
+        schedule = run_edf(scenario)
+        click.echo(f"Scheduled {len(schedule.operations)} operations")
+        click.echo(f"Status: {schedule.status.value} ({schedule.compute_seconds:.3f}s)")
 
-        metrics = compute_metrics(scenario, operations)
-
-        from .models import Schedule, ValidationResult, ScheduleMetrics
-
-        validation = (
-            validate_schedule(
-                scenario,
-                Schedule(
-                    scenario_id=scenario.scenario_id,
-                    solver=SchedulerType.EDF,
-                    status=SolverStatus.FEASIBLE,
-                    compute_seconds=0.0,
-                    validation=ValidationResult(violations=[]),
-                    metrics=metrics,
-                    operations=operations,
-                ),
-            )
-            if validate
-            else ValidationResult(violations=[])
-        )
-
-        schedule = Schedule(
-            scenario_id=scenario.scenario_id,
-            solver=SchedulerType.EDF,
-            status=SolverStatus.FEASIBLE,
-            compute_seconds=0.0,
-            validation=validation,
-            metrics=metrics,
-            operations=operations,
-        )
-
-        if not validation.is_valid:
+        # run_edf always validates; --no-validate only silences the warnings.
+        validation = schedule.validation
+        if validate and not validation.is_valid:
             click.echo(
                 f"WARNING: Validation found {len(validation.violations)} violations", err=True
             )
             for v in validation.violations:
-                click.echo(f"  Rule {v.rule}: {v.message}", err=True)
+                click.echo(f"  {v.code}: {v.message}", err=True)
 
         save_schedule(schedule, str(output) if output else None)
 
@@ -170,7 +142,7 @@ def optimize(
                 f"WARNING: Validation found {len(validation.violations)} violations", err=True
             )
             for v in validation.violations:
-                click.echo(f"  Rule {v.rule}: {v.message}", err=True)
+                click.echo(f"  {v.code}: {v.message}", err=True)
 
         save_schedule(schedule, str(output) if output else None)
 

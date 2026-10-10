@@ -80,6 +80,7 @@ def schedule_to_gantt(schedule: Schedule, scenario: Scenario) -> dict:
             "is_valid": schedule.validation.is_valid,
             "violations": [
                 {
+                    "code": v.code,
                     "rule": v.rule,
                     "message": v.message,
                     "order": v.order,

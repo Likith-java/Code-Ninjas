@@ -198,3 +198,13 @@ pre-commit run --all-files
 - **Integer Minutes**: All times are integer minutes from scenario start
 - **Deterministic Seeds**: Fixed random seed for reproducible CP-SAT runs
 - **Honest Status**: Reports OPTIMAL only when proven, FEASIBLE with elapsed time otherwise
+
+## EDF baseline limitations
+
+The event-driven EDF scheduler (`run_edf`) is a transparent comparison
+baseline, not an optimizer: greedy dispatch with no backtracking or
+lookahead, myopic earliest-completion machine choice, no preemption or
+splitting. It always validates its own output (invalid output is marked
+`MODEL_INVALID`, never successful) and raises an explicit error naming the
+order and stage when an operation cannot be placed. See the module docstring
+in `src/textile_scheduler/baseline.py` for details.
