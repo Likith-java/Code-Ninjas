@@ -118,9 +118,13 @@ def receive_yarn(
             detail=f"Lot code '{clean_lot_code}' already exists",
         )
 
+    import uuid
+    generated_qr_token = uuid.uuid4().hex
+
     try:
         lot = MaterialLot(
             lot_code=clean_lot_code,
+            qr_token=generated_qr_token,
             material_id=material_id,
             supplier_id=supplier_id,
             intended_order_id=intended_order_id,

@@ -168,6 +168,7 @@ export interface AdjustmentCreate {
 export interface BackendInventoryLot {
   lot_id: number
   lot_code: string
+  qr_token?: string | null
   material_id: number
   material_type: string
   colour: string
@@ -176,6 +177,30 @@ export interface BackendInventoryLot {
   available_kg: string | number
   reorder_threshold_kg: string | number
   low_stock: boolean
+}
+
+export interface BackendLotDetail {
+  lot_id: number
+  lot_code: string
+  qr_token?: string | null
+  qr_code_url: string
+  material_id: number
+  material_type: string
+  colour: string
+  specification: string
+  yarn_kg_per_metre?: number | string | null
+  supplier_id: number
+  supplier_name?: string | null
+  supplier_contact?: string | null
+  initial_received_kg: number | string
+  available_kg: number | string
+  intended_order_id?: number | null
+  intended_order_code?: string | null
+  lot_cost: number | string
+  unit: string
+  received_at: string
+  movements: BackendInventoryMovement[]
+  quality_status: string
 }
 
 export interface BackendInventorySummary {
@@ -554,6 +579,14 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(adjustment),
     }),
+  getLotDetail: (lotId: number) => request<BackendLotDetail>(`/inventory/lots/${lotId}`),
+  scanLot: (query: string) =>
+    request<BackendLotDetail>('/inventory/lots/scan', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    }),
+  getLotQrUrl: (lotId: number, download = false) =>
+    `${API_BASE_URL}/inventory/lots/${lotId}/qr${download ? '?download=true' : ''}`,
   getInventoryMovements: (params?: {
     material_id?: number
     lot_id?: number
@@ -772,6 +805,35 @@ export const api = {
     const blob = await response.blob()
     return { blob, filename }
   },
+
+  async getNotifications(orderId?: number, status?: string): Promise<BackendEmailNotification[]> {
+    const params = new URLSearchParams()
+    if (orderId !== undefined) params.append('order_id', String(orderId))
+    if (status) params.append('status', status)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    return request<BackendEmailNotification[]>(`/notifications${qs}`)
+  },
+
+  async retryNotification(notificationId: number): Promise<BackendEmailNotification> {
+    return request<BackendEmailNotification>(`/notifications/${notificationId}/retry`, {
+      method: 'POST',
+    })
+  },
+}
+
+export interface BackendEmailNotification {
+  id: number
+  order_id: number
+  notification_type: string
+  recipient_email: string
+  recipient_name: string | null
+  recipient_role: string | null
+  subject: string
+  status: 'sent' | 'failed' | 'skipped' | 'pending'
+  attempt_count: number
+  last_error: string | null
+  created_at: string
+  sent_at: string | null
 }
 
 export interface ReportTypeItem {
@@ -791,3 +853,4 @@ export interface ReportGeneratePayload {
   order_id?: number | null
   machine_id?: number | null
 }
+

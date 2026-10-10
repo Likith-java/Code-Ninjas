@@ -201,6 +201,7 @@ class InventoryMovementOut(BaseModel):
 class InventoryLotOut(BaseModel):
     lot_id: int
     lot_code: str
+    qr_token: str | None = None
     material_id: int
     material_type: str
     colour: str
@@ -209,6 +210,30 @@ class InventoryLotOut(BaseModel):
     available_kg: Decimal
     reorder_threshold_kg: Decimal
     low_stock: bool
+
+
+class MaterialLotDetailOut(BaseModel):
+    lot_id: int
+    lot_code: str
+    qr_token: str | None = None
+    qr_code_url: str
+    material_id: int
+    material_type: str
+    colour: str
+    specification: str
+    yarn_kg_per_metre: Decimal | None = None
+    supplier_id: int
+    supplier_name: str | None = None
+    supplier_contact: str | None = None
+    initial_received_kg: Decimal
+    available_kg: Decimal
+    intended_order_id: int | None = None
+    intended_order_code: str | None = None
+    lot_cost: Decimal
+    unit: str = "kg"
+    received_at: datetime
+    movements: list[InventoryMovementOut] = []
+    quality_status: str = "Released"
 
 
 class InventorySummaryOut(BaseModel):
@@ -597,4 +622,24 @@ class UserOut(BaseModel):
 
 class AuthResponse(BaseModel):
     token: str
-    user: UserOut
+    user: UserOut
+
+
+# -------------------- Email Notifications --------------------
+
+class EmailNotificationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    order_id: int
+    notification_type: str
+    recipient_email: str
+    recipient_name: str | None = None
+    recipient_role: str | None = None
+    subject: str
+    status: str
+    attempt_count: int
+    last_error: str | None = None
+    created_at: datetime
+    sent_at: datetime | None = None
+

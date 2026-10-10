@@ -15,6 +15,7 @@ import { formatCanonicalOrderId, formatLegacyOrderId, matchesOrderQuery } from '
 import { UserRole, getRolePermissions, ROLE_PROFILES } from '@/lib/permissions'
 import { OrderDetailsPopover, OrderDetailsData } from '@/components/board/OrderDetailsPopover'
 import { OrderCreationModal } from '@/components/modules/OrderCreationModal'
+import { NotificationAuditModal } from '@/components/modals/NotificationAuditModal'
 import { getUser } from '@/lib/auth-storage'
 
 interface OperationsDashboardProps {
@@ -30,6 +31,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
   const [machineSearch, setMachineSearch] = useState('')
   const [machineTypeFilter, setMachineTypeFilter] = useState<'all' | 'spinning' | 'weaving' | 'dyeing'>('all')
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false)
+  const [isEmailAuditOpen, setIsEmailAuditOpen] = useState(false)
 
   // Anchored Floating Order Details Popover
   const [popoverOrder, setPopoverOrder] = useState<OrderDetailsData | null>(null)
@@ -130,8 +132,8 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
       const statusStr: 'In Production' | 'Completed' | 'Scheduled' = isDone
         ? 'Completed'
         : inProg
-        ? 'In Production'
-        : 'Scheduled'
+          ? 'In Production'
+          : 'Scheduled'
 
       const deadlineTime = new Date(o.deadline).getTime()
       const dueHours = Number.isNaN(deadlineTime)
@@ -166,16 +168,16 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
       apiStateMode === 'live' && (liveDashboardOrders.length > 0 || liveOrders.length > 0)
         ? liveDashboardOrders
         : dashboardDemoData.orders.map((o) => ({
-            ...o,
-            id: formatCanonicalOrderId(o.id),
-            // Mark ORD-004 as Disrupted initially if not resolved
-            status:
-              o.id === 'ORD-004' && !resolvedOrderIds.has(formatCanonicalOrderId(o.id))
-                ? ('Delayed' as const)
-                : resolvedOrderIds.has(formatCanonicalOrderId(o.id))
+          ...o,
+          id: formatCanonicalOrderId(o.id),
+          // Mark ORD-004 as Disrupted initially if not resolved
+          status:
+            o.id === 'ORD-004' && !resolvedOrderIds.has(formatCanonicalOrderId(o.id))
+              ? ('Delayed' as const)
+              : resolvedOrderIds.has(formatCanonicalOrderId(o.id))
                 ? ('In Production' as const)
                 : o.status,
-          }))
+        }))
 
     return rawList
   }, [apiStateMode, liveDashboardOrders, liveOrders.length, resolvedOrderIds, currentRole])
@@ -366,46 +368,56 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
             <span>Generate Reports</span>
           </button>
 
+          {(currentRole === 'admin' || currentRole === 'production_manager') && (
+            <button
+              onClick={() => setIsEmailAuditOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-stone-300 text-stone-700 hover:text-black hover:bg-stone-50 rounded-lg font-bold text-xs shadow-xs transition-all cursor-pointer"
+              title="Open Email Notification Delivery Audit"
+            >
+              <MaterialIcon name="mail" size="xs" color="#0E4B3E" />
+              <span>Email Logs</span>
+            </button>
+          )}
+
           <div className="flex items-center gap-1 bg-[#FAF7F0] border border-stone-300 rounded-lg p-0.5 text-[10.5px]">
-            <span className="text-stone-400 font-bold px-1 hidden lg:inline">Mode:</span>
-          <button
-            onClick={() => {
-              setApiStateMode('live')
-              fetchLiveData()
-            }}
-            className={`px-2 py-0.5 rounded font-medium transition-colors cursor-pointer ${
-              apiStateMode === 'live' ? 'bg-[#0E4B3E] text-white shadow-xs' : 'text-stone-700 hover:bg-stone-200'
-            }`}
-          >
-            Live API
-          </button>
-          <button
-            onClick={() => setApiStateMode('demo')}
-            className={`px-2 py-0.5 rounded font-medium transition-colors cursor-pointer ${
-              apiStateMode === 'demo' ? 'bg-amber-700 text-white shadow-xs' : 'text-stone-700 hover:bg-stone-200'
-            }`}
-          >
-            Demo
-          </button>
-          <button
-            onClick={() => setApiStateMode('empty')}
-            className={`px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
-              apiStateMode === 'empty' ? 'bg-stone-800 text-white shadow-xs' : 'text-stone-700 hover:bg-stone-200'
-            }`}
-          >
-            Empty
-          </button>
-          <button
-            onClick={() => setApiStateMode('error')}
-            className={`px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
-              apiStateMode === 'error' ? 'bg-red-700 text-white shadow-xs' : 'text-stone-700 hover:bg-stone-200'
-            }`}
-          >
-            Error
-          </button>
+            <button
+              onClick={() => {
+                setApiStateMode('live')
+                fetchLiveData()
+              }}
+              className={`px-2 py-0.5 rounded font-bold transition-all ${
+                apiStateMode === 'live' ? 'bg-[#0E4B3E] text-white' : 'text-stone-700 hover:bg-stone-200'
+              }`}
+            >
+              Live API
+            </button>
+            <button
+              onClick={() => setApiStateMode('demo')}
+              className={`px-2 py-0.5 rounded font-bold transition-all ${
+                apiStateMode === 'demo' ? 'bg-amber-700 text-white' : 'text-stone-700 hover:bg-stone-200'
+              }`}
+            >
+              Demo
+            </button>
+            <button
+              onClick={() => setApiStateMode('empty')}
+              className={`px-1.5 py-0.5 rounded font-bold transition-all ${
+                apiStateMode === 'empty' ? 'bg-stone-800 text-white' : 'text-stone-700 hover:bg-stone-200'
+              }`}
+            >
+              Empty
+            </button>
+            <button
+              onClick={() => setApiStateMode('error')}
+              className={`px-1.5 py-0.5 rounded font-bold transition-all ${
+                apiStateMode === 'error' ? 'bg-red-700 text-white' : 'text-stone-700 hover:bg-stone-200'
+              }`}
+            >
+              Error
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
       {/* ERROR FALLBACK ALERT */}
       {(apiStateMode === 'error' || (apiStateMode === 'live' && liveError)) && (
@@ -699,13 +711,12 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
                           </div>
                           <div className="w-20 bg-stone-200 rounded-full h-1.5 overflow-hidden mt-0.5">
                             <div
-                              className={`h-full ${
-                                order.status === 'Completed'
+                              className={`h-full ${order.status === 'Completed'
                                   ? 'bg-emerald-600'
                                   : isDisrupted
-                                  ? 'bg-red-600'
-                                  : 'bg-[#0E4B3E]'
-                              }`}
+                                    ? 'bg-red-600'
+                                    : 'bg-[#0E4B3E]'
+                                }`}
                               style={{ width: `${pct}%` }}
                             />
                           </div>
@@ -716,11 +727,11 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
                               order.status === 'Completed'
                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                                 : order.status === 'In Production'
-                                ? 'bg-sky-100 text-sky-800 border-sky-300'
-                                : isDisrupted
-                                ? 'bg-red-100 text-red-800 border-red-300'
-                                : 'bg-stone-100 text-stone-700 border-stone-300'
-                            }`}
+                                  ? 'bg-sky-100 text-sky-800 border-sky-300'
+                                  : isDisrupted
+                                    ? 'bg-red-100 text-red-800 border-red-300'
+                                    : 'bg-stone-100 text-stone-700 border-stone-300'
+                              }`}
                           >
                             {order.status}
                           </span>
@@ -759,45 +770,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
             </div>
           )}
 
-          {/* Expandable Order Detail Drawer when row selected */}
-          {expandedOrderId && (() => {
-            const selectedLive = liveOrders.find(
-              (o) => formatCanonicalOrderId(o.id) === expandedOrderId || String(o.id) === expandedOrderId
-            )
-            return (
-              <div className="p-3 bg-[#FAF7F0] border-2 border-[#181816] rounded-xl pop-shadow-xs space-y-2 text-xs font-mono">
-                <div className="flex items-center justify-between border-b border-stone-300 pb-1.5">
-                  <span className="font-black text-[#0E4B3E]">
-                    Order Detail: {expandedOrderId} {selectedLive ? `(PostgreSQL ID #${selectedLive.id})` : ''}
-                  </span>
-                  <button
-                    onClick={() => setExpandedOrderId(null)}
-                    className="text-stone-500 hover:text-[#181816] font-bold text-xs"
-                  >
-                    ✕ Close
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                  <div>
-                    <span className="text-stone-500 block">Fabric Spec:</span>
-                    <strong>{selectedLive ? `${selectedLive.fabric_type} (${selectedLive.colour})` : 'Standard Weave'}</strong>
-                  </div>
-                  <div>
-                    <span className="text-stone-500 block">Quantity &amp; Rate:</span>
-                    <strong>{selectedLive ? `${selectedLive.quantity_metres}m · $${selectedLive.agreed_rate || '45.00'}/m` : '1,500m'}</strong>
-                  </div>
-                  <div>
-                    <span className="text-stone-500 block">Order Status:</span>
-                    <strong className="text-emerald-700 capitalize">{selectedLive ? (selectedLive.derived_status || selectedLive.status || 'Active') : 'In Production'}</strong>
-                  </div>
-                  <div>
-                    <span className="text-stone-500 block">Delivery Deadline:</span>
-                    <strong>{selectedLive?.deadline ? new Date(selectedLive.deadline).toLocaleDateString() : 'Scheduled Window'}</strong>
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
+
         </div>
 
         {/* ============================================================== */}
@@ -879,22 +852,20 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
                 {filteredMachines.map((machine) => (
                   <div
                     key={machine.id}
-                    className={`p-2.5 rounded-xl border border-stone-300 bg-white hover:border-[#181816] transition-all flex items-center justify-between text-xs font-mono ${
-                      machine.status === 'Breakdown' ? 'border-[#E05326] bg-red-50/40 ring-1 ring-[#E05326]' : ''
-                    }`}
+                    className={`p-2.5 rounded-xl border border-stone-300 bg-white hover:border-[#181816] transition-all flex items-center justify-between text-xs font-mono ${machine.status === 'Breakdown' ? 'border-[#E05326] bg-red-50/40 ring-1 ring-[#E05326]' : ''
+                      }`}
                   >
                     <div>
                       <div className="flex items-center gap-1.5">
                         <strong className="text-sm font-black text-[#181816]">{machine.id}</strong>
                         <span className="text-[10px] text-stone-500 uppercase font-bold">({machine.type})</span>
                         <span
-                          className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
-                            machine.status === 'Running'
+                          className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${machine.status === 'Running'
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                               : machine.status === 'Breakdown'
-                              ? 'bg-red-100 text-red-800 border border-red-300'
-                              : 'bg-amber-100 text-amber-800 border border-amber-300'
-                          }`}
+                                ? 'bg-red-100 text-red-800 border border-red-300'
+                                : 'bg-amber-100 text-amber-800 border border-amber-300'
+                            }`}
                         >
                           {machine.status}
                         </span>
@@ -1013,6 +984,12 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
         isOpen={isCreateOrderOpen}
         onClose={() => setIsCreateOrderOpen(false)}
         onOrderCreated={fetchLiveData}
+        currentRole={currentRole}
+      />
+
+      <NotificationAuditModal
+        isOpen={isEmailAuditOpen}
+        onClose={() => setIsEmailAuditOpen(false)}
         currentRole={currentRole}
       />
 

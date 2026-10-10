@@ -115,6 +115,9 @@ class Order(Base):
         back_populates="intended_order"
     )
     dispatches: Mapped[list["Dispatch"]] = relationship(back_populates="order")
+    email_notifications: Mapped[list["EmailNotification"]] = relationship(
+        back_populates="order", cascade="all, delete-orphan"
+    )
 
 
 # ============================================================
@@ -309,6 +312,9 @@ class MaterialLot(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     lot_code: Mapped[str] = mapped_column(String(100), nullable=False)
+    qr_token: Mapped[str | None] = mapped_column(
+        String(64), unique=True, index=True, nullable=True
+    )
     material_id: Mapped[int] = mapped_column(
         ForeignKey("materials.id", ondelete="RESTRICT"), nullable=False, index=True
     )
@@ -532,3 +538,43 @@ class User(Base):
     )
 
     buyer: Mapped["Buyer | None"] = relationship()
+
+
+# ============================================================
+# 7. EMAIL NOTIFICATIONS & DELIVERY AUDIT LOG
+# ============================================================
+
+class EmailNotification(Base):
+    __tablename__ = "email_notifications"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_email_notifications_idempotency_key"),
+        UniqueConstraint(
+            "order_id",
+            "notification_type",
+            "recipient_email",
+            name="uq_email_notifications_order_event_recipient",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    notification_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    recipient_email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    recipient_name: Mapped[str | None] = mapped_column(String(255))
+    recipient_role: Mapped[str | None] = mapped_column(String(32))
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    body_text: Mapped[str] = mapped_column(Text, nullable=False)
+    body_html: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    order: Mapped["Order"] = relationship(back_populates="email_notifications")
+

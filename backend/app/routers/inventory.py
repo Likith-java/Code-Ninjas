@@ -2,18 +2,21 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.api.deps import get_current_user_optional
 from app.database import get_db
-from app.models import InventoryMovement, Material, MaterialLot
+from app.models import InventoryMovement, Material, MaterialLot, User
 from app.schemas import (
     AdjustmentCreate,
     InventoryLotOut,
     InventoryMovementOut,
     InventorySummaryOut,
     IssueCreate,
+    MaterialLotDetailOut,
     ReceiptCreate,
 )
 from app.services.inventory import (
@@ -23,6 +26,14 @@ from app.services.inventory import (
     issue_yarn,
     receive_yarn,
 )
+from app.services.inventory_qr import (
+    build_lot_detail_dto,
+    generate_lot_qr_code,
+    resolve_lot_by_identifier,
+)
+
+class ScanRequest(BaseModel):
+    query: str = Field(..., description="Scanned QR code payload, token, URL or lot code")
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
 
@@ -60,7 +71,13 @@ def create_receipt(
 def create_issue(
     payload: IssueCreate,
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
+    if current_user and current_user.role == "customer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Customer users are not authorized to issue warehouse materials.",
+        )
     return issue_yarn(
         db,
         lot_id=payload.lot_id,
@@ -173,6 +190,7 @@ def get_inventory(
         InventoryLotOut(
             lot_id=lot.id,
             lot_code=lot.lot_code,
+            qr_token=lot.qr_token,
             material_id=lot.material.id,
             material_type=lot.material.material_type,
             colour=lot.material.colour,
@@ -190,3 +208,96 @@ def get_inventory(
         low_stock_materials=len(low_stock_material_ids),
         lots=result,
     )
+
+
+@router.get(
+    "/lots/{lot_id}/qr",
+    summary="Generate QR code for yarn lot",
+    description="Returns a valid PNG image referencing the specific yarn lot for printing and mobile scanning.",
+)
+def get_lot_qr(
+    lot_id: int,
+    download: bool = Query(default=False, description="Prompt browser download"),
+    db: Session = Depends(get_db),
+):
+    lot = db.scalar(
+        select(MaterialLot)
+        .options(selectinload(MaterialLot.material))
+        .where(MaterialLot.id == lot_id)
+    )
+    if not lot:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Material lot with ID {lot_id} not found",
+        )
+
+    png_bytes = generate_lot_qr_code(lot)
+    headers = {
+        "Cache-Control": "public, max-age=3600",
+        "Content-Type": "image/png",
+    }
+    if download:
+        headers["Content-Disposition"] = f'attachment; filename="lot-{lot.lot_code}-qr.png"'
+    return Response(content=png_bytes, media_type="image/png", headers=headers)
+
+
+@router.get(
+    "/lots/{lot_id}",
+    response_model=MaterialLotDetailOut,
+    summary="Get detailed yarn lot tracking info",
+    description="Fetches live lot state, available balance from movement ledger, supplier details, and recent movements.",
+)
+def get_lot_detail(
+    lot_id: int,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    if current_user and current_user.role == "customer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Customer users are not authorized to inspect raw warehouse inventory.",
+        )
+
+    lot = resolve_lot_by_identifier(db, lot_id)
+    return build_lot_detail_dto(db, lot)
+
+
+@router.get(
+    "/lots/scan/{scan_query:path}",
+    response_model=MaterialLotDetailOut,
+    summary="Resolve scanned QR payload",
+    description="Resolves a scanned QR string (full URL, relative path, qr_token, or lot code) to live lot state.",
+)
+def scan_lot_get(
+    scan_query: str,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    if current_user and current_user.role == "customer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Customer users are not authorized to inspect raw warehouse inventory.",
+        )
+
+    lot = resolve_lot_by_identifier(db, scan_query)
+    return build_lot_detail_dto(db, lot)
+
+
+@router.post(
+    "/lots/scan",
+    response_model=MaterialLotDetailOut,
+    summary="Resolve scanned QR code via POST payload",
+)
+def scan_lot_post(
+    payload: ScanRequest,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    if current_user and current_user.role == "customer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Customer users are not authorized to inspect raw warehouse inventory.",
+        )
+
+    lot = resolve_lot_by_identifier(db, payload.query)
+    return build_lot_detail_dto(db, lot)

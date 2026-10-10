@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
+from app.services.notification_service import dispatch_order_ready_for_dispatch_notification
 from app.models import (
     Dispatch,
     DispatchItem,
@@ -163,6 +164,7 @@ def get_roll(
 def create_inspection(
     roll_id: int,
     payload: InspectionCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     roll = db.scalar(
@@ -222,6 +224,13 @@ def create_inspection(
 
         db.commit()
         db.refresh(inspection)
+
+        if payload.result == "pass" and roll.order_id:
+            background_tasks.add_task(
+                dispatch_order_ready_for_dispatch_notification,
+                roll.order_id,
+            )
+
         return inspection
     except Exception:
         db.rollback()
