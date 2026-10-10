@@ -4,6 +4,7 @@ __version__ = "0.1.0"
 __all__ = [
     "models",
     "contracts",
+    "loader",
     "time_utils",
     "durations",
     "exceptions",

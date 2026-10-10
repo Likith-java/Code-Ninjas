@@ -9,6 +9,7 @@ from pathlib import Path
 import click
 
 from .models import Scenario, Disruption, DisruptionType, SchedulerType, SolverStatus
+from .loader import load_scenario_file
 from .validator import validate_schedule
 from .baseline import run_edf_baseline
 from .optimizer import run_cpsat_optimizer
@@ -20,9 +21,7 @@ from .gantt import schedule_to_gantt, export_gantt_json
 
 def load_scenario(path: str) -> Scenario:
     """Load scenario from JSON file."""
-    with open(path) as f:
-        data = json.load(f)
-    return Scenario.model_validate(data)
+    return load_scenario_file(path)
 
 
 def save_schedule(schedule, output: str | None) -> None:

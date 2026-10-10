@@ -39,8 +39,12 @@ production-scheduler/
 ├── pyproject.toml
 ├── README.md
 ├── CONTRACT.md          # stable external JSON contract (version 1)
-├── scenarios/           # JSON scenario files
-│   └── feasible.json
+├── scenarios/           # representative scenario files (see scenarios/README.md)
+│   ├── feasible.json
+│   ├── feasible_load.json
+│   ├── weaving_breakdown.json
+│   ├── late_yarn_lot.json
+│   └── infeasible_load.json
 ├── fixtures/            # representative valid/invalid contract fixtures
 ├── schemas/             # generated JSON Schemas (see scripts/generate_schemas.py)
 ├── src/
@@ -48,6 +52,7 @@ production-scheduler/
 │       ├── __init__.py
 │       ├── models.py          # Pydantic domain models (Scenario, Schedule, ...)
 │       ├── contracts.py       # public contract registry + schema generation
+│       ├── loader.py          # scenario file loading, stats, consistency checks
 │       ├── time_utils.py      # Time conversion utilities
 │       ├── durations.py       # Shared duration function
 │       ├── exceptions.py      # Custom exceptions
