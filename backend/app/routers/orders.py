@@ -240,3 +240,11 @@ def list_buyers(
         .offset(offset)
         .limit(limit)
     ).all()
+
+
+@router.get("/buyers/{buyer_id}", response_model=BuyerOut)
+def get_buyer(buyer_id: int, db: Session = Depends(get_db)):
+    buyer = db.get(Buyer, buyer_id)
+    if buyer is None:
+        raise HTTPException(status_code=404, detail="Buyer not found")
+    return buyer
