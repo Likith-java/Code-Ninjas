@@ -1,12 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
-from app.database import engine
+from app.routers import inventory, orders, rolls
 
 app = FastAPI(
     title="Everest Textile Intelligence API",
-    description="Orders, inventory, production, quality and dispatch",
+    description="Orders, yarn inventory, fabric quality and traceability",
     version="1.0.0",
 )
 
@@ -21,18 +20,14 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {
-        "message": "Everest Textile Intelligence API",
-        "status": "running",
-    }
+    return {"message": "Everest Textile Intelligence API"}
 
 
 @app.get("/health")
 def health():
-    with engine.connect() as connection:
-        connection.execute(text("SELECT 1"))
+    return {"status": "ok"}
 
-    return {
-        "api": "healthy",
-        "database": "connected",
-    }
+
+app.include_router(orders.router)
+app.include_router(inventory.router)
+app.include_router(rolls.router)
