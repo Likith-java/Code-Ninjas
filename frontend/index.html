@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Code-Ninjas — Textile Manufacturing Intelligence Platform (Everest Textile Mills)</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            surface: "#F5F0E3",
+            "on-surface": "#181816",
+            "on-surface-variant": "#4E4B47",
+            "surface-container-lowest": "#FFFFFF",
+            "surface-container-low": "#FAF7F0",
+            "surface-container": "#F1EBE0",
+            "surface-container-high": "#E7DFCE",
+            "surface-container-highest": "#D9CEB8",
+            primary: "#0E4B3E",
+            "primary-hover": "#0A382E",
+            "primary-container": "#D7F4E5",
+            "on-primary-container": "#0B382F",
+            secondary: "#E05326",
+            "secondary-container": "#FFEFEA",
+            "on-secondary-container": "#962C0B",
+            tertiary: "#15803D",
+            "tertiary-container": "#DDF9E6",
+            accent: "#FEF08A",
+            warning: "#D97706",
+            "warning-container": "#FEF3C7"
+          },
+          borderRadius: {
+            DEFAULT: "0.5rem",
+            lg: "0.75rem",
+            xl: "1rem",
+            "2xl": "1.25rem",
+            "3xl": "1.5rem",
+            full: "9999px"
+          },
+          fontFamily: {
+            body: ["Hanken Grotesk", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    }
+</script>
+<style>
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 16px;
+      line-height: 1;
+      display: inline-block;
+      white-space: nowrap;
+      direction: ltr;
+      -webkit-font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .bg-dot-grid {
+      background-color: #F5F0E3;
+      background-image: radial-gradient(#CFBE9F 1.4px, transparent 1.4px);
+      background-size: 18px 18px;
+    }
+
+    .pop-shadow-xs { box-shadow: 1.5px 1.5px 0px #181816; }
+    .pop-shadow-sm { box-shadow: 2.5px 2.5px 0px #181816; }
+    .pop-shadow-md { box-shadow: 3.5px 3.5px 0px #181816; }
+    .pop-shadow-lg { box-shadow: 5px 5px 0px #181816; }
+    .pop-shadow-xl { box-shadow: 6px 6px 0px #181816; }
+
+    .stage-card {
+      box-shadow: 3px 3px 0px #181816;
+      transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+    }
+    .stage-card:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0px #181816;
+    }
+    .stage-card:active {
+      transform: translate(1.5px, 1.5px);
+      box-shadow: 1.5px 1.5px 0px #181816;
+    }
+
+    .btn-pop {
+      box-shadow: 2px 2px 0px #181816;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+    .btn-pop:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 3px 3px 0px #181816;
+    }
+    .btn-pop:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px #181816;
+    }
+
+    @keyframes pulse-dot {
+      0% { transform: scale(0.9); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.8; }
+    }
+    .live-dot {
+      animation: pulse-dot 1.8s infinite ease-in-out;
+    }
+
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: #E8E0D0; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb { background: #181816; border-radius: 9999px; border: 1px solid #FAF7F0; }
+    ::-webkit-scrollbar-thumb:hover { background: #0E4B3E; }
+</style>
+</head>
+<body class="bg-[#F5F0E3] text-[#181816] antialiased overflow-hidden select-none min-w-[1440px] h-screen flex flex-col font-body text-[13px]">
+
+<!-- ================= TOP APP BAR ================= -->
+<header class="flex justify-between items-center w-full px-5 h-12 z-40 border-b-2 border-[#181816] bg-[#FFFFFF] shrink-0">
+  <!-- Left: Branding & Plant Breadcrumb -->
+  <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2">
+      <span class="w-7 h-7 bg-[#0E4B3E] text-[#FFFFFF] rounded-xl border-2 border-[#181816] pop-shadow-xs flex items-center justify-center font-mono text-[13px] font-bold">ET</span>
+      <div class="flex flex-col">
+        <span class="font-bold text-[14px] text-[#181816] tracking-tight leading-none">Everest Textile Mills</span>
+        <span class="font-mono text-[9.5px] text-[#4E4B47] leading-none mt-0.5">Code-Ninjas Intelligence Platform</span>
+      </div>
+    </div>
+    <div class="h-5 w-0.5 bg-[#181816]/30 mx-1"></div>
+
+    <!-- Active Mill Unit Switcher -->
+    <button class="flex items-center gap-1.5 bg-[#FAF7F0] hover:bg-[#FFFFFF] border-2 border-[#181816] rounded-full px-3 py-1 font-mono text-[11px] font-bold btn-pop text-[#181816]">
+      <span class="material-symbols-outlined text-[13px] text-[#0E4B3E]">factory</span>
+      <span>Unit 1: Spinning • Weaving • Dyeing</span>
+      <span class="material-symbols-outlined text-[12px]">unfold_more</span>
+    </button>
+
+    <!-- Navigation Views -->
+    <nav class="flex items-center gap-1 ml-2 text-[12px]">
+      <a class="text-[#FFFFFF] bg-[#0E4B3E] border-2 border-[#181816] pop-shadow-xs font-semibold px-3 py-1 rounded-full" href="#">Production Floor</a>
+      <a class="text-[#4E4B47] hover:text-[#181816] px-2.5 py-1 rounded-full hover:bg-[#EFE9DC] transition-colors font-medium" href="#">Gantt Timeline</a>
+      <a class="text-[#4E4B47] hover:text-[#181816] px-2.5 py-1 rounded-full hover:bg-[#EFE9DC] transition-colors font-medium" href="#">Yarn Inventory</a>
+      <a class="text-[#4E4B47] hover:text-[#181816] px-2.5 py-1 rounded-full hover:bg-[#EFE9DC] transition-colors font-medium" href="#">Quality & Rolls</a>
+      <a class="text-[#4E4B47] hover:text-[#181816] px-2.5 py-1 rounded-full hover:bg-[#EFE9DC] transition-colors font-medium" href="#">Buyer Portal</a>
+    </nav>
+  </div>
+
+  <!-- Right: Solver Telemetry & Actions -->
+  <div class="flex items-center gap-2.5">
+    <!-- CP-SAT Solver Status Badge -->
+    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#D7F4E5] border-2 border-[#181816] pop-shadow-xs font-mono text-[11px] text-[#0B382F] font-bold" id="solverStatusChip">
+      <span class="w-2 h-2 rounded-full bg-[#15803D] border border-[#181816] live-dot"></span>
+      <span id="solverStatusText">CP-SAT: OPTIMAL (3.4s)</span>
+    </div>
+
+    <!-- Active Disruption Alert -->
+    <button class="flex items-center gap-1 bg-[#FFEFEA] hover:bg-[#FEDCCE] text-[#962C0B] border-2 border-[#181816] rounded-full px-2.5 py-1 font-mono text-[11px] btn-pop font-bold" id="topDisruptionBtn" onclick="selectDisruption('breakdown')">
+      <span class="material-symbols-outlined text-[13px] text-[#E05326]">broken_image</span>
+      <span id="disruptionBadgeText">1 Breakdown (WEAVE-03)</span>
+    </button>
+
+    <!-- Synthetic Data Indicator -->
+    <span class="px-2 py-0.5 rounded-full bg-[#FEF08A] border-2 border-[#181816] font-mono text-[10px] font-bold text-[#713F12] pop-shadow-xs">synthetic: true</span>
+
+    <!-- Quick Actions -->
+    <button class="h-7 px-3 bg-[#FFFFFF] hover:bg-[#FAF7F0] border-2 border-[#181816] text-[#181816] rounded-full text-[12px] font-bold flex items-center gap-1.5 btn-pop" onclick="openSimModal()">
+      <span class="material-symbols-outlined text-[13px] text-[#E05326]">warning</span>
+      <span>Simulate Disruption</span>
+    </button>
+    <button class="h-7 px-3 bg-[#0E4B3E] hover:bg-[#0A382E] text-[#FFFFFF] border-2 border-[#181816] rounded-full text-[12px] font-bold flex items-center gap-1.5 btn-pop" onclick="triggerReplan()">
+      <span class="material-symbols-outlined text-[14px]">refresh</span>
+      <span>Re-Solve Schedule</span>
+    </button>
+
+    <!-- User Shift -->
+    <div class="w-7 h-7 rounded-full bg-[#E7DFCE] text-[#181816] flex items-center justify-center font-mono text-[11px] font-bold border-2 border-[#181816] pop-shadow-xs ml-1" title="Shift Supervisor">
+      LK
+    </div>
+  </div>
+</header>
+
+<!-- ================= MAIN PLATFORM WORKSPACE ================= -->
+<div class="flex-1 flex overflow-hidden relative">
+
+  <!-- ================= LEFT SIDEBAR (Everest Mill Nav & Plant Context) ================= -->
+  <aside class="w-64 bg-[#7D988B] border-r-2 border-[#181816] flex flex-col justify-between shrink-0 z-30 text-[#181816]">
+    <!-- Top Workspace Summary -->
+    <div class="p-3.5 border-b-2 border-[#181816] bg-[#718D80]">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 bg-[#FFFFFF] border-2 border-[#181816] rounded-xl pop-shadow-xs flex items-center justify-center text-[#0E4B3E]">
+          <span class="material-symbols-outlined text-[18px]">precision_manufacturing</span>
+        </div>
+        <div class="flex flex-col min-w-0">
+          <span class="font-bold text-[13px] leading-tight truncate">Production Scheduler</span>
+          <span class="font-mono text-[10px] text-[#1E3A2F] font-semibold">10 Machines • 12 Orders</span>
+        </div>
+      </div>
+      <!-- Shift & Clock Pill -->
+      <div class="mt-3 flex items-center justify-between bg-[#FFFFFF] border-2 border-[#181816] rounded-xl px-2.5 py-1.5 pop-shadow-xs">
+        <div class="flex items-center gap-1.5 font-mono text-[11px] font-bold text-[#181816]">
+          <span class="material-symbols-outlined text-[13px] text-[#0E4B3E]">schedule</span>
+          <span>Shift 1 (08:00 - 16:00)</span>
+        </div>
+        <span class="font-mono text-[10px] bg-[#D7F4E5] text-[#0B382F] px-1.5 py-0.5 rounded border border-[#181816] font-bold">t = 360m</span>
+      </div>
+    </div>
+
+    <!-- Navigation Modules -->
+    <div class="flex-1 py-3 px-2 overflow-y-auto space-y-1.5">
+      <div class="px-2 pb-0.5">
+        <span class="font-mono text-[10px] text-[#1E3A2F] uppercase tracking-wider font-bold">Plant Core Modules</span>
+      </div>
+
+      <!-- Active: Machine Floor Board -->
+      <a class="bg-[#FFFFFF] text-[#181816] border-2 border-[#181816] rounded-xl font-bold px-3 py-1.5 flex items-center gap-2.5 cursor-pointer pop-shadow-xs" href="#">
+        <span class="material-symbols-outlined text-[16px] text-[#0E4B3E]">grid_view</span>
+        <span class="flex-1">Live Floor Routing</span>
+        <span class="font-mono text-[10px] px-2 py-0.5 rounded-full bg-[#D7F4E5] border-2 border-[#181816] text-[#0E4B3E] font-bold">12 Orders</span>
+      </a>
+
+      <!-- Module 2: Yarn Feasibility -->
+      <a class="text-[#181816] font-medium px-3 py-1.5 rounded-xl border border-transparent hover:border-2 hover:border-[#181816] hover:bg-[#FFFFFF] flex items-center gap-2.5 transition-all cursor-pointer hover:pop-shadow-xs" href="#" onclick="showQuickToast('Yarn Stock: 14,200 kg on hand; 2 lots allocated', 'inventory_2')">
+        <span class="material-symbols-outlined text-[16px] text-[#181816]">inventory_2</span>
+        <span class="flex-1">Yarn Stock & Lots</span>
+        <span class="font-mono text-[10px] bg-[#FEF08A] px-1.5 rounded-full border border-[#181816] font-bold">1 Delay</span>
+      </a>
+
+      <!-- Module 3: Independent Validator -->
+      <a class="text-[#181816] font-medium px-3 py-1.5 rounded-xl border border-transparent hover:border-2 hover:border-[#181816] hover:bg-[#FFFFFF] flex items-center gap-2.5 transition-all cursor-pointer hover:pop-shadow-xs" href="#" onclick="showQuickToast('Schedule Validator: 8 Rules Checked • 0 Violations', 'verified')">
+        <span class="material-symbols-outlined text-[16px] text-[#181816]">verified</span>
+        <span class="flex-1">Schedule Validator</span>
+        <span class="font-mono text-[10px] bg-[#D7F4E5] px-1.5 rounded-full border border-[#181816] text-[#0B382F] font-bold">0 Viol</span>
+      </a>
+
+      <!-- Module 4: Roll Traceability -->
+      <a class="text-[#181816] font-medium px-3 py-1.5 rounded-xl border border-transparent hover:border-2 hover:border-[#181816] hover:bg-[#FFFFFF] flex items-center gap-2.5 transition-all cursor-pointer hover:pop-shadow-xs" href="#" onclick="showQuickToast('Fabric Rolls: 84 Passed, 3 Rework, 1 Rejected', 'qr_code')">
+        <span class="material-symbols-outlined text-[16px] text-[#181816]">qr_code</span>
+        <span class="flex-1">Rolls & Traceability</span>
+      </a>
+
+      <!-- Module 5: Dispatch & Invoices -->
+      <a class="text-[#181816] font-medium px-3 py-1.5 rounded-xl border border-transparent hover:border-2 hover:border-[#181816] hover:bg-[#FFFFFF] flex items-center gap-2.5 transition-all cursor-pointer hover:pop-shadow-xs" href="#" onclick="showQuickToast('Dispatch Reconciliation: Shelf Stock + Dispatched = Passed Stock', 'local_shipping')">
+        <span class="material-symbols-outlined text-[16px] text-[#181816]">local_shipping</span>
+        <span class="flex-1">Finished Dispatches</span>
+      </a>
+
+      <!-- Solver Comparison Pill Card -->
+      <div class="pt-2">
+        <div class="p-2.5 bg-[#FFFFFF] border-2 border-[#181816] rounded-2xl pop-shadow-xs space-y-2">
+          <div class="flex items-center justify-between font-mono text-[10px] text-[#4E4B47] uppercase font-bold">
+            <span>Optimization Delta</span>
+            <span class="text-[#0E4B3E]">vs EDF Baseline</span>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5 font-mono text-[11px]">
+            <div class="bg-[#FAF7F0] p-1.5 rounded-xl border border-[#181816]">
+              <span class="block text-[9.5px] text-[#78716C]">Weighted Tardiness</span>
+              <span class="font-bold text-[#15803D] text-[12px]">-34.2%</span>
+            </div>
+            <div class="bg-[#FAF7F0] p-1.5 rounded-xl border border-[#181816]">
+              <span class="block text-[9.5px] text-[#78716C]">Utilization</span>
+              <span class="font-bold text-[#0E4B3E] text-[12px]">84.6%</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between font-mono text-[10px] pt-1 border-t border-[#E7DFCE]">
+            <span class="text-[#78716C]">Horizon: 10,080m (7d)</span>
+            <span class="font-bold text-[#181816]">Seed: 42</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Machine Telemetry mini list -->
+      <div class="pt-2">
+        <div class="flex items-center justify-between pb-1 px-1">
+          <span class="font-mono text-[10px] text-[#1E3A2F] uppercase tracking-wider font-bold">Active Machines</span>
+          <span class="font-mono text-[10px] text-[#181816] font-bold bg-[#D7F4E5] px-1.5 rounded-full border border-[#181816]">9/10 Running</span>
+        </div>
+        <div class="space-y-1 bg-[#FFFFFF] border-2 border-[#181816] rounded-2xl p-2 pop-shadow-xs font-mono text-[11px]">
+          <div class="flex items-center justify-between py-0.5">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#15803D]"></span>SPIN-01..03</span>
+            <span class="text-[#0E4B3E] font-bold">3 Active</span>
+          </div>
+          <div class="flex items-center justify-between py-0.5">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#E05326]"></span>WEAVE-01..05</span>
+            <span class="text-[#E05326] font-bold">1 Down</span>
+          </div>
+          <div class="flex items-center justify-between py-0.5">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#15803D]"></span>DYE-01..02</span>
+            <span class="text-[#0E4B3E] font-bold">2 Active</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="border-t-2 border-[#181816] p-2.5 bg-[#718D80] font-mono text-[10px] space-y-1">
+      <div class="flex justify-between items-center text-[#181816] font-bold">
+        <span>FastAPI + OR-Tools v9.8</span>
+        <span class="bg-[#D7F4E5] border border-[#181816] px-1.5 rounded-full text-[#0B382F]">ready</span>
+      </div>
+      <div class="text-[#1E3A2F]">Reference: Everest Textile Mills</div>
+    </div>
+  </aside>
+
+  <!-- ================= CENTER CANVAS: ROUTE PIPELINE BOARD ================= -->
+  <main class="flex-1 flex flex-col min-w-0 bg-dot-grid overflow-hidden">
+    <!-- Sub-Toolbar: Filters, Metrics & Scenario selector -->
+    <div class="h-10 px-4 bg-[#FFFFFF] border-b-2 border-[#181816] flex items-center justify-between shrink-0 z-10">
+      <!-- Filter Chips -->
+      <div class="flex items-center gap-2">
+        <span class="font-mono text-[11px] text-[#4E4B47] uppercase font-bold">Pipeline Stage:</span>
+        <button class="px-3 py-0.5 rounded-full bg-[#0E4B3E] text-[#FFFFFF] border-2 border-[#181816] text-[11px] font-bold pop-shadow-xs btn-pop">
+          All Route Stages (12 Orders)
+        </button>
+        <button class="px-3 py-0.5 rounded-full bg-[#FAF7F0] hover:bg-[#FFFFFF] border-2 border-[#181816] text-[#181816] text-[11px] font-bold pop-shadow-xs btn-pop" onclick="filterStage('spinning')">
+          Spinning (3)
+        </button>
+        <button class="px-3 py-0.5 rounded-full bg-[#FAF7F0] hover:bg-[#FFFFFF] border-2 border-[#181816] text-[#181816] text-[11px] font-bold pop-shadow-xs btn-pop" onclick="filterStage('weaving')">
+          Weaving (5)
+        </button>
+        <button class="px-3 py-0.5 rounded-full bg-[#FAF7F0] hover:bg-[#FFFFFF] border-2 border-[#181816] text-[#181816] text-[11px] font-bold pop-shadow-xs btn-pop" onclick="filterStage('dyeing')">
+          Dyeing (4)
+        </button>
+        <div class="h-4 w-0.5 bg-[#181816]/30 mx-1"></div>
+        <button class="px-2.5 py-0.5 rounded-full bg-[#FFEFEA] hover:bg-[#FEDCCE] border-2 border-[#181816] text-[#962C0B] text-[11px] font-mono font-bold flex items-center gap-1.5 pop-shadow-xs btn-pop" onclick="selectDisruption('breakdown')">
+          <span class="w-2 h-2 rounded-full bg-[#E05326] border border-[#181816]"></span>
+          <span>WEAVE-03 Collision (Active)</span>
+        </button>
+      </div>
+
+      <!-- Right: Benchmark Scenario Toggles -->
+      <div class="flex items-center gap-2.5">
+        <span class="font-mono text-[11px] text-[#78716C] font-semibold">Scenario:</span>
+        <div class="flex items-center bg-[#FFFFFF] rounded-full border-2 border-[#181816] pop-shadow-xs overflow-hidden p-0.5">
+          <button class="px-2.5 py-0.5 rounded-full bg-[#0E4B3E] text-white font-mono text-[10px] font-bold" id="scenBtn1" onclick="switchScenario('feasible')">feasible.json</button>
+          <button class="px-2.5 py-0.5 rounded-full text-[#181816] hover:bg-[#FAF7F0] font-mono text-[10px] font-bold" id="scenBtn2" onclick="switchScenario('breakdown')">breakdown.json</button>
+          <button class="px-2.5 py-0.5 rounded-full text-[#181816] hover:bg-[#FAF7F0] font-mono text-[10px] font-bold" id="scenBtn3" onclick="switchScenario('late_yarn')">late_yarn.json</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4-Column Textile Route Board: [Yarn Prep & Ingestion] -> [Stage 1: Spinning] -> [Stage 2: Weaving] -> [Stage 3: Dyeing & Finish] -->
+    <div class="flex-1 overflow-x-auto overflow-y-hidden p-4 flex gap-4">
+
+      <!-- COLUMN 1: YARN ALLOCATION & INGESTION (Feasibility Gate) -->
+      <div class="w-80 flex flex-col bg-[#FAF7F0] border-2 border-[#181816] rounded-3xl h-full shrink-0 pop-shadow-md">
+        <div class="p-3 border-b-2 border-[#181816] flex items-center justify-between bg-[#EFE8D8] rounded-t-3xl">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#78716C] border border-[#181816]"></span>
+            <span class="font-bold text-[13px] text-[#181816]">Yarn Feasibility & Queue</span>
+            <span class="font-mono text-[10px] text-[#181816] bg-[#FFFFFF] border-2 border-[#181816] px-2 py-0.2 rounded-full font-bold">3 Orders</span>
+          </div>
+          <button class="w-6 h-6 rounded-full border-2 border-[#181816] bg-[#FFFFFF] text-[#181816] hover:bg-[#FAF7F0] flex items-center justify-center pop-shadow-xs btn-pop" onclick="showQuickToast('Initiating Yarn Lot Feasibility Check...', 'inventory_2')">
+            <span class="material-symbols-outlined text-[14px]">add</span>
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 space-y-3">
+          <!-- Order Card: ORD-007 (Delayed Yarn Alert) -->
+          <div class="stage-card p-3 bg-[#FFFFFF] border-2 border-[#181816] rounded-2xl cursor-pointer" onclick="selectOrder('ORD-007')">
+            <div class="flex items-center justify-between font-mono text-[11px] mb-1.5">
+              <span class="font-bold text-[#181816]">ORD-007</span>
+              <span class="px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E] border border-[#181816] font-bold text-[10px]">P2 Normal</span>
+            </div>
+            <p class="font-bold text-[12.5px] text-[#181816] leading-snug">Denim 14oz Dark Indigo</p>
+            <div class="font-mono text-[11px] text-[#4E4B47] mt-1">Buyer: <span class="font-bold text-[#181816]">Urban Threads</span> • 3,200m</div>
+
+            <!-- Delayed Yarn Badge -->
+            <div class="mt-2.5 flex items-center justify-between bg-[#FEF3C7] border-2 border-[#181816] rounded-xl px-2 py-1 font-mono text-[10px] text-[#92400E] pop-shadow-xs">
+              <div class="flex items-center gap-1 font-bold">
+                <span class="material-symbols-outlined text-[13px]">schedule</span>
+                <span>Yarn Arrival: +12h delay</span>
+              </div>
+              <span class="font-bold text-[#713F12]">t = 720m</span>
+            </div>
+
+            <div class="flex items-center justify-between mt-2.5 pt-2 border-t-2 border-[#E7DFCE] text-[10.5px] font-mono text-[#4E4B47]">
+              <span>Lot: COT-30S/IND</span>
+              <span class="text-[#0E4B3E] font-bold">Stock Verified</span>
+            </div>
+          </div>
+
+          <!-- Order Card: ORD-009 -->
+          <div class="stage-card p-3 bg-[#FFFFFF] border-2 border-[#181816] rounded-2xl cursor-pointer" onclick="selectOrder('ORD-009')">
+            <div class="flex items-center justify-between font-mono text-[11px] mb-1.5">
+              <span class="font-bold text-[#181816]">ORD-009</span>
+              <span class="px-2 py-0.5 rounded-full bg-[#FAF7F0] text-[#4E4B47] border border-[#181816] font-bold text-[10px]">P3 Low</span>
+            </div>
+            <p class="font-bold text-[12.5px] text-[#181816] leading-snug">Viscose Satin Emerald Sheen</p>
+            <div class="font-mono text-[11px] text-[#4E4B47] mt-1">Buyer: <span class="font-bold text-[#181816]">Rayon Couture</span> • 1,800m</div>
+
+            <div class="mt-2.5 flex items-center gap-1.5 flex-wrap">
+              <span class="font-mono text-[10px] px-2 py-0.5 bg-[#D7F4E5] border border-[#181816] rounded-full text-[#0B382F] font-bold">Yarn Ready (0m)</span>
+              <span class="font-mono text-[10px] px-2 py-0.5 bg-[#FAF7F0] border border-[#181816] rounded-full text-[#181816] font-bold">Spun Silk 40s</span>
+            </div>
+
+            <div class="flex items-center justify-between mt-2.5 pt-2 border-t-2 border-[#E7DFCE] text-[10.5px] font-mono text-[#4E4B47]">
+              <span>Due: t = 6,480m</span>
+              <span class="w-5 h-5 rounded-full bg-[#FAF7F0] border border-[#181816] text-[#181816] flex items-center justify-center font-bold text-[10px]">M4</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUMN 2: STAGE 1 - SPINNING (Rate: ~50-60 m/hr) -->
+      <div class="w-80 flex flex-col bg-[#FAF7F0] border-2 border-[#181816] rounded-3xl h-full shrink-0 pop-shadow-md">
+        <div class="p-3 border-b-2 border-[#181816] flex items-center justify-between bg-[#EFE8D8] rounded-t-3xl">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#0E4B3E] border border-[#181816]"></span>
+            <span class="font-bold text-[13px] text-[#181816]">Stage 1: Spinning</span>
+            <span class="font-mono text-[10px] text-[#181816] bg-[#FFFFFF] border-2 border-[#181816] px-2 py-0.2 rounded-full font-bold">3 Machines</span>
+          </div>
+          <span class="font-mono text-[10px] font-bold text-[#0E4B3E] bg-[#D7F4E5] px-2 py-0.5 rounded-full border border-[#181816]">3/3 Active</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 space-y-3">
+          <!-- Active Spinning Run: ORD-001 on SPIN-01 -->
+          <div class="stage-card p-3 bg-[#FFFFFF] border-2 border-[#181816] rounded-2xl cursor-pointer" onclick="selectOrder('ORD-001')">
+            <div class="flex items-center justify-between font-mono text-[11px] mb-1.5">
+              <span class="font-bold text-[#0E4B3E]">ORD-001</span>
+              <span class="px-2 py-0.5 rounded-full bg-[#D7F4E5] text-[#0B382F] border border-[#181816] font-bold text-[10px]">Spinning: 74%</span>
+            </div>
+            <p class="font-bold text-[12.5px] text-[#181816] leading-snug">Cotton Twill 2/1 Navy Weave</p>
+            <div class="font-mono text-[11px] text-[#4E4B47] mt-1">Buyer: <span class="font-bold text-[#181816]">Buyer A</span> • 2,400m</div>
+
+            <!-- Assigned Machine Badge -->
+            <div class="mt-2.5 flex items-center justify-between bg-[#FAF7F0] border-2 border-[#181816] rounded-xl px-2 py-1 font-mono text-[10.5px]">
+              <span class="font-bold text-[#181816] flex items-center gap-1">
+                <span class="material-symbols-outlined text-[13px] text-[#0E4B3E]">settings</span>
+                <span>SPIN-01 (60 m/hr)</span>
+              </span>
+              <span class="text-[#0E4B3E] font-bold">Dur: 240m</span>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="mt-2 w-full bg-[#E7DFCE] h-2 rounded-full border border-[#181816] overflow-hidden p-px">
+              <div class="h-full bg-[#0E4B3E] rounded-full" style="width: 74%"></div>
+            </div>
+
+            <div class="flex items-center justify-between mt-2.5 pt-2 border-t-2 border-[#E7DFCE] text-[10.5px] font-mono text-[#4E4B47]">
+              <span>Next: WEAVE-01</span>
+              <span class="font-bold text-[#15803D]">Route Feasible</span>
+            </div>
+          </div>
+
+          <!-- Queued Spinning Run: ORD-003 on SPIN-02 -->
+          <div class="stage-card p-3 bg-[#FFFFFF] border-2 border-[#181816] rounded-2xl cursor-pointer" onclick="selectOrder('ORD-003')">
+            <div class="flex items-center justify-between font-mono text-[11px] mb-1.5">
+              <span class="font-bold text-[#181816]">ORD-003</span>
+              <span class="px-2 py-0.5 rounded-full bg-[#FAF7F0] text-[#181816] border border-[#181816] font-bold text-[10px]">Queued</span>
+            </div>
+            <p class="font-bold text-[12.5px] text-[#181816] leading-snug">Oxford Cotton Sky Blue Striped</p>
+            <div class="font-mono text-[11px] text-[#4E4B47] mt-1">Buyer: <span class="font-bold text-[#181816]">Nordic Apparel</span> • 1,600m</div>
+
+            <div class="mt-2.5 flex items-center justify-between bg-[#FAF7F0] border-2 border-[#181816] rounded-xl px-2 py-1 font-mono text-[10.5px]">
+              <span class="font-bold text-[#181816]">SPIN-02</span>
+              <span class="text-[#4E4B47]">Start: t = 360m</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUMN 3: STAGE 2 - WEAVING (DISRUPTION OCCURRING ON WEAVE-03) -->
+      <div class="w-80 flex flex-col bg-[#FAF7F0] border-2 border-[#181816] rounded-3xl h-full shrink-0 pop-shadow-md">
+        <div class="p-3 border-b-2 border-[#181816] flex items-center justify-between bg-[#EFE8D8] rounded-t-3xl">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#E05326] border border-[#181816]"></span>
+            <span class="font-bold text-[13px] text-[#181816]">Stage 2: Weaving</span>
+            <span class="font-mono text-[10px] text-[#181816] bg-[#FFFFFF] border-2 border-[#181816] px-2 py-0.2 rounded-full font-bold">5 Looms</span>
+          </div>
+          <span class="font-mono text-[10px] font-bold text-[#962C0B] bg-[#FFEFEA] px-2 py-0.5 rounded-full border border-[#181816]">1 Breakdown</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 space-y-3">
+          <!-- CRITICAL DISRUPTION CARD: ORD-004 on WEAVE-03 (Split Required) -->
+          <div class="stage-card p-3 bg-[#FFFFFF] border-2 border-[#E05326] rounded-2xl cursor-pointer relative" id="card-ORD-004" onclick="selectOrder('ORD-004')">
+            <!-- Terracotta Breakdown Header Sticker -->
+            <div class="flex items-center justify-between bg-[#FFEFEA] border-2 border-[#181816] rounded-xl px-2 py-1 mb-2 font-mono text-[10px] text-[#962C0B] pop-shadow-xs">
+              <div class="flex items-center gap-1 font-bold">
+                <span class="material-symbols-outlined text-[13px] text-[#E05326]">warning</span>
+                <span>MACHINE BREAKDOWN</span>
+              </div>
+              <span class="font-bold underline">WEAVE-03 [480–960m]</span>
+            </div>
+
+            <div class="flex items-center justify-between font-mono text-[11px] mb-1.5">
+              <span class="font-bold text-[#0E4B3E]">ORD-004</span>
+              <span class="px-2 py-0.5 rounded-full bg-[#FEE2E2] text-[#991B1B] border border-[#181816] font-bold text-[10px]">P0 Critical</span>
+            </div>
+            <p class="font-bold text-[12.5px] text-[#181816] leading-snug">Heavy Canvas Olive Drab (3,000m total)</p>
+            <div class="font-mono text-[11px] text-[#4E4B47] mt-1">Buyer: <span class="font-bold text-[#181816]">Everest Tactical</span></div>
+
+            <!-- Solver Disruption Split Details -->
+            <div class="mt-2.5 p-2 bg-[#FAF7F0] border-2 border-[#181816] rounded-xl font-mono text-[10.5px] space-y-1">
+              <div class="flex justify-between text-[#15803D] font-bold">
+                <span>Completed before fault:</span>
+                <span>1,200m (Passed)</span>
+              </div>
+              <div class="flex justify-between text-[#E05326] font-bold">
+                <span>Unfinished remainder:</span>
+                <span>1,800m (Ready @ t=360)</span>
+              </div>
+              <div class="text-[9.5px] text-[#78716C] pt-1 border-t border-[#E7DFCE]">
+                Re-plan action: Route 1,800m to <span class="font-bold text-[#181816]">WEAVE-02</span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-2.5 pt-2 border-t-2 border-[#E7DFCE] text-[10.5px] font-mono text-[#4E4B47]">
+              <span>Deadline: t = 4,320m</span>
+              <span class="text-[#E05326] font-bold flex items-center gap-0.5">
+                <span class="material-symbols-outlined text-[12px]">schedule</span> At Risk
+              </span>
+            </div>
+          </div>
+
+          <!-- Normal Weaving Run: ORD-002 on WEAVE-01 -->
+          <div class="stage-card p-3 bg-[#FFFFFF] border-2 border-[#181816] rounded-2xl cursor-pointer" onclick="selectOrder('ORD-002')">
+            <div class="flex items-center justify-between font-mono text-[11px] mb-1.5">
+              <span class="font-bold text-[#181816]">ORD-002</span>
+              <span class="px-2 py-0.5 rounded-full bg-[#FAF7F0] border border-[#181816] text-[#181816] font-bold text-[10px]">P1 High</span>
+            </div>
+            <p class="font-bold text-[12.5px] text-[#181816] leading-snug">Linen Weft Natural Ecru 40s</p>
+            <div class="font-mono text-[11px] text-[#4E4B47] mt-1">Buyer: <span class="font-bold text-[#181816]">Pacific Mills</span> • 2,000m</div>
+
+            <div class="mt-2.5 flex items-center justify-between bg-[#FAF7F0] border-2 border-[#181816] rounded-xl px-2 py-1 font-mono text-[10.5px]">
+              <span class="font-bold text-[#181816]">WEAVE-01 (40 m/hr)</span>
+              <span class="text-[#0E4B3E] font-bold">Optimal Schedule</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUMN 4: STAGE 3 - DYEING & FINISHING (Vat Dyeing & Inspection) -->
+      <div class="w-80 flex flex-col bg-[#FAF7F0] border-2 border-[#181816] rounded-3xl h-full shrink-0 pop-shadow-md">
+        <div class="p-3 border-b-2 border-[#181816] flex items-center justify-between bg-[#EFE8D8] rounded-t-3xl">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#15803D] border border-[#181816]"></span>
+            <span class="font-bold text-[13px] text-[#181816]">Stage 3: Dyeing & QA</span>
+            <span class="font-mono text-[10px] text-[#181816] bg-[#FFFFFF] border-2 border-[#181816] px-2 py-0.2 rounded-full font-bold">2 Vats</span>
+          </div>
+          <span class="font-mono text-[10px] font-bold text-[#0E4B3E] bg-[#D7F4E5] px-2 py-0.5 rounded-full border border-[#181816]">100% On-Time</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 space-y-3">
+          <!-- Finished Stage: ORD-005 on DYE-01 -->
+          <div class="stage-card p-3 bg-[#FFFFFF] border-2 border-[#181816] rounded-2xl cursor-pointer" onclick="selectOrder('ORD-005')">
+            <div class="flex items-center justify-between font-mono text-[11px] mb-1.5">
+              <span class="font-bold text-[#181816]">ORD-005</span>
+              <span class="px-2 py-0.5 rounded-full bg-[#D7F4E5] border border-[#181816] text-[#0B382F] font-bold text-[10px]">Inspection Passed</span>
+            </div>
+            <p class="font-bold text-[12.5px] text-[#181816] leading-snug">Reactive Dye Poplin Forest Green</p>
+            <div class="font-mono text-[11px] text-[#4E4B47] mt-1">Buyer: <span class="font-bold text-[#181816]">Alpine Apparel</span> • 1,500m</div>
+
+            <div class="mt-2.5 p-2 bg-[#FAF7F0] border border-[#181816] rounded-xl font-mono text-[10px] space-y-0.5">
+              <div class="flex justify-between"><span>DYE-01 Vat:</span> <span class="font-bold text-[#181816]">Done (180m)</span></div>
+              <div class="flex justify-between"><span>Rolls Inspected:</span> <span class="font-bold text-[#15803D]">15 Passed, 0 Reject</span></div>
+              <div class="flex justify-between"><span>Dispatch Readiness:</span> <span class="font-bold text-[#0E4B3E]">Invoice Generated</span></div>
+            </div>
+
+            <div class="flex items-center justify-between mt-2.5 pt-2 border-t-2 border-[#E7DFCE] text-[10.5px] font-mono text-[#4E4B47]">
+              <span>Dispatched: 0m / 1,500m</span>
+              <span class="text-[#0E4B3E] font-bold">Ready to Ship</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ================= RIGHT CONTEXTUAL INSPECTOR & SCHEDULER CP-SAT PANEL ================= -->
+  <aside class="w-[420px] bg-[#FAF7F0] border-l-2 border-[#181816] flex flex-col shrink-0 z-20" id="inspectorPanel">
+    <!-- Panel Header -->
+    <div class="p-3 border-b-2 border-[#181816] flex items-center justify-between bg-[#FFFFFF]">
+      <div class="flex items-center gap-1.5 text-[12px]">
+        <button class="px-3 py-1 rounded-full bg-[#FFFFFF] text-[#0E4B3E] font-bold flex items-center gap-1.5 border-2 border-[#181816] pop-shadow-xs" id="tabReplan" onclick="switchRightTab('replan')">
+          <span class="w-2 h-2 rounded-full bg-[#E05326] border border-[#181816]"></span>
+          <span>Disruption Re-Plan</span>
+        </button>
+        <button class="px-3 py-1 rounded-full text-[#4E4B47] hover:text-[#181816] font-bold transition-all hover:bg-[#FAF7F0]" id="tabOrderDetails" onclick="switchRightTab('order')">
+          <span>Order & Feasibility</span>
+        </button>
+      </div>
+      <button class="w-7 h-7 rounded-full border-2 border-[#181816] bg-[#FFFFFF] hover:bg-[#FAF7F0] text-[#181816] flex items-center justify-center pop-shadow-xs btn-pop" onclick="toggleInspector()" title="Toggle Panel">
+        <span class="material-symbols-outlined text-[16px]">close</span>
+      </button>
+    </div>
+
+    <!-- Inspector Content -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+
+      <!-- VIEW 1: DISRUPTION RE-PLANNING & SOLVER DIFF VIEW -->
+      <div class="space-y-3.5" id="viewReplan">
+        <!-- Disruption Alert Sticker Card -->
+        <div class="p-3.5 bg-[#FFEFEA] border-2 border-[#181816] rounded-2xl flex items-start gap-2.5 pop-shadow-md">
+          <span class="material-symbols-outlined text-[#E05326] text-xl mt-0.5">handyman</span>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-[13px] text-[#962C0B]">Machine Breakdown: Loom WEAVE-03</div>
+            <p class="font-mono text-[11px] text-[#962C0B] mt-1 leading-relaxed">
+              Downtime window injected: <code class="bg-[#FFFFFF] border border-[#181816] px-1 py-0.2 rounded font-bold text-[#181816]">t = 480m to 960m (8 hours)</code>. Unfinished metres in <b class="text-[#181816]">ORD-004</b> require split and reassignment.
+            </p>
+          </div>
+        </div>
+
+        <!-- Disruption Re-Plan Diff Table -->
+        <div class="border-2 border-[#181816] rounded-2xl overflow-hidden pop-shadow-md bg-[#FFFFFF]">
+          <div class="grid grid-cols-2 bg-[#EFE8D8] border-b-2 border-[#181816] font-mono text-[10.5px]">
+            <div class="p-2 border-r-2 border-[#181816] text-[#78716C] font-bold flex justify-between">
+              <span>BASELINE (EDF)</span>
+              <span>DELAY: +520m</span>
+            </div>
+            <div class="p-2 text-[#0E4B3E] font-bold flex justify-between">
+              <span>CP-SAT RE-PLAN</span>
+              <span>DELAY: +0m</span>
+            </div>
+          </div>
+
+          <div class="p-3 font-mono text-[11px] space-y-2 bg-[#FFFFFF]">
+            <div class="text-[#78716C] text-[10px] uppercase font-bold">Shift & Split Plan:</div>
+            <div class="p-2 rounded-xl bg-[#FAF7F0] border border-[#181816] space-y-1">
+              <div class="flex justify-between">
+                <span class="text-[#4E4B47]">Frozen Metres (WEAVE-03):</span>
+                <span class="font-bold text-[#15803D]">1,200m (Passed)</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-[#4E4B47]">Split Metres:</span>
+                <span class="font-bold text-[#E05326]">1,800m remaining</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-[#4E4B47]">Re-allocated Machine:</span>
+                <span class="font-bold text-[#0E4B3E]">WEAVE-02 (Rate: 45 m/h)</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-[#4E4B47]">New Weave Start:</span>
+                <span class="font-bold text-[#181816]">t = 360m</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-[#4E4B47]">Projected Delivery:</span>
+                <span class="font-bold text-[#15803D]">t = 4,140m (due: 4,320m)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Independent Validator Checklist -->
+        <div class="border-2 border-[#181816] rounded-2xl p-3 bg-[#FFFFFF] pop-shadow-md">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-mono text-[10px] text-[#181816] uppercase tracking-wider font-bold">Independent Validator Proof</span>
+            <span class="font-mono text-[10px] bg-[#D7F4E5] text-[#0B382F] px-2 py-0.2 rounded-full border border-[#181816] font-bold">PASS (8/8)</span>
+          </div>
+          <div class="space-y-1.5 font-mono text-[11px] text-[#4E4B47]">
+            <div class="flex items-center gap-1.5 text-[#15803D]">
+              <span class="material-symbols-outlined text-[13px]">check_circle</span>
+              <span>1. Every operation scheduled exactly once</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-[#15803D]">
+              <span class="material-symbols-outlined text-[13px]">check_circle</span>
+              <span>2. Machine eligibility verified per stage</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-[#15803D]">
+              <span class="material-symbols-outlined text-[13px]">check_circle</span>
+              <span>3. Duration matches ceil(metres/rate * 60)</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-[#15803D]">
+              <span class="material-symbols-outlined text-[13px]">check_circle</span>
+              <span>4. Route order: Spinning &gt; Weaving &gt; Dyeing</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-[#15803D]">
+              <span class="material-symbols-outlined text-[13px]">check_circle</span>
+              <span>5. Zero machine overlap & downtime respected</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-[#15803D]">
+              <span class="material-symbols-outlined text-[13px]">check_circle</span>
+              <span>6. Frozen operations strictly unchanged</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="space-y-2 pt-1">
+          <span class="font-mono text-[10px] text-[#181816] uppercase tracking-wider block font-bold">Apply Re-Plan Actions</span>
+          <div class="grid grid-cols-2 gap-2">
+            <button class="h-8 px-2 bg-[#FFFFFF] hover:bg-[#FAF7F0] border-2 border-[#181816] text-[#0E4B3E] rounded-xl font-mono text-[11px] font-bold flex items-center justify-center gap-1 btn-pop" onclick="applyReplan('freeze')">
+              <span class="material-symbols-outlined text-[13px]">lock</span>
+              <span>Freeze Running</span>
+            </button>
+            <button class="h-8 px-2 bg-[#FFFFFF] hover:bg-[#FAF7F0] border-2 border-[#181816] text-[#962C0B] rounded-xl font-mono text-[11px] font-bold flex items-center justify-center gap-1 btn-pop" onclick="applyReplan('split')">
+              <span class="material-symbols-outlined text-[13px]">call_split</span>
+              <span>Split ORD-004</span>
+            </button>
+          </div>
+          <button class="w-full h-9 bg-[#0E4B3E] hover:bg-[#0A382E] text-white rounded-xl border-2 border-[#181816] text-[12.5px] font-bold flex items-center justify-center gap-2 btn-pop" onclick="applyReplan('commit')">
+            <span class="material-symbols-outlined text-[16px]">task_alt</span>
+            <span>Commit Validated Re-Plan to Floor</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- VIEW 2: ORDER & YARN FEASIBILITY VIEW -->
+      <div class="hidden space-y-3.5" id="viewOrder">
+        <div class="bg-[#FFFFFF] p-3.5 border-2 border-[#181816] rounded-2xl pop-shadow-md">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="font-mono text-[11px] px-2 py-0.5 bg-[#FAF7F0] border-2 border-[#181816] rounded-full text-[#0E4B3E] font-bold" id="detailOrderId">ORD-004</span>
+            <span class="font-mono text-[11px] px-2 py-0.5 bg-[#FEE2E2] text-[#991B1B] border-2 border-[#181816] rounded-full font-bold">P0 Critical</span>
+          </div>
+          <h2 class="font-bold text-[15px] text-[#181816] leading-tight" id="detailOrderTitle">Heavy Canvas Olive Drab — 3,000 Metres</h2>
+          <div class="font-mono text-[11.5px] text-[#4E4B47] mt-1">Buyer: Everest Tactical Procurement</div>
+        </div>
+
+        <div class="bg-[#FFFFFF] p-3.5 border-2 border-[#181816] rounded-2xl pop-shadow-md space-y-2.5">
+          <span class="font-mono text-[10px] text-[#181816] uppercase tracking-wider block font-bold">Yarn Feasibility Check</span>
+          <div class="bg-[#FAF7F0] p-2.5 rounded-xl border-2 border-[#181816] font-mono text-[11px] space-y-1.5">
+            <div class="flex justify-between"><span class="text-[#4E4B47]">Required Yarn:</span> <span class="font-bold text-[#181816]">1,280 kg (Cotton 16s O.E.)</span></div>
+            <div class="flex justify-between"><span class="text-[#4E4B47]">Lot Available:</span> <span class="font-bold text-[#15803D]">1,500 kg (LOT-C16-89)</span></div>
+            <div class="flex justify-between"><span class="text-[#4E4B47]">Feasibility:</span> <span class="font-bold text-[#15803D]">FEASIBLE • NO SHORTFALL</span></div>
+            <div class="flex justify-between"><span class="text-[#4E4B47]">Earliest Start:</span> <span class="font-bold text-[#181816]">t = 0m (Warehouse Bay 3)</span></div>
+          </div>
+        </div>
+
+        <div class="bg-[#FFFFFF] p-3.5 border-2 border-[#181816] rounded-2xl pop-shadow-md space-y-2">
+          <span class="font-mono text-[10px] text-[#181816] uppercase tracking-wider block font-bold">Route Machine Eligibility</span>
+          <div class="font-mono text-[11px] space-y-1">
+            <div class="flex justify-between p-1.5 bg-[#FAF7F0] rounded border border-[#181816]">
+              <span class="text-[#4E4B47]">1. Spinning:</span>
+              <span class="font-bold text-[#181816]">SPIN-01, SPIN-03</span>
+            </div>
+            <div class="flex justify-between p-1.5 bg-[#FAF7F0] rounded border border-[#181816]">
+              <span class="text-[#4E4B47]">2. Weaving:</span>
+              <span class="font-bold text-[#181816]">WEAVE-02, WEAVE-03</span>
+            </div>
+            <div class="flex justify-between p-1.5 bg-[#FAF7F0] rounded border border-[#181816]">
+              <span class="text-[#4E4B47]">3. Dyeing:</span>
+              <span class="font-bold text-[#181816]">DYE-01, DYE-02</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Inspector Footer -->
+    <div class="p-2.5 border-t-2 border-[#181816] bg-[#FFFFFF] flex items-center justify-between font-mono text-[10px] text-[#181816]">
+      <span class="font-bold">Model: OR-Tools CP-SAT</span>
+      <span class="flex items-center gap-1.5 bg-[#D7F4E5] border border-[#181816] px-2 py-0.5 rounded-full font-bold text-[#0B382F]">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#15803D]"></span>
+        <span>Schedule Validated</span>
+      </span>
+    </div>
+  </aside>
+
+</div>
+
+<!-- ================= MODAL: SIMULATE DISRUPTION ================= -->
+<div class="hidden fixed inset-0 bg-[#181816]/50 backdrop-blur-[2px] z-50 flex items-center justify-center" id="simModal">
+  <div class="w-[500px] bg-[#FFFFFF] rounded-3xl border-2 border-[#181816] pop-shadow-xl overflow-hidden p-5 space-y-4">
+    <div class="flex items-center justify-between border-b-2 border-[#181816] pb-3">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#E05326] text-xl">warning</span>
+        <h3 class="font-bold text-[15px] text-[#181816]">Simulate Production Disruption</h3>
+      </div>
+      <button class="w-7 h-7 rounded-full border-2 border-[#181816] bg-[#FFFFFF] hover:bg-[#FAF7F0] text-[#181816] flex items-center justify-center pop-shadow-xs btn-pop" onclick="closeSimModal()">
+        <span class="material-symbols-outlined text-[16px]">close</span>
+      </button>
+    </div>
+
+    <div class="space-y-3 font-mono text-[11.5px]">
+      <div>
+        <label class="block uppercase mb-1 font-bold text-[#181816] text-[10px]">Disruption Type</label>
+        <select class="w-full bg-[#FAF7F0] border-2 border-[#181816] rounded-xl px-3 py-1.5 font-bold" id="simTypeSelect" onchange="toggleSimInputs()">
+          <option value="machine_down">Machine Breakdown (Loom / Spindle Down)</option>
+          <option value="yarn_delay">Delayed Yarn Lot (Supplier Shipment Delay)</option>
+        </select>
+      </div>
+
+      <div id="simMachineBlock">
+        <label class="block uppercase mb-1 font-bold text-[#181816] text-[10px]">Machine Target</label>
+        <select class="w-full bg-[#FAF7F0] border-2 border-[#181816] rounded-xl px-3 py-1.5 font-bold">
+          <option>WEAVE-03 (Loom 3)</option>
+          <option>WEAVE-01 (Loom 1)</option>
+          <option>SPIN-02 (Ring Frame 2)</option>
+          <option>DYE-01 (Jet Dyeing Vat 1)</option>
+        </select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3" id="simTimeBlock">
+        <div>
+          <label class="block uppercase mb-1 font-bold text-[#181816] text-[10px]">Downtime From (min)</label>
+          <input type="number" class="w-full bg-[#FAF7F0] border-2 border-[#181816] rounded-xl px-3 py-1.5 font-bold" value="480"/>
+        </div>
+        <div>
+          <label class="block uppercase mb-1 font-bold text-[#181816] text-[10px]">Downtime To (min)</label>
+          <input type="number" class="w-full bg-[#FAF7F0] border-2 border-[#181816] rounded-xl px-3 py-1.5 font-bold" value="960"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-2.5 pt-3 border-t-2 border-[#181816]">
+      <button class="px-4 py-1.5 border-2 border-[#181816] rounded-full text-[#181816] hover:bg-[#FAF7F0] font-bold btn-pop text-[12px]" onclick="closeSimModal()">Cancel</button>
+      <button class="px-4 py-1.5 bg-[#E05326] hover:bg-[#C94318] text-white border-2 border-[#181816] rounded-full font-bold btn-pop text-[12px]" onclick="executeSimDisruption()">Inject & Re-Solve</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TOAST NOTIFICATION ================= -->
+<div class="fixed bottom-5 right-5 bg-[#FFFFFF] border-2 border-[#181816] pop-shadow-lg rounded-2xl px-4 py-2.5 flex items-center gap-3 z-50 transform translate-y-20 opacity-0 transition-all duration-200" id="toastNotification">
+  <span class="material-symbols-outlined text-[18px] text-[#15803D]" id="toastIcon">check_circle</span>
+  <span class="font-mono text-[12px] text-[#181816] font-bold" id="toastMessage">Re-plan committed successfully.</span>
+</div>
+
+<!-- ================= INTERACTIVE JAVASCRIPT LOGIC ================= -->
+<script>
+  let currentSelectedOrder = 'ORD-004';
+  let isResolved = false;
+
+  function switchRightTab(tab) {
+    const tabReplan = document.getElementById('tabReplan');
+    const tabOrder = document.getElementById('tabOrderDetails');
+    const viewReplan = document.getElementById('viewReplan');
+    const viewOrder = document.getElementById('viewOrder');
+
+    if (tab === 'replan') {
+      tabReplan.className = "px-3 py-1 rounded-full bg-[#FFFFFF] text-[#0E4B3E] font-bold flex items-center gap-1.5 border-2 border-[#181816] pop-shadow-xs";
+      tabOrder.className = "px-3 py-1 rounded-full text-[#4E4B47] hover:text-[#181816] font-bold transition-all hover:bg-[#FAF7F0]";
+      viewReplan.classList.remove('hidden');
+      viewOrder.classList.add('hidden');
+    } else {
+      tabOrder.className = "px-3 py-1 rounded-full bg-[#FFFFFF] text-[#0E4B3E] font-bold flex items-center gap-1.5 border-2 border-[#181816] pop-shadow-xs";
+      tabReplan.className = "px-3 py-1 rounded-full text-[#4E4B47] hover:text-[#181816] font-bold transition-all hover:bg-[#FAF7F0]";
+      viewOrder.classList.remove('hidden');
+      viewReplan.classList.add('hidden');
+    }
+  }
+
+  function toggleInspector() {
+    const panel = document.getElementById('inspectorPanel');
+    panel.classList.toggle('hidden');
+  }
+
+  function selectOrder(orderId) {
+    currentSelectedOrder = orderId;
+    document.querySelectorAll('.stage-card').forEach(el => {
+      el.classList.remove('border-[#0E4B3E]');
+      if (!el.classList.contains('border-[#E05326]')) {
+        el.classList.add('border-[#181816]');
+      }
+    });
+
+    const card = document.getElementById(`card-${orderId}`);
+    if (card) {
+      card.classList.remove('border-[#181816]');
+      card.classList.add('border-[#0E4B3E]');
+    }
+
+    const panel = document.getElementById('inspectorPanel');
+    panel.classList.remove('hidden');
+
+    if (orderId === 'ORD-004' && !isResolved) {
+      switchRightTab('replan');
+    } else {
+      document.getElementById('detailOrderId').textContent = orderId;
+      switchRightTab('order');
+    }
+  }
+
+  function selectDisruption(type) {
+    selectOrder('ORD-004');
+    switchRightTab('replan');
+  }
+
+  function openSimModal() {
+    document.getElementById('simModal').classList.remove('hidden');
+  }
+
+  function closeSimModal() {
+    document.getElementById('simModal').classList.add('hidden');
+  }
+
+  function toggleSimInputs() {
+    // switch form inputs based on breakdown vs yarn delay
+  }
+
+  function executeSimDisruption() {
+    closeSimModal();
+    showQuickToast('Disruption injected: WEAVE-03 down (480-960m). Solving with OR-Tools CP-SAT...', 'precision_manufacturing');
+    setTimeout(() => {
+      showQuickToast('Solver Optimal: 1 operation split, 0 deadline breaches.', 'task_alt');
+    }, 1500);
+  }
+
+  function triggerReplan() {
+    showQuickToast('CP-SAT warm-starting from EDF baseline... (Random seed: 42)', 'sync');
+    setTimeout(() => {
+      showQuickToast('Schedule optimal: Weighted tardiness minimized by 34.2%.', 'check_circle');
+    }, 1200);
+  }
+
+  function applyReplan(action) {
+    if (action === 'commit') {
+      isResolved = true;
+      showQuickToast('Committed re-plan to floor: WEAVE-02 picking up 1,800m of ORD-004.', 'check_circle');
+
+      // Update Top Status Badge
+      const statusText = document.getElementById('solverStatusText');
+      statusText.textContent = 'CP-SAT: RE-PLAN COMMITTED';
+
+      const topDisruption = document.getElementById('topDisruptionBtn');
+      topDisruption.className = 'flex items-center gap-1 bg-[#D7F4E5] text-[#0B382F] border-2 border-[#181816] rounded-full px-2.5 py-1 font-mono text-[11px] btn-pop font-bold';
+      document.getElementById('disruptionBadgeText').textContent = '0 Disruption Alerts';
+
+      // Update Card Badge
+      const card = document.getElementById('card-ORD-004');
+      if (card) {
+        card.classList.remove('border-[#E05326]');
+        card.classList.add('border-[#0E4B3E]');
+        const header = card.querySelector('.bg-\\[\\#FFEFEA\\]');
+        if (header) {
+          header.className = 'flex items-center justify-between bg-[#D7F4E5] border-2 border-[#181816] rounded-xl px-2 py-1 mb-2 font-mono text-[10px] text-[#0B382F] pop-shadow-xs';
+          header.innerHTML = `
+            <div class="flex items-center gap-1 font-bold">
+              <span class="material-symbols-outlined text-[13px] text-[#15803D]">check_circle</span>
+              <span>RE-PLAN ACTIVE (WEAVE-02)</span>
+            </div>
+            <span class="font-bold text-[#0B382F]">On-Time</span>
+          `;
+        }
+      }
+    } else if (action === 'freeze') {
+      showQuickToast('1,200m woven on WEAVE-03 locked into passed state.', 'lock');
+    } else if (action === 'split') {
+      showQuickToast('ORD-004 split into ORD-004-A (1200m done) & ORD-004-B (1800m).', 'call_split');
+    }
+  }
+
+  function switchScenario(scen) {
+    document.getElementById('scenBtn1').className = "px-2.5 py-0.5 rounded-full text-[#181816] hover:bg-[#FAF7F0] font-mono text-[10px] font-bold";
+    document.getElementById('scenBtn2').className = "px-2.5 py-0.5 rounded-full text-[#181816] hover:bg-[#FAF7F0] font-mono text-[10px] font-bold";
+    document.getElementById('scenBtn3').className = "px-2.5 py-0.5 rounded-full text-[#181816] hover:bg-[#FAF7F0] font-mono text-[10px] font-bold";
+
+    if (scen === 'feasible') {
+      document.getElementById('scenBtn1').className = "px-2.5 py-0.5 rounded-full bg-[#0E4B3E] text-white font-mono text-[10px] font-bold";
+      showQuickToast('Loaded feasible.json scenario: 12 orders, 0 machine faults.', 'tune');
+    } else if (scen === 'breakdown') {
+      document.getElementById('scenBtn2').className = "px-2.5 py-0.5 rounded-full bg-[#0E4B3E] text-white font-mono text-[10px] font-bold";
+      showQuickToast('Loaded machine_breakdown.json: WEAVE-03 down at t=480m.', 'warning');
+    } else {
+      document.getElementById('scenBtn3').className = "px-2.5 py-0.5 rounded-full bg-[#0E4B3E] text-white font-mono text-[10px] font-bold";
+      showQuickToast('Loaded late_yarn.json: ORD-007 delayed by 12 hours.', 'schedule');
+    }
+  }
+
+  function filterStage(stage) {
+    showQuickToast(`Filtering pipeline: Showing ${stage} route operations`, 'filter_list');
+  }
+
+  function showQuickToast(message, iconName = 'check_circle') {
+    const toast = document.getElementById('toastNotification');
+    const toastMsg = document.getElementById('toastMessage');
+    const toastIcon = document.getElementById('toastIcon');
+
+    toastMsg.textContent = message;
+    toastIcon.textContent = iconName;
+
+    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+
+    setTimeout(() => {
+      toast.classList.add('translate-y-20', 'opacity-0');
+      toast.classList.remove('translate-y-0', 'opacity-100');
+    }, 3200);
+  }
+</script>
+</body>
+</html>
