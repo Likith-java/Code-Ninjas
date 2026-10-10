@@ -151,7 +151,7 @@ export function WorkerModal({
               value={id}
               disabled={isEditing}
               onChange={(e) => setId(e.target.value)}
-              className="mt-1 w-full px-3 py-1.5 font-mono text-xs border-2 border-[#181816] rounded-xl bg-stone-100 disabled:opacity-75 focus:outline-none focus:ring-1 focus:ring-[#0E4B3E]"
+              className="mt-1 w-full px-3 py-1.5 font-mono text-xs border border-stone-300 rounded-lg bg-stone-100 disabled:opacity-75 focus:outline-hidden focus:ring-1 focus:ring-[#0E4B3E]"
             />
           </div>
 
@@ -164,7 +164,7 @@ export function WorkerModal({
               placeholder="e.g. Ramesh Kumar"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full px-3 py-1.5 text-xs border-2 border-[#181816] rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#0E4B3E]"
+              className="mt-1 w-full px-3 py-1.5 text-xs border border-stone-300 rounded-lg bg-white focus:outline-hidden focus:ring-1 focus:ring-[#0E4B3E]"
               required
             />
           </div>
@@ -180,7 +180,7 @@ export function WorkerModal({
               placeholder="e.g. Ring Frame Master"
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="mt-1 w-full px-3 py-1.5 text-xs border-2 border-[#181816] rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#0E4B3E]"
+              className="mt-1 w-full px-3 py-1.5 text-xs border border-stone-300 rounded-lg bg-white focus:outline-hidden focus:ring-1 focus:ring-[#0E4B3E]"
               required
             />
           </div>
@@ -192,7 +192,7 @@ export function WorkerModal({
             <select
               value={department}
               onChange={(e) => setDepartment(e.target.value as WorkerRecord['department'])}
-              className="mt-1 w-full px-2.5 py-1.5 text-xs border-2 border-[#181816] rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#0E4B3E]"
+              className="mt-1 w-full px-2.5 py-1.5 text-xs border border-stone-300 rounded-lg bg-white focus:outline-hidden focus:ring-1 focus:ring-[#0E4B3E]"
             >
               {DEPARTMENTS.map((dept) => (
                 <option key={dept} value={dept}>
@@ -211,7 +211,7 @@ export function WorkerModal({
             <select
               value={shift}
               onChange={(e) => setShift(e.target.value as WorkerRecord['shift'])}
-              className="mt-1 w-full px-2.5 py-1.5 text-xs border-2 border-[#181816] rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#0E4B3E]"
+              className="mt-1 w-full px-2.5 py-1.5 text-xs border border-stone-300 rounded-lg bg-white focus:outline-hidden focus:ring-1 focus:ring-[#0E4B3E]"
             >
               {SHIFTS.map((s) => (
                 <option key={s} value={s}>
@@ -231,7 +231,7 @@ export function WorkerModal({
               step="10"
               value={dailyWage}
               onChange={(e) => setDailyWage(parseFloat(e.target.value) || 0)}
-              className="mt-1 w-full px-3 py-1.5 font-mono text-xs border-2 border-[#181816] rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#0E4B3E]"
+              className="mt-1 w-full px-3 py-1.5 font-mono text-xs border border-stone-300 rounded-lg bg-white focus:outline-hidden focus:ring-1 focus:ring-[#0E4B3E]"
               required
             />
           </div>
@@ -248,14 +248,14 @@ export function WorkerModal({
                 key={s}
                 type="button"
                 onClick={() => setStatus(s)}
-                className={`py-2 px-3 rounded-xl border-2 border-[#181816] font-mono text-xs font-bold transition-all ${
+                className={`py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${
                   status === s
                     ? s === 'Present'
-                      ? 'bg-[#0E4B3E] text-white pop-shadow-xs'
+                      ? 'bg-[#0E4B3E] text-white border-[#0E4B3E] shadow-2xs'
                       : s === 'Half-day'
-                      ? 'bg-amber-500 text-white pop-shadow-xs'
-                      : 'bg-[#E05326] text-white pop-shadow-xs'
-                    : 'bg-white text-stone-700 hover:bg-stone-50'
+                      ? 'bg-[#FAF7F0] text-emerald-900 border-emerald-300 shadow-2xs'
+                      : 'bg-red-600 text-white border-red-600 shadow-2xs'
+                    : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
                 }`}
               >
                 {s}
@@ -265,7 +265,7 @@ export function WorkerModal({
         </div>
 
         {/* Live Automatic Wage Calculation Breakdown */}
-        <div className="p-3 rounded-2xl border-2 border-[#181816] bg-[#FAF7F0] space-y-1.5 font-mono text-xs">
+        <div className="p-3 rounded-lg border border-stone-200 bg-[#FAF7F0] space-y-1.5 font-mono text-xs">
           <div className="flex items-center justify-between text-stone-600">
             <span>Base Wage Rate:</span>
             <span className="font-bold">₹{dailyWage.toLocaleString()} / day</span>
@@ -293,7 +293,7 @@ export function WorkerModal({
             placeholder="e.g. Ring frame specialist; Murata winder certified"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="mt-1 w-full px-3 py-1.5 text-xs border-2 border-[#181816] rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-[#0E4B3E]"
+            className="mt-1 w-full px-3 py-1.5 text-xs border border-stone-300 rounded-lg bg-white focus:outline-hidden focus:ring-1 focus:ring-[#0E4B3E]"
           />
         </div>
       </form>

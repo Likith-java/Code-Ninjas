@@ -107,24 +107,24 @@ export function LoginScreen({
   ]
 
   const containerClasses = isStandalone
-    ? 'w-full min-h-screen flex items-center justify-center p-4 bg-dot-grid bg-[#F5F0E3] select-none font-body text-[13px]'
-    : 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#181816]/60 backdrop-blur-xs select-none font-body text-[13px]'
+    ? 'w-full min-h-screen flex items-center justify-center p-4 bg-[#F5F0E3] select-none font-body text-xs'
+    : 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#181816]/50 backdrop-blur-xs select-none font-body text-xs'
 
   return (
     <div className={containerClasses}>
-      <div className="w-full max-w-xl bg-[#FAF7F0] border-2 border-[#181816] rounded-3xl pop-shadow-xl overflow-hidden flex flex-col max-h-[95vh]">
+      <div className="w-full max-w-xl bg-[#FAF7F0] border border-stone-300 rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[95vh]">
         {/* Header */}
-        <div className="p-4 sm:p-5 bg-white border-b-2 border-[#181816] flex items-center justify-between">
+        <div className="p-4 sm:p-5 bg-white border-b border-stone-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="w-9 h-9 bg-[#0E4B3E] text-white rounded-xl border-2 border-[#181816] pop-shadow-xs flex items-center justify-center font-mono text-base font-bold">
+            <span className="w-9 h-9 bg-[#0E4B3E] text-white rounded-xl border border-[#0A382E] shadow-xs flex items-center justify-center font-mono text-base font-bold">
               ET
             </span>
             <div>
               <h2 className="font-bold text-base sm:text-lg text-[#181816] leading-none">
                 Everest Textile Mills
               </h2>
-              <p className="font-mono text-xs text-stone-500 mt-0.5">
-                Role-Specific Operator & Customer Portal
+              <p className="text-xs text-stone-500 mt-0.5">
+                Role-Specific Operator &amp; Customer Portal
               </p>
             </div>
           </div>
@@ -133,7 +133,7 @@ export function LoginScreen({
             <button
               type="button"
               onClick={onCancel}
-              className="w-8 h-8 rounded-xl border-2 border-[#181816] bg-[#FAF7F0] hover:bg-[#E7DFCE] flex items-center justify-center pop-shadow-xs btn-pop"
+              className="w-8 h-8 rounded-lg border border-stone-300 bg-[#FAF7F0] hover:bg-stone-100 flex items-center justify-center shadow-xs cursor-pointer"
               aria-label="Close Login"
             >
               <MaterialIcon name="close" size="sm" />

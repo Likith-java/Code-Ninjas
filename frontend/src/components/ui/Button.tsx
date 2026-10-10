@@ -11,19 +11,19 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles = {
-  primary: 'bg-[#0E4B3E] hover:bg-[#0A382E] text-white border-2 border-[#181816]',
-  secondary: 'bg-[#FAF7F0] hover:bg-[#FFFFFF] text-[#181816] border-2 border-[#181816]',
-  outline: 'bg-transparent hover:bg-[#FAF7F0] text-[#181816] border-2 border-[#181816]',
-  ghost: 'bg-transparent hover:bg-[#FAF7F0] text-[#4E4B47] border-2 border-transparent',
-  danger: 'bg-[#E05326] hover:bg-[#C94318] text-white border-2 border-[#181816]',
-  pop: 'bg-[#FFFFFF] hover:bg-[#FAF7F0] text-[#181816] border-2 border-[#181816] pop-shadow-xs',
+  primary: 'bg-[#0E4B3E] hover:bg-[#0A382E] text-white border border-[#0A382E] shadow-xs active:bg-[#072922]',
+  secondary: 'bg-[#FAF7F0] hover:bg-[#FFFFFF] text-[#181816] border border-stone-300 shadow-xs active:bg-stone-100',
+  outline: 'bg-transparent hover:bg-stone-100 text-[#181816] border border-stone-300 active:bg-stone-200',
+  ghost: 'bg-transparent hover:bg-stone-200/60 text-[#4E4B47] hover:text-[#181816] border border-transparent',
+  danger: 'bg-[#E05326] hover:bg-[#C94318] text-white border border-[#B83E18] shadow-xs active:bg-[#9B2F0F]',
+  pop: 'bg-[#FFFFFF] hover:bg-stone-50 text-[#181816] border border-stone-200 shadow-xs active:bg-stone-100',
 }
 
 const sizeStyles = {
-  xs: 'px-2 py-0.5 text-[10px] h-6',
-  sm: 'px-2.5 py-1 text-[11px] h-7',
-  md: 'px-3 py-1.5 text-[12px] h-8',
-  lg: 'px-4 py-2 text-[13px] h-10',
+  xs: 'px-2 py-0.5 text-[11px] h-6 rounded-md',
+  sm: 'px-2.5 py-1 text-xs h-7 rounded-md',
+  md: 'px-3 py-1.5 text-xs h-8 rounded-lg',
+  lg: 'px-4 py-2 text-sm h-10 rounded-lg',
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -33,7 +33,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled}
         className={cn(
-          'rounded-full font-bold flex items-center justify-center gap-1.5 transition-all duration-100',
+          'font-semibold flex items-center justify-center gap-1.5 transition-all duration-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
           'btn-pop',
           variantStyles[variant],
           sizeStyles[size],
