@@ -510,7 +510,7 @@ class User(Base):
     __tablename__ = "users"
     __table_args__ = (
         CheckConstraint(
-            "role IN ('owner','planner','storekeeper','supervisor','inspector','accounts','buyer')",
+            "role IN ('admin','production_manager','dispatch_manager','customer')",
             name="users_role_check",
         ),
         UniqueConstraint("email", name="uq_users_email"),
@@ -520,7 +520,7 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[str] = mapped_column(String(32), nullable=False, default="supervisor")
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="production_manager")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, nullable=False

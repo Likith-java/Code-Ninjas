@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password, verify_password, create_access_token
 from app.models.user import User
 
-# Seven mill roles. owner/accounts are NOT self-assignable.
-ALLOWED_SELF_SIGNUP_ROLES = {"planner", "storekeeper", "supervisor", "inspector"}
-DEFAULT_ROLE = "supervisor"
+# Four platform roles. admin is NOT self-assignable.
+ALLOWED_SELF_SIGNUP_ROLES = {"production_manager", "dispatch_manager", "customer"}
+DEFAULT_ROLE = "production_manager"
 
 
 def _normalise_role(requested: str | None) -> str:

@@ -13,10 +13,9 @@ interface AuthPageProps {
 }
 
 const ROLE_OPTIONS = [
-  { label: "Production Planner", value: "planner" },
-  { label: "Storekeeper", value: "storekeeper" },
-  { label: "Shift Supervisor / Operator", value: "supervisor" },
-  { label: "Quality Inspector", value: "inspector" },
+  { label: "Production Manager", value: "production_manager" },
+  { label: "Dispatch Manager", value: "dispatch_manager" },
+  { label: "Customer / Buyer", value: "customer" },
 ];
 
 export function AuthPage({ isStandalone = false }: AuthPageProps) {
@@ -336,7 +335,7 @@ export function AuthPage({ isStandalone = false }: AuthPageProps) {
                   ))}
                 </select>
                 <p className="mt-1 font-mono text-[10px] text-stone-500">
-                  Owner & Accounts roles are assigned by administrators only.
+                  Admin role is assigned by administrators only.
                 </p>
               </div>
             )}

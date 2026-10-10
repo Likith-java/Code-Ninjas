@@ -16,40 +16,28 @@ from app.core.security import hash_password
 
 DEMO_USERS = [
     {
-        "email": "owner@everesttextiles.com",
-        "password": "owner123",
-        "name": "Owner Demo",
-        "role": "owner",
+        "email": "admin@everesttextiles.com",
+        "password": "admin123",
+        "name": "Admin Demo",
+        "role": "admin",
     },
     {
-        "email": "planner@everesttextiles.com",
-        "password": "planner123",
-        "name": "Planner Demo",
-        "role": "planner",
+        "email": "production@everesttextiles.com",
+        "password": "prod123",
+        "name": "Production Manager Demo",
+        "role": "production_manager",
     },
     {
-        "email": "store@everesttextiles.com",
-        "password": "store123",
-        "name": "Storekeeper Demo",
-        "role": "storekeeper",
+        "email": "dispatch@everesttextiles.com",
+        "password": "dispatch123",
+        "name": "Dispatch Manager Demo",
+        "role": "dispatch_manager",
     },
     {
-        "email": "supervisor@everesttextiles.com",
-        "password": "super123",
-        "name": "Supervisor Demo",
-        "role": "supervisor",
-    },
-    {
-        "email": "inspector@everesttextiles.com",
-        "password": "inspect123",
-        "name": "Inspector Demo",
-        "role": "inspector",
-    },
-    {
-        "email": "accounts@everesttextiles.com",
-        "password": "accounts123",
-        "name": "Accounts Demo",
-        "role": "accounts",
+        "email": "customer@everesttextiles.com",
+        "password": "customer123",
+        "name": "Customer Demo",
+        "role": "customer",
     },
 ]
 
@@ -74,7 +62,7 @@ def seed_users(db: Session) -> None:
             is_active=True,
         )
         db.add(user)
-        print(f"✅  Created {user_data['role'].upper():12} | {user_data['email']} | password: {user_data['password']}")
+        print(f"✅  Created {user_data['role'].upper():20} | {user_data['email']} | password: {user_data['password']}")
 
     db.commit()
 
