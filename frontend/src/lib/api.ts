@@ -2,7 +2,7 @@
  * Everest Textile Intelligence Platform - Central Frontend API Client
  *
  * Connects to the FastAPI backend at NEXT_PUBLIC_API_URL / NEXT_PUBLIC_API_BASE_URL.
- * Provides strongly-typed request and response contracts conforming strictly to API_CONTRACT.md.
+ * Provides strongly-typed request and response contracts conforming strictly to API_CONTRACT.md and backend schemas.
  */
 
 import { getToken, clearSession } from "./auth-storage";
@@ -44,25 +44,92 @@ export interface SystemReadiness {
   database?: 'connected' | 'unavailable' | string
 }
 
+// Buyers & Orders
+export interface BuyerCreate {
+  name: string
+  contact?: string | null
+  email?: string | null
+  address?: string | null
+}
+
 export interface BackendBuyer {
+  id: number
+  name: string
+  contact?: string | null
+  email?: string | null
+  address?: string | null
+}
+
+export interface OrderCreate {
+  buyer_id: number
+  fabric_type: string
+  colour: string
+  quantity_metres: number | string
+  agreed_rate: number | string
+  deadline: string
+  priority?: 'low' | 'normal' | 'high' | 'urgent'
+}
+
+export interface BackendOrder {
+  id: number
+  order_code?: string
+  buyer_id: number
+  fabric_type: string
+  colour: string
+  quantity_metres: string | number
+  agreed_rate?: string | number
+  order_date: string
+  deadline: string
+  priority: 'low' | 'normal' | 'high' | 'urgent' | string
+  priority_weight?: number
+  status?: 'pending' | 'in_progress' | 'completed' | 'cancelled' | string
+  derived_status?: 'not_started' | 'in_production' | 'ready_to_ship' | 'partly_dispatched' | 'dispatched' | string
+}
+
+export interface FeasibilityRequest {
+  fabric_type: string
+  colour: string
+  quantity_metres: number | string
+}
+
+export interface MaterialShortfall {
+  material_id: number
+  material_type: string
+  colour: string
+  specification: string
+  required_kg: string | number
+  available_kg: string | number
+  shortfall_kg: string | number
+  feasible: boolean
+}
+
+export interface FeasibilityOut {
+  feasible: boolean
+  requested_quantity_metres: string | number
+  options: MaterialShortfall[]
+  message: string
+}
+
+// Suppliers & Materials
+export interface SupplierCreate {
+  name: string
+  contact?: string | null
+  email?: string | null
+}
+
+export interface BackendSupplier {
   id: number
   name: string
   contact?: string | null
   email?: string | null
 }
 
-export interface BackendOrder {
-  id: number
-  order_code: string
-  buyer_id: number
-  fabric_type: string
+export interface MaterialCreate {
+  material_type: string
   colour: string
-  quantity_metres: string | number
-  order_date: string
-  deadline: string
-  priority_weight: number
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | string
-  derived_status?: 'not_started' | 'in_production' | 'ready_to_ship' | 'partly_dispatched' | 'dispatched' | string
+  specification: string
+  reorder_threshold_kg?: number | string
+  yarn_kg_per_metre: number | string
 }
 
 export interface BackendMaterial {
@@ -74,11 +141,28 @@ export interface BackendMaterial {
   yarn_kg_per_metre: string | number
 }
 
-export interface BackendSupplier {
-  id: number
-  name: string
-  contact?: string | null
-  email?: string | null
+// Inventory
+export interface ReceiptCreate {
+  lot_code: string
+  material_id: number
+  supplier_id: number
+  quantity_kg: number | string
+  lot_cost: number | string
+  intended_order_id?: number | null
+  note?: string | null
+}
+
+export interface IssueCreate {
+  lot_id: number
+  order_id: number
+  quantity_kg: number | string
+  note?: string | null
+}
+
+export interface AdjustmentCreate {
+  lot_id: number
+  quantity_kg: number | string
+  reason: string
 }
 
 export interface BackendInventoryLot {
@@ -104,10 +188,25 @@ export interface BackendInventoryMovement {
   id: number
   lot_id: number
   order_id?: number | null
-  movement_type: 'receipt' | 'issue' | 'adjustment'
+  movement_type: 'receipt' | 'issue' | 'adjustment' | string
   quantity_kg: string | number
   movement_date: string
   note?: string | null
+}
+
+// Machines & Downtime
+export interface MachineCreate {
+  machine_code: string
+  machine_type: 'spinning' | 'weaving' | 'dyeing'
+  capacity_rate: number | string
+  state?: 'idle' | 'scheduled' | 'running' | 'maintenance' | 'breakdown'
+  is_active?: boolean
+}
+
+export interface MachineUpdate {
+  state?: 'idle' | 'scheduled' | 'running' | 'maintenance' | 'breakdown'
+  is_active?: boolean
+  capacity_rate?: number | string
 }
 
 export interface BackendMachine {
@@ -119,6 +218,18 @@ export interface BackendMachine {
   is_active: boolean
 }
 
+export interface DowntimeCreate {
+  machine_id: number
+  reason: string
+  start_time: string
+  end_time?: string | null
+}
+
+export interface DowntimeUpdate {
+  reason?: string | null
+  end_time?: string | null
+}
+
 export interface BackendDowntime {
   id: number
   machine_id: number
@@ -127,16 +238,55 @@ export interface BackendDowntime {
   reason: string
 }
 
+// Operations & Production Runs
+export interface OperationOut {
+  id: number
+  order_id: number
+  stage: string
+  sequence: number
+  planned_duration_minutes?: number | null
+  eligible_machine_ids: number[]
+}
+
+export interface ProductionRunCreate {
+  order_id: number
+  operation_id: number
+  machine_id: number
+  run_kind?: 'scheduled' | 'actual'
+  status?: 'planned' | 'running' | 'completed' | 'cancelled'
+  start_time?: string | null
+  end_time?: string | null
+  output_metres?: number | string | null
+}
+
+export interface ProductionRunUpdate {
+  status?: 'planned' | 'running' | 'completed' | 'cancelled'
+  start_time?: string | null
+  end_time?: string | null
+  output_metres?: number | string | null
+  machine_id?: number | null
+}
+
 export interface BackendProductionRun {
   id: number
   order_id: number
   operation_id: number
   machine_id: number
-  kind: 'scheduled' | 'actual'
-  start_time: string
-  end_time: string
-  status: 'planned' | 'running' | 'completed' | 'interrupted'
+  run_kind: 'scheduled' | 'actual' | string
+  kind?: 'scheduled' | 'actual'
+  start_time?: string | null
+  end_time?: string | null
+  status: 'planned' | 'running' | 'completed' | 'interrupted' | 'cancelled' | string
   output_metres?: string | number | null
+}
+
+// Fabric Rolls & Quality
+export interface FabricRollCreate {
+  roll_code: string
+  order_id: number
+  production_run_id: number
+  metres: number | string
+  status?: 'awaiting_inspection'
 }
 
 export interface BackendFabricRoll {
@@ -144,20 +294,74 @@ export interface BackendFabricRoll {
   roll_code: string
   order_id: number
   production_run_id: number
-  length_metres: string | number
-  grade?: 'A' | 'B' | 'C' | 'defect' | null
-  status: 'awaiting_inspection' | 'passed' | 'rework' | 'rejected' | 'dispatched'
+  metres: string | number
+  length_metres?: string | number
+  status: 'awaiting_inspection' | 'passed' | 'rework' | 'rejected' | 'dispatched' | string
   created_at: string
   is_dispatch_eligible?: boolean
+}
+
+export interface InspectionCreate {
+  defect_type?: string | null
+  severity?: 'low' | 'medium' | 'high' | 'critical' | null
+  result: 'pass' | 'rework' | 'reject'
+  disposition?: string | null
+}
+
+export interface BackendInspection {
+  id: number
+  roll_id: number
+  defect_type?: string | null
+  severity?: string | null
+  result: 'pass' | 'rework' | 'reject' | string
+  disposition?: string | null
+  inspected_at: string
+}
+
+export interface TraceabilityOut {
+  roll_id: number
+  roll_code: string
+  order_id: number
+  production_run_id: number
+  machine_id?: number | null
+  metres: string | number
+  status: string
+  created_at: string
+  is_dispatch_eligible: boolean
+  fabric_type?: string | null
+  colour?: string | null
+  machine_code?: string | null
+  machine_type?: string | null
+  run_kind?: string | null
+  run_status?: string | null
+  inspections: BackendInspection[]
+  latest_inspection?: BackendInspection | null
+}
+
+// Dispatches & Invoicing
+export interface DispatchItemCreate {
+  roll_id: number
+  metres: number | string
 }
 
 export interface BackendDispatchItem {
   id: number
   dispatch_id: number
   roll_id: number
-  line_metres: string | number
+  roll_code?: string | null
+  line_metres?: string | number
+  metres?: string | number
   agreed_rate: string | number
   line_total: string | number
+}
+
+export interface DispatchCreate {
+  order_id: number
+  dispatch_date: string
+  vehicle?: string | null
+  invoice_number: string
+  items: DispatchItemCreate[]
+  expected_invoice_total?: number | string | null
 }
 
 export interface BackendDispatch {
@@ -165,10 +369,36 @@ export interface BackendDispatch {
   order_id: number
   invoice_number: string
   dispatch_date: string
+  vehicle?: string | null
+  confirmed: boolean
   confirmed_at?: string | null
   total_metres: string | number
-  total_amount: string | number
+  agreed_rate?: string | number
+  invoice_total: string | number
+  total_amount?: string | number
   items: BackendDispatchItem[]
+  order_fabric_type?: string | null
+  order_colour?: string | null
+}
+
+export interface DispatchConfirmOut {
+  id: number
+  order_id: number
+  invoice_number: string
+  confirmed: boolean
+  confirmed_at?: string | null
+  total_metres: string | number
+  invoice_total: string | number
+  message: string
+  dispatched_roll_codes: string[]
+}
+
+export interface ScheduleImportResult {
+  status: string
+  runs_created: number
+  runs_updated: number
+  total_scheduled: number
+  runs: BackendProductionRun[]
 }
 
 // -------------------------------------------------------------
@@ -277,23 +507,58 @@ export const api = {
   checkHealth: () => request<SystemHealth>('/health'),
   checkReadiness: () => request<SystemReadiness>('/ready'),
 
+  // Buyers
+  getBuyers: (offset = 0, limit = 50) =>
+    request<BackendBuyer[]>(`/buyers?offset=${offset}&limit=${limit}`),
+  getBuyer: (id: number) => request<BackendBuyer>(`/buyers/${id}`),
+  createBuyer: (buyer: BuyerCreate) =>
+    request<BackendBuyer>('/buyers', {
+      method: 'POST',
+      body: JSON.stringify(buyer),
+    }),
+
   // Orders
   getOrders: (offset = 0, limit = 50) =>
     request<BackendOrder[]>(`/orders?offset=${offset}&limit=${limit}`),
   getOrder: (id: number) => request<BackendOrder>(`/orders/${id}`),
-  getBuyers: (offset = 0, limit = 50) =>
-    request<BackendBuyer[]>(`/buyers?offset=${offset}&limit=${limit}`),
+  createOrder: (order: OrderCreate) =>
+    request<BackendOrder>('/orders', {
+      method: 'POST',
+      body: JSON.stringify(order),
+    }),
+  checkFeasibility: (req: FeasibilityRequest) =>
+    request<FeasibilityOut>('/orders/feasibility', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  getOrderOperations: (orderId: number) =>
+    request<OperationOut[]>(`/orders/${orderId}/operations`),
 
   // Inventory & Materials
   getInventory: (lowStockOnly = false, offset = 0, limit = 100) =>
     request<BackendInventorySummary>(
       `/inventory?low_stock_only=${lowStockOnly}&offset=${offset}&limit=${limit}`
     ),
+  createReceipt: (receipt: ReceiptCreate) =>
+    request<BackendInventoryMovement>('/inventory/receipts', {
+      method: 'POST',
+      body: JSON.stringify(receipt),
+    }),
+  createIssue: (issue: IssueCreate) =>
+    request<BackendInventoryMovement>('/inventory/issues', {
+      method: 'POST',
+      body: JSON.stringify(issue),
+    }),
+  createAdjustment: (adjustment: AdjustmentCreate) =>
+    request<BackendInventoryMovement>('/inventory/adjustments', {
+      method: 'POST',
+      body: JSON.stringify(adjustment),
+    }),
   getInventoryMovements: (params?: {
     material_id?: number
     lot_id?: number
     order_id?: number
-    movement_type?: 'receipt' | 'issue' | 'adjustment'
+    movement_type?: 'receipt' | 'issue' | 'adjustment' | string
     offset?: number
     limit?: number
   }) => {
@@ -314,11 +579,21 @@ export const api = {
     return request<BackendMaterial[]>(`/materials?${searchParams.toString()}`)
   },
   getMaterial: (id: number) => request<BackendMaterial>(`/materials/${id}`),
+  createMaterial: (material: MaterialCreate) =>
+    request<BackendMaterial>('/materials', {
+      method: 'POST',
+      body: JSON.stringify(material),
+    }),
 
   // Suppliers
   getSuppliers: (offset = 0, limit = 50) =>
     request<BackendSupplier[]>(`/suppliers?offset=${offset}&limit=${limit}`),
   getSupplier: (id: number) => request<BackendSupplier>(`/suppliers/${id}`),
+  createSupplier: (supplier: SupplierCreate) =>
+    request<BackendSupplier>('/suppliers', {
+      method: 'POST',
+      body: JSON.stringify(supplier),
+    }),
 
   // Machines & Downtimes
   getMachines: (params?: {
@@ -338,11 +613,35 @@ export const api = {
     return request<BackendMachine[]>(`/machines${qs ? `?${qs}` : ''}`)
   },
   getMachine: (id: number) => request<BackendMachine>(`/machines/${id}`),
+  createMachine: (machine: MachineCreate) =>
+    request<BackendMachine>('/machines', {
+      method: 'POST',
+      body: JSON.stringify(machine),
+    }),
+  updateMachine: (id: number, patch: MachineUpdate) =>
+    request<BackendMachine>(`/machines/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
   getDowntimes: (machineId?: number, skip = 0, limit = 50) => {
     const searchParams = new URLSearchParams({ skip: String(skip), limit: String(limit) })
     if (machineId) searchParams.set('machine_id', String(machineId))
     return request<BackendDowntime[]>(`/downtimes?${searchParams.toString()}`)
   },
+  createDowntime: (dt: DowntimeCreate) =>
+    request<BackendDowntime>('/downtimes', {
+      method: 'POST',
+      body: JSON.stringify(dt),
+    }),
+  updateDowntime: (id: number, patch: DowntimeUpdate) =>
+    request<BackendDowntime>(`/downtimes/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
+  addEligibleMachine: (operationId: number, machineId: number) =>
+    request<OperationOut>(`/operations/${operationId}/eligible-machines/${machineId}`, {
+      method: 'POST',
+    }),
 
   // Production Runs
   getProductionRuns: (params?: {
@@ -350,7 +649,7 @@ export const api = {
     operation_id?: number
     machine_id?: number
     kind?: 'scheduled' | 'actual'
-    status?: 'planned' | 'running' | 'completed' | 'interrupted'
+    status?: 'planned' | 'running' | 'completed' | 'interrupted' | 'cancelled'
     skip?: number
     limit?: number
   }) => {
@@ -365,6 +664,22 @@ export const api = {
     const qs = searchParams.toString()
     return request<BackendProductionRun[]>(`/production-runs${qs ? `?${qs}` : ''}`)
   },
+  getProductionRun: (id: number) => request<BackendProductionRun>(`/production-runs/${id}`),
+  createProductionRun: (run: ProductionRunCreate) =>
+    request<BackendProductionRun>('/production-runs', {
+      method: 'POST',
+      body: JSON.stringify(run),
+    }),
+  updateProductionRun: (id: number, patch: ProductionRunUpdate) =>
+    request<BackendProductionRun>(`/production-runs/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
+  importSchedule: (scheduleData: unknown) =>
+    request<ScheduleImportResult>('/production-runs/import-schedule', {
+      method: 'POST',
+      body: JSON.stringify(scheduleData),
+    }),
 
   // Fabric Rolls & Quality
   getRolls: (params?: { order_id?: number; status?: string; skip?: number; limit?: number }) => {
@@ -377,7 +692,17 @@ export const api = {
     return request<BackendFabricRoll[]>(`/rolls${qs ? `?${qs}` : ''}`)
   },
   getRoll: (id: number) => request<BackendFabricRoll>(`/rolls/${id}`),
-  getRollTraceability: (id: number) => request<unknown>(`/rolls/${id}/traceability`),
+  createRoll: (roll: FabricRollCreate) =>
+    request<BackendFabricRoll>('/rolls', {
+      method: 'POST',
+      body: JSON.stringify(roll),
+    }),
+  getRollTraceability: (id: number) => request<TraceabilityOut>(`/rolls/${id}/traceability`),
+  createRollInspection: (rollId: number, inspection: InspectionCreate) =>
+    request<BackendInspection>(`/rolls/${rollId}/inspections`, {
+      method: 'POST',
+      body: JSON.stringify(inspection),
+    }),
 
   // Dispatches
   getDispatches: (params?: { order_id?: number; confirmed?: boolean; skip?: number; limit?: number }) => {
@@ -390,4 +715,13 @@ export const api = {
     return request<BackendDispatch[]>(`/dispatches${qs ? `?${qs}` : ''}`)
   },
   getDispatch: (id: number) => request<BackendDispatch>(`/dispatches/${id}`),
+  createDispatch: (dispatch: DispatchCreate) =>
+    request<BackendDispatch>('/dispatches', {
+      method: 'POST',
+      body: JSON.stringify(dispatch),
+    }),
+  confirmDispatch: (id: number) =>
+    request<DispatchConfirmOut>(`/dispatches/${id}/confirm`, {
+      method: 'POST',
+    }),
 }

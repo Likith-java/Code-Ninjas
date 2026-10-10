@@ -3,7 +3,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password, verify_password, create_access_token
-from app.models.user import User
+from app.models import User
 
 # Four platform roles. admin is NOT self-assignable.
 ALLOWED_SELF_SIGNUP_ROLES = {"production_manager", "dispatch_manager", "customer"}

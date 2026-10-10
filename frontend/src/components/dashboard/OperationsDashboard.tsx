@@ -13,6 +13,7 @@ import {
 } from '@/lib/api'
 import { formatCanonicalOrderId, formatLegacyOrderId, matchesOrderQuery } from '@/lib/orderUtils'
 import { UserRole, getRolePermissions, ROLE_PROFILES } from '@/lib/permissions'
+import { OrderCreationModal } from '@/components/modules/OrderCreationModal'
 
 interface OperationsDashboardProps {
   currentRole?: UserRole
@@ -24,6 +25,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
   const [orderFilter, setOrderFilter] = useState<'all' | 'In Production' | 'Completed' | 'Scheduled' | 'Disrupted'>('all')
   const [machineSearch, setMachineSearch] = useState('')
   const [machineTypeFilter, setMachineTypeFilter] = useState<'all' | 'spinning' | 'weaving' | 'dyeing'>('all')
+  const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false)
 
   // Selected Order Drawer / Expandable detail
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
@@ -141,7 +143,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
         stage: isDone ? 'Finished' : inProg ? 'Weaving' : 'Spinning',
         status: statusStr,
         dueHours,
-        priority: `P${Math.min(3, Math.max(0, 3 - o.priority_weight))}` as 'P0' | 'P1' | 'P2' | 'P3',
+        priority: `P${Math.min(3, Math.max(0, 3 - (o.priority_weight ?? (o.priority === 'urgent' ? 3 : o.priority === 'high' ? 2 : o.priority === 'normal' ? 1 : 0))))}` as 'P0' | 'P1' | 'P2' | 'P3',
       }
     })
   }, [liveOrders])
@@ -496,6 +498,15 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
                 Alert
               </button>
             </div>
+
+            <Button
+              variant="primary"
+              size="xs"
+              icon={<MaterialIcon name="add" size="xs" />}
+              onClick={() => setIsCreateOrderOpen(true)}
+            >
+              + New Order
+            </Button>
           </div>
 
           {/* Prominent Order Search Input */}
@@ -863,6 +874,13 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
           </Card>
         </div>
       )}
+
+      {/* ORDER CREATION MODAL */}
+      <OrderCreationModal
+        isOpen={isCreateOrderOpen}
+        onClose={() => setIsCreateOrderOpen(false)}
+        onOrderCreated={fetchLiveData}
+      />
 
       {/* FOOTER NOTE */}
       <footer className="pt-2 text-center font-mono text-[10px] text-stone-500">
