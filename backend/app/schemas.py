@@ -592,6 +592,7 @@ class UserOut(BaseModel):
     name: str
     email: str
     role: str
+    buyer_id: int | None = None
 
 
 class AuthResponse(BaseModel):

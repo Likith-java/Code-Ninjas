@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { Button, MaterialIcon, Card } from '@/components/ui'
 import { UserRole, ROLE_PROFILES } from '@/lib/permissions'
 
+import { getUser } from '@/lib/auth-storage'
+
 interface SidebarProps {
   onModuleClick: (module: string) => void
   onOrderSelect: (orderId: string) => void
@@ -26,6 +28,7 @@ const allModules = [
   { id: 'validator', label: 'Schedule Validator', icon: 'verified', count: '0 Viol', badgeBg: '#D7F4E5', badgeColor: '#0B382F' },
   { id: 'rolls', label: 'Rolls & Traceability', icon: 'qr_code' },
   { id: 'dispatch', label: 'Finished Dispatches', icon: 'local_shipping' },
+  { id: 'reports', label: 'Reports & Export', icon: 'description', count: 'PDF/XLSX', badgeBg: '#E0E7FF', badgeColor: '#3730A3' },
 ]
 
 export function Sidebar({
@@ -39,6 +42,9 @@ export function Sidebar({
   const roleProfile = ROLE_PROFILES[currentRole]
   const allowed = roleProfile.allowedModules
   const visibleModules = allModules.filter((m) => allowed.includes(m.id))
+  const user = getUser()
+  const buyerIdText = user?.buyer_id ? `#${user.buyer_id}` : 'Direct Account'
+  const accountName = user?.name || roleProfile.name
 
   const handleSelectModule = (id: string) => {
     onModuleClick(id)
@@ -75,12 +81,17 @@ export function Sidebar({
         {/* Brand / Role Header */}
         <div className="p-3 border-b border-[#637d71] bg-[#718D80] shrink-0">
           <div className="flex items-center justify-between">
-            <div className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? 'justify-center w-full' : ''}`}>
-              <div
-                className="w-8 h-8 bg-white border border-stone-200 rounded-lg shadow-xs flex items-center justify-center text-[#0E4B3E] shrink-0"
-                title={roleProfile.name}
-              >
-                <MaterialIcon name={currentRole === 'customer' ? 'person' : 'precision_manufacturing'} size="sm" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 bg-white border-2 border-[#181816] rounded-xl pop-shadow-xs flex items-center justify-center text-[#0E4B3E] shrink-0">
+                <MaterialIcon name={currentRole === 'customer' ? 'person' : 'precision_manufacturing'} size="lg" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="font-bold text-[13px] leading-tight truncate">
+                  {currentRole === 'customer' ? 'Buyer Tracking Portal' : 'Production Operations'}
+                </span>
+                <span className="font-mono text-[10px] text-[#1E3A2F] font-semibold truncate">
+                  {currentRole === 'customer' ? accountName : 'Operations Navigation'}
+                </span>
               </div>
 
               {!isCollapsed && (
@@ -162,14 +173,26 @@ export function Sidebar({
                   <MaterialIcon name="verified_user" size="xs" color="#0E4B3E" />
                   <span>Authenticated Client</span>
                 </div>
-                <div className="text-[11px] text-stone-600 space-y-0.5">
-                  <div>Buyer ID: <strong>#1</strong></div>
-                  <div>Account: <strong>ZARA Sourcing</strong></div>
-                  <div>Contract: <strong>FY2026 Batch</strong></div>
+                <div className="text-[11px] text-stone-600 space-y-1 font-mono">
+                  <div>Buyer ID: <strong>{buyerIdText}</strong></div>
+                  <div>Account: <strong className="truncate">{accountName}</strong></div>
+                  <div>Email: <strong className="truncate">{user?.email || 'N/A'}</strong></div>
                 </div>
               </Card>
             </div>
           )}
+        </div>
+
+
+        {/* Clean, compact footer */}
+        <div className="border-t-2 border-[#181816] p-2.5 bg-[#718D80] font-mono text-[10px] space-y-0.5">
+          <div className="flex justify-between items-center text-[#181816] font-bold">
+            <span>FastAPI Server</span>
+            <span className="text-[9.5px] bg-[#D7F4E5] text-[#0B382F] px-1.5 py-0.2 rounded border border-[#181816]">
+              Port 8000
+            </span>
+          </div>
+          <div className="text-[#1E3A2F]">Role: {roleProfile.name}</div>
         </div>
       </aside>
     </>

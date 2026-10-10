@@ -15,13 +15,16 @@ import { formatCanonicalOrderId, formatLegacyOrderId, matchesOrderQuery } from '
 import { UserRole, getRolePermissions, ROLE_PROFILES } from '@/lib/permissions'
 import { OrderDetailsPopover, OrderDetailsData } from '@/components/board/OrderDetailsPopover'
 import { OrderCreationModal } from '@/components/modules/OrderCreationModal'
+import { getUser } from '@/lib/auth-storage'
 
 interface OperationsDashboardProps {
   currentRole?: UserRole
 }
 
 export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboardProps) {
+  const user = getUser()
   const [apiStateMode, setApiStateMode] = useState<ApiStateMode>('live')
+
   const [orderSearch, setOrderSearch] = useState('')
   const [orderFilter, setOrderFilter] = useState<'all' | 'In Production' | 'Completed' | 'Scheduled' | 'Disrupted'>('all')
   const [machineSearch, setMachineSearch] = useState('')
@@ -152,8 +155,15 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
 
   // Master Orders Source with Canonical IDs & Individual Resolution override
   const masterOrders = useMemo<DashboardOrder[]>(() => {
+    // If Customer role, NEVER show demo data! Only show real live orders from backend!
+    if (currentRole === 'customer') {
+      return liveDashboardOrders
+    }
+
+    if (apiStateMode === 'empty') return []
+
     const rawList =
-      apiStateMode === 'live' && liveDashboardOrders.length > 0
+      apiStateMode === 'live' && (liveDashboardOrders.length > 0 || liveOrders.length > 0)
         ? liveDashboardOrders
         : dashboardDemoData.orders.map((o) => ({
             ...o,
@@ -167,15 +177,9 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
                 : o.status,
           }))
 
-    // Customer RBAC filter: If customer, show only their assigned buyer (Buyer #1 / ZARA Sourcing)
-    if (currentRole === 'customer') {
-      return rawList.filter((o) =>
-        o.buyer.toLowerCase().includes('zara') || o.buyer.includes('#1')
-      )
-    }
-
     return rawList
-  }, [apiStateMode, liveDashboardOrders, resolvedOrderIds, currentRole])
+  }, [apiStateMode, liveDashboardOrders, liveOrders.length, resolvedOrderIds, currentRole])
+
 
   // Filtered orders list based on search & filter tab
   const filteredOrders = useMemo(() => {
@@ -335,17 +339,35 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
           </span>
 
           {currentRole === 'customer' && (
-            <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded text-[10.5px] font-semibold">
-              Restricted Client View: ZARA Sourcing
+            <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded text-[10.5px] font-bold">
+              Restricted Client View: {user?.name || 'Customer Account'} (Buyer #{user?.buyer_id || 'N/A'})
             </span>
           )}
+
 
           {lastRefreshedAt && <span className="text-stone-400 text-[10.5px]">Synced {lastRefreshedAt}</span>}
         </div>
 
         {/* State Simulator Switcher Controls */}
-        <div className="flex items-center gap-1 bg-[#FAF7F0] border border-stone-200 rounded-lg p-0.5 text-[11px]">
-          <span className="text-stone-400 font-medium px-1 hidden lg:inline">Mode:</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href)
+                url.searchParams.set('tab', 'reports')
+                window.history.pushState({}, '', url.toString())
+                window.dispatchEvent(new PopStateEvent('popstate'))
+              }
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-[#0E4B3E] text-white hover:bg-[#0B382F] rounded-lg font-bold text-xs shadow-sm transition-all cursor-pointer"
+            title="Open Role-Based Report Generator"
+          >
+            <MaterialIcon name="description" size="xs" color="#FFFFFF" />
+            <span>Generate Reports</span>
+          </button>
+
+          <div className="flex items-center gap-1 bg-[#FAF7F0] border border-stone-300 rounded-lg p-0.5 text-[10.5px]">
+            <span className="text-stone-400 font-bold px-1 hidden lg:inline">Mode:</span>
           <button
             onClick={() => {
               setApiStateMode('live')
@@ -383,6 +405,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
           </button>
         </div>
       </div>
+    </div>
 
       {/* ERROR FALLBACK ALERT */}
       {(apiStateMode === 'error' || (apiStateMode === 'live' && liveError)) && (
@@ -438,22 +461,40 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
           <Progress value={metrics.overallProgress} max={100} size="sm" color="primary" />
         </div>
 
-        {/* KPI 3: Loom Utilization */}
-        <div className="bg-white border border-stone-200 rounded-xl p-3 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-stone-500 text-[10.5px] uppercase font-semibold">
-            <span>Loom Fleet Capacity</span>
-            <MaterialIcon name="precision_manufacturing" size="xs" color="#15803D" />
+        {/* KPI 3: Loom Utilization or Role-Specific Metric */}
+        {permissions.canViewMachines ? (
+          <div className="bg-white border-2 border-[#181816] rounded-xl p-3 pop-shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-stone-500 font-mono text-[10.5px] uppercase font-bold">
+              <span>Loom Fleet Capacity</span>
+              <MaterialIcon name="precision_manufacturing" size="xs" color="#15803D" />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black font-mono text-[#15803D]">{metrics.utilizationRate}%</span>
+              <span className="text-[10px] font-mono text-stone-500">
+                {metrics.activeMachines}/{metrics.totalMachines} Looms Running
+              </span>
+            </div>
+            <div className="text-[9.5px] font-mono text-stone-500">
+              Spinning: 100% · Weaving: 80% · Dyeing: 100%
+            </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-[#15803D]">{metrics.utilizationRate}%</span>
-            <span className="text-[10.5px] text-stone-500">
-              {metrics.activeMachines}/{metrics.totalMachines} Looms Running
-            </span>
+        ) : (
+          <div className="bg-white border-2 border-[#181816] rounded-xl p-3 pop-shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-stone-500 font-mono text-[10.5px] uppercase font-bold">
+              <span>{currentRole === 'customer' ? 'Order Fulfillment' : 'Dispatches'}</span>
+              <MaterialIcon name="local_shipping" size="xs" color="#0E4B3E" />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black font-mono text-[#0E4B3E]">{metrics.completedOrders}</span>
+              <span className="text-[10px] font-mono text-stone-500">
+                {metrics.completedOrders} of {metrics.totalOrders} Orders Done
+              </span>
+            </div>
+            <div className="text-[9.5px] font-mono text-stone-500">
+              {metrics.inProductionOrders} In Active Production
+            </div>
           </div>
-          <div className="text-[10px] text-stone-500">
-            Spinning: 100% · Weaving: 80% · Dyeing: 100%
-          </div>
-        </div>
+        )}
 
         {/* KPI 4: Yield Quality */}
         <div className="bg-white border border-stone-200 rounded-xl p-3 shadow-xs space-y-1">
@@ -474,18 +515,18 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
       {/* 3. DUAL OPERATIONAL PANELS (ORDERS & MACHINES) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
         {/* ============================================================== */}
-        {/* PANEL A: SEARCHABLE PRODUCTION ORDERS (COL-SPAN 7) */}
+        {/* PANEL A: SEARCHABLE PRODUCTION ORDERS (COL-SPAN 7 / 12) */}
         {/* ============================================================== */}
-        <div className="xl:col-span-7 bg-white border border-stone-200 rounded-xl shadow-xs p-3.5 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
+        <div className={`${permissions.canViewMachines ? 'xl:col-span-7' : 'xl:col-span-12'} bg-white border-2 border-[#181816] rounded-2xl pop-shadow-md p-3.5 space-y-3`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-stone-200 pb-2.5">
             <div>
               <h2 className="text-sm font-bold text-[#181816] flex items-center gap-1.5 font-body">
                 <MaterialIcon name="list_alt" size="sm" color="#0E4B3E" />
-                Production Orders
+                {currentRole === 'customer' ? 'My Production Orders' : 'Production Orders'}
                 <span className="text-xs font-mono font-normal text-stone-500">({filteredOrders.length})</span>
               </h2>
-              <p className="text-[11px] text-stone-500 font-normal mt-0.5">
-                Canonical order codes, routing progress &amp; details
+              <p className="text-[11px] text-stone-500 font-medium">
+                {currentRole === 'customer' ? 'Track real-time loom progress and dispatch stages for your orders' : 'Canonical factory order codes, routing progress & individual resolution'}
               </p>
             </div>
 
@@ -523,15 +564,18 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
               </button>
             </div>
 
-            <Button
-              variant="primary"
-              size="xs"
-              icon={<MaterialIcon name="add" size="xs" />}
-              onClick={() => setIsCreateOrderOpen(true)}
-            >
-              + New Order
-            </Button>
+            {permissions.canCreateOrder && (
+              <Button
+                variant="primary"
+                size="xs"
+                icon={<MaterialIcon name="add" size="xs" />}
+                onClick={() => setIsCreateOrderOpen(true)}
+              >
+                + New Order
+              </Button>
+            )}
           </div>
+
 
           {/* Prominent Order Search Input */}
           <div className="relative">
@@ -556,24 +600,63 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
           </div>
 
           {/* Orders Table */}
-          {filteredOrders.length === 0 ? (
-            <div className="py-8 text-center text-stone-500 text-xs space-y-2 border border-dashed border-stone-200 rounded-xl font-body">
-              <MaterialIcon name="search_off" size="lg" color="#A8A29E" />
-              <div>No production orders match query &ldquo;{orderSearch}&rdquo;</div>
-              <button
-                onClick={() => {
-                  setOrderSearch('')
-                  setOrderFilter('all')
-                }}
-                className="text-[#0E4B3E] underline font-medium cursor-pointer"
-              >
-                Reset Search Filters
-              </button>
+          {liveLoading ? (
+            <div className="py-12 text-center text-stone-600 font-mono text-xs space-y-2 border-2 border-stone-200 rounded-xl bg-white">
+              <div className="size-6 animate-spin rounded-full border-2 border-[#0E4B3E] border-t-transparent mx-auto" />
+              <div>Loading production orders from PostgreSQL backend...</div>
             </div>
+          ) : liveError ? (
+            <div className="py-8 px-4 text-center text-red-700 font-mono text-xs space-y-2 border-2 border-dashed border-red-300 rounded-xl bg-red-50/70">
+              <MaterialIcon name="error_outline" size="lg" color="#DC2626" />
+              <div className="font-bold text-sm">Failed to Load Orders</div>
+              <p className="text-[11px] text-stone-600 max-w-md mx-auto">{liveError}</p>
+              <Button variant="pop" size="xs" onClick={fetchLiveData} className="mt-2">
+                Retry Connection
+              </Button>
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            currentRole === 'customer' && masterOrders.length === 0 ? (
+              <div className="py-12 text-center text-stone-600 font-mono text-xs space-y-3 border-2 border-dashed border-stone-300 rounded-xl bg-white">
+                <div className="w-12 h-12 bg-[#FAF7F0] border-2 border-[#181816] rounded-2xl pop-shadow-xs flex items-center justify-center mx-auto text-[#0E4B3E]">
+                  <MaterialIcon name="receipt_long" size="lg" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-black text-sm text-[#181816]">You haven&apos;t placed any orders yet.</h3>
+                  <p className="text-[11px] text-stone-500 max-w-sm mx-auto">
+                    Your customer account is verified. Create your first production order to initiate factory scheduling and live loom tracking.
+                  </p>
+                </div>
+                {permissions.canCreateOrder && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<MaterialIcon name="add" size="xs" />}
+                    onClick={() => setIsCreateOrderOpen(true)}
+                  >
+                    Create your first order
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-stone-500 font-mono text-xs space-y-2 border-2 border-dashed border-stone-300 rounded-xl">
+                <MaterialIcon name="search_off" size="lg" color="#A8A29E" />
+                <div>No production orders match query &ldquo;{orderSearch}&rdquo;</div>
+                <button
+                  onClick={() => {
+                    setOrderSearch('')
+                    setOrderFilter('all')
+                  }}
+                  className="text-[#0E4B3E] underline font-bold"
+                >
+                  Reset Search Filters
+                </button>
+              </div>
+            )
           ) : (
-            <div className="overflow-x-auto border border-stone-200 rounded-lg max-h-[460px] overflow-y-auto">
-              <table className="w-full text-left text-xs border-collapse font-body">
-                <thead className="sticky top-0 bg-[#FAF7F0] border-b border-stone-200 text-stone-700 z-10 text-[11px]">
+
+            <div className="overflow-x-auto border-2 border-[#181816] rounded-xl max-h-[460px] overflow-y-auto">
+              <table className="w-full text-left font-mono text-[11px] border-collapse">
+                <thead className="sticky top-0 bg-[#FAF7F0] border-b-2 border-[#181816] text-stone-700 z-10">
                   <tr>
                     <th className="py-2 px-2.5 font-semibold">Order ID</th>
                     <th className="py-2 px-2.5 font-semibold">Buyer</th>
@@ -675,122 +758,164 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
               </table>
             </div>
           )}
+
+          {/* Expandable Order Detail Drawer when row selected */}
+          {expandedOrderId && (() => {
+            const selectedLive = liveOrders.find(
+              (o) => formatCanonicalOrderId(o.id) === expandedOrderId || String(o.id) === expandedOrderId
+            )
+            return (
+              <div className="p-3 bg-[#FAF7F0] border-2 border-[#181816] rounded-xl pop-shadow-xs space-y-2 text-xs font-mono">
+                <div className="flex items-center justify-between border-b border-stone-300 pb-1.5">
+                  <span className="font-black text-[#0E4B3E]">
+                    Order Detail: {expandedOrderId} {selectedLive ? `(PostgreSQL ID #${selectedLive.id})` : ''}
+                  </span>
+                  <button
+                    onClick={() => setExpandedOrderId(null)}
+                    className="text-stone-500 hover:text-[#181816] font-bold text-xs"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                  <div>
+                    <span className="text-stone-500 block">Fabric Spec:</span>
+                    <strong>{selectedLive ? `${selectedLive.fabric_type} (${selectedLive.colour})` : 'Standard Weave'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-stone-500 block">Quantity &amp; Rate:</span>
+                    <strong>{selectedLive ? `${selectedLive.quantity_metres}m · $${selectedLive.agreed_rate || '45.00'}/m` : '1,500m'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-stone-500 block">Order Status:</span>
+                    <strong className="text-emerald-700 capitalize">{selectedLive ? (selectedLive.derived_status || selectedLive.status || 'Active') : 'In Production'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-stone-500 block">Delivery Deadline:</span>
+                    <strong>{selectedLive?.deadline ? new Date(selectedLive.deadline).toLocaleDateString() : 'Scheduled Window'}</strong>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
         </div>
 
         {/* ============================================================== */}
         {/* PANEL B: SEARCHABLE FACTORY MACHINES (COL-SPAN 5) */}
         {/* ============================================================== */}
-        <div className="xl:col-span-5 bg-white border border-stone-200 rounded-xl shadow-xs p-3.5 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
-            <div>
-              <h2 className="text-sm font-bold text-[#181816] flex items-center gap-1.5 font-body">
-                <MaterialIcon name="precision_manufacturing" size="sm" color="#15803D" />
-                Machine Floor Fleet
-                <span className="text-xs font-mono font-normal text-stone-500">({filteredMachines.length})</span>
-              </h2>
-              <p className="text-[11px] text-stone-500 font-normal mt-0.5">
-                Loom telemetry, capacity rates &amp; active assigned jobs
-              </p>
-            </div>
+        {permissions.canViewMachines && (
+          <div className="xl:col-span-5 bg-white border-2 border-[#181816] rounded-2xl pop-shadow-md p-3.5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-stone-200 pb-2.5">
+              <div>
+                <h2 className="text-base font-black text-[#181816] flex items-center gap-1.5">
+                  <MaterialIcon name="precision_manufacturing" size="sm" color="#15803D" />
+                  Machine Floor Fleet
+                  <span className="text-xs font-mono font-normal text-stone-500">({filteredMachines.length})</span>
+                </h2>
+                <p className="text-[11px] text-stone-500 font-medium">
+                  Live loom telemetry, capacity rates & active assigned jobs
+                </p>
+              </div>
 
-            {/* Division Filter */}
-            <div className="flex border border-stone-200 rounded-lg overflow-hidden text-[11px] font-medium bg-stone-50 shrink-0">
-              <button
-                onClick={() => setMachineTypeFilter('all')}
-                className={`px-2 py-1 transition-colors cursor-pointer ${machineTypeFilter === 'all' ? 'bg-[#0E4B3E] text-white shadow-xs' : 'hover:bg-stone-200/60 text-stone-700'}`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setMachineTypeFilter('spinning')}
-                className={`px-2 py-1 border-l border-stone-200 transition-colors cursor-pointer ${machineTypeFilter === 'spinning' ? 'bg-[#0E4B3E] text-white shadow-xs' : 'hover:bg-stone-200/60 text-stone-700'}`}
-              >
-                Spin
-              </button>
-              <button
-                onClick={() => setMachineTypeFilter('weaving')}
-                className={`px-2 py-1 border-l border-stone-200 transition-colors cursor-pointer ${machineTypeFilter === 'weaving' ? 'bg-[#0E4B3E] text-white shadow-xs' : 'hover:bg-stone-200/60 text-stone-700'}`}
-              >
-                Weave
-              </button>
-              <button
-                onClick={() => setMachineTypeFilter('dyeing')}
-                className={`px-2 py-1 border-l border-stone-200 transition-colors cursor-pointer ${machineTypeFilter === 'dyeing' ? 'bg-[#0E4B3E] text-white shadow-xs' : 'hover:bg-stone-200/60 text-stone-700'}`}
-              >
-                Dye
-              </button>
-            </div>
-          </div>
-
-          {/* Machine Search Input */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search Machine ID (e.g. WEAVE-03) or status..."
-              value={machineSearch}
-              onChange={(e) => setMachineSearch(e.target.value)}
-              className="w-full px-3 py-1.5 pl-8 text-xs font-body bg-[#FAF7F0] border border-stone-200 rounded-lg shadow-2xs focus:outline-hidden focus:ring-1 focus:ring-[#0E4B3E] focus:bg-white transition-colors"
-            />
-            <span className="absolute left-2.5 top-2 text-stone-400">
-              <MaterialIcon name="search" size="xs" />
-            </span>
-            {machineSearch && (
-              <button
-                onClick={() => setMachineSearch('')}
-                className="absolute right-2.5 top-1.5 text-stone-400 hover:text-stone-700 text-xs font-bold cursor-pointer"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Machines Compact Grid / List */}
-          {filteredMachines.length === 0 ? (
-            <div className="py-8 text-center text-stone-500 text-xs space-y-1 border border-dashed border-stone-200 rounded-xl font-body">
-              <MaterialIcon name="search_off" size="md" color="#A8A29E" />
-              <div>No machine matches query &ldquo;{machineSearch}&rdquo;</div>
-            </div>
-          ) : (
-            <div className="space-y-1.5 max-h-[460px] overflow-y-auto pr-1">
-              {filteredMachines.map((machine) => (
-                <div
-                  key={machine.id}
-                  className={`p-2.5 rounded-lg border border-stone-200 bg-white hover:border-stone-300 transition-all flex items-center justify-between text-xs font-body shadow-2xs ${
-                    machine.status === 'Breakdown' ? 'border-red-300 bg-red-50/30 ring-1 ring-red-400' : ''
-                  }`}
+              {/* Division Filter */}
+              <div className="flex border-2 border-[#181816] rounded-xl overflow-hidden text-[10px] font-mono bg-white shrink-0">
+                <button
+                  onClick={() => setMachineTypeFilter('all')}
+                  className={`px-2 py-1 font-bold ${machineTypeFilter === 'all' ? 'bg-[#0E4B3E] text-white' : 'hover:bg-stone-100 text-stone-700'}`}
                 >
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <strong className="text-xs font-bold text-[#181816] font-mono">{machine.id}</strong>
-                      <span className="text-[10px] text-stone-500 uppercase font-medium">({machine.type})</span>
-                      <span
-                        className={`px-1.5 py-0.2 rounded text-[9.5px] font-medium ${
-                          machine.status === 'Running'
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                            : machine.status === 'Breakdown'
-                            ? 'bg-red-100 text-red-800 border border-red-300'
-                            : 'bg-amber-100 text-amber-800 border border-amber-300'
-                        }`}
-                      >
-                        {machine.status}
+                  All
+                </button>
+                <button
+                  onClick={() => setMachineTypeFilter('spinning')}
+                  className={`px-1.5 py-1 font-bold border-l border-stone-300 ${machineTypeFilter === 'spinning' ? 'bg-[#0E4B3E] text-white' : 'hover:bg-stone-100 text-stone-700'}`}
+                >
+                  Spin
+                </button>
+                <button
+                  onClick={() => setMachineTypeFilter('weaving')}
+                  className={`px-1.5 py-1 font-bold border-l border-stone-300 ${machineTypeFilter === 'weaving' ? 'bg-[#0E4B3E] text-white' : 'hover:bg-stone-100 text-stone-700'}`}
+                >
+                  Weave
+                </button>
+                <button
+                  onClick={() => setMachineTypeFilter('dyeing')}
+                  className={`px-1.5 py-1 font-bold border-l border-stone-300 ${machineTypeFilter === 'dyeing' ? 'bg-[#0E4B3E] text-white' : 'hover:bg-stone-100 text-stone-700'}`}
+                >
+                  Dye
+                </button>
+              </div>
+            </div>
+
+            {/* Machine Search Input */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search Machine ID (e.g. WEAVE-03, SPIN-01) or status..."
+                value={machineSearch}
+                onChange={(e) => setMachineSearch(e.target.value)}
+                className="w-full px-3 py-1.5 pl-8 text-xs font-mono bg-[#FAF7F0] border-2 border-[#181816] rounded-xl pop-shadow-xs focus:outline-none focus:ring-1 focus:ring-[#0E4B3E]"
+              />
+              <span className="absolute left-2.5 top-2 text-stone-400">
+                <MaterialIcon name="search" size="xs" />
+              </span>
+              {machineSearch && (
+                <button
+                  onClick={() => setMachineSearch('')}
+                  className="absolute right-2.5 top-1.5 text-stone-400 hover:text-stone-700 text-xs font-mono font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Machines Compact Grid / List */}
+            {filteredMachines.length === 0 ? (
+              <div className="py-8 text-center text-stone-500 font-mono text-xs space-y-1 border-2 border-dashed border-stone-300 rounded-xl">
+                <MaterialIcon name="search_off" size="md" color="#A8A29E" />
+                <div>No machine matches query &ldquo;{machineSearch}&rdquo;</div>
+              </div>
+            ) : (
+              <div className="space-y-1.5 max-h-[460px] overflow-y-auto pr-1">
+                {filteredMachines.map((machine) => (
+                  <div
+                    key={machine.id}
+                    className={`p-2.5 rounded-xl border border-stone-300 bg-white hover:border-[#181816] transition-all flex items-center justify-between text-xs font-mono ${
+                      machine.status === 'Breakdown' ? 'border-[#E05326] bg-red-50/40 ring-1 ring-[#E05326]' : ''
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <strong className="text-sm font-black text-[#181816]">{machine.id}</strong>
+                        <span className="text-[10px] text-stone-500 uppercase font-bold">({machine.type})</span>
+                        <span
+                          className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                            machine.status === 'Running'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : machine.status === 'Breakdown'
+                              ? 'bg-red-100 text-red-800 border border-red-300'
+                              : 'bg-amber-100 text-amber-800 border border-amber-300'
+                          }`}
+                        >
+                          {machine.status}
+                        </span>
+                      </div>
+                      <div className="text-[10.5px] text-stone-600 truncate mt-0.5 max-w-[240px]">
+                        {machine.assignedJob}
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[11px] font-bold text-[#0E4B3E] block">{machine.capacityRate}</span>
+                      <span className="text-[9.5px] text-stone-400 font-mono">
+                        {machine.isActive ? 'Active Loom' : 'Offline'}
                       </span>
                     </div>
-                    <div className="text-[11px] text-stone-600 truncate mt-0.5 max-w-[240px]">
-                      {machine.assignedJob}
-                    </div>
                   </div>
-
-                  <div className="text-right">
-                    <span className="text-xs font-semibold text-[#0E4B3E] block font-mono">{machine.capacityRate}</span>
-                    <span className="text-[10px] text-stone-400">
-                      {machine.isActive ? 'Active Loom' : 'Offline'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 4. DISRUPTION MITIGATION INSPECTION MODAL (PHASE 4) */}
@@ -888,6 +1013,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
         isOpen={isCreateOrderOpen}
         onClose={() => setIsCreateOrderOpen(false)}
         onOrderCreated={fetchLiveData}
+        currentRole={currentRole}
       />
 
       {/* FOOTER NOTE */}

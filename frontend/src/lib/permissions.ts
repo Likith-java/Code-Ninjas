@@ -29,7 +29,7 @@ export const ROLE_PROFILES: Record<UserRole, RoleProfile> = {
     title: 'Executive & System Admin',
     initials: 'AD',
     badgeVariant: 'scenario',
-    allowedModules: ['dashboard', 'floor', 'workforce', 'yarn', 'validator', 'rolls', 'dispatch'],
+    allowedModules: ['dashboard', 'floor', 'reports', 'workforce', 'yarn', 'validator', 'rolls', 'dispatch'],
     defaultModule: 'dashboard',
   },
   production_manager: {
@@ -38,7 +38,7 @@ export const ROLE_PROFILES: Record<UserRole, RoleProfile> = {
     title: 'Unit 1 Plant Supervisor',
     initials: 'PM',
     badgeVariant: 'success',
-    allowedModules: ['dashboard', 'floor', 'workforce', 'yarn', 'validator', 'rolls'],
+    allowedModules: ['dashboard', 'floor', 'reports', 'workforce', 'yarn', 'rolls'],
     defaultModule: 'floor',
   },
   dispatch_manager: {
@@ -47,18 +47,16 @@ export const ROLE_PROFILES: Record<UserRole, RoleProfile> = {
     title: 'Logistics & Warehouse Lead',
     initials: 'DM',
     badgeVariant: 'metric',
-    allowedModules: ['dashboard', 'rolls', 'dispatch'],
+    allowedModules: ['dashboard', 'rolls', 'dispatch', 'reports'],
     defaultModule: 'dispatch',
   },
   customer: {
     id: 'customer',
     name: 'Customer Portal',
-    title: 'ZARA Sourcing Buyer',
-    initials: 'ZR',
+    title: 'Client Tracking Portal',
+    initials: 'CP',
     badgeVariant: 'warning',
-    customerBuyerId: 1,
-    customerBuyerName: 'ZARA Sourcing',
-    allowedModules: ['dashboard'],
+    allowedModules: ['dashboard', 'reports'],
     defaultModule: 'dashboard',
   },
 }
@@ -70,6 +68,8 @@ export interface Permissions {
   canTriggerReplan: boolean
   canResolveOrder: boolean
   canManageMachines: boolean
+  canViewMachines: boolean
+  canValidateSchedule: boolean
   canViewWorkforceWages: boolean
   canCreateDispatch: boolean
   canConfirmDispatch: boolean
@@ -87,6 +87,8 @@ export function getRolePermissions(role: UserRole): Permissions {
         canTriggerReplan: true,
         canResolveOrder: true,
         canManageMachines: true,
+        canViewMachines: true,
+        canValidateSchedule: true,
         canViewWorkforceWages: true,
         canCreateDispatch: true,
         canConfirmDispatch: true,
@@ -101,6 +103,8 @@ export function getRolePermissions(role: UserRole): Permissions {
         canTriggerReplan: true,
         canResolveOrder: true,
         canManageMachines: true,
+        canViewMachines: true,
+        canValidateSchedule: false,
         canViewWorkforceWages: true,
         canCreateDispatch: false,
         canConfirmDispatch: false,
@@ -115,6 +119,8 @@ export function getRolePermissions(role: UserRole): Permissions {
         canTriggerReplan: false,
         canResolveOrder: false,
         canManageMachines: false,
+        canViewMachines: false,
+        canValidateSchedule: false,
         canViewWorkforceWages: false,
         canCreateDispatch: true,
         canConfirmDispatch: true,
@@ -124,11 +130,13 @@ export function getRolePermissions(role: UserRole): Permissions {
     case 'customer':
       return {
         canManageUsers: false,
-        canCreateOrder: false,
+        canCreateOrder: true,
         canSimulateDisruption: false,
         canTriggerReplan: false,
         canResolveOrder: false,
         canManageMachines: false,
+        canViewMachines: false,
+        canValidateSchedule: false,
         canViewWorkforceWages: false,
         canCreateDispatch: false,
         canConfirmDispatch: false,
@@ -136,4 +144,4 @@ export function getRolePermissions(role: UserRole): Permissions {
         isReadOnlyCustomer: true,
       }
   }
-}
+}

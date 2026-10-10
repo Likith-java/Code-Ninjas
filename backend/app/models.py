@@ -525,3 +525,10 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, nullable=False
     )
+    buyer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("buyers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    buyer: Mapped["Buyer | None"] = relationship()

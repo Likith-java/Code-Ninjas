@@ -724,4 +724,70 @@ export const api = {
     request<DispatchConfirmOut>(`/dispatches/${id}/confirm`, {
       method: 'POST',
     }),
+
+  // Reports Generation & Downloads
+  getReportTypes: () => request<ReportTypeItem[]>('/reports/types'),
+  downloadReport: async (payload: ReportGeneratePayload): Promise<{ blob: Blob; filename: string }> => {
+    const url = `${API_BASE_URL}/reports/generate`
+    const token = getToken()
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    })
+
+    if (response.status === 401) {
+      clearSession()
+      if (typeof window !== 'undefined') window.location.href = '/'
+      throw new Error('Session expired. Please sign in again.')
+    }
+
+    if (!response.ok) {
+      let errorDetail: any = null
+      try {
+        errorDetail = await response.json()
+      } catch {
+        errorDetail = await response.text()
+      }
+      const msg = errorDetail?.detail || `Failed to generate report (HTTP ${response.status})`
+      throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    }
+
+    let filename = `report_${payload.report_type}.${payload.format}`
+    const disposition = response.headers.get('Content-Disposition')
+    if (disposition) {
+      const match = disposition.match(/filename=["']?([^"';]+)["']?/)
+      if (match && match[1]) {
+        filename = match[1]
+      }
+    }
+
+    const blob = await response.blob()
+    return { blob, filename }
+  },
+}
+
+export interface ReportTypeItem {
+  id: string
+  title: string
+  description: string
+  audience: string
+  supported_formats: string[]
+  supported_filters: string[]
+}
+
+export interface ReportGeneratePayload {
+  report_type: string
+  format: 'pdf' | 'xlsx'
+  start_date?: string | null
+  end_date?: string | null
+  order_id?: number | null
+  machine_id?: number | null
 }
