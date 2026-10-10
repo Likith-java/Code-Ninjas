@@ -64,10 +64,13 @@ def calculate_feasibility(
     ).all()
 
     options = []
+    qty_decimal = Decimal(str(quantity_metres))
+
     for material in materials:
-        required = quantity_metres * Decimal(str(material.yarn_kg_per_metre))
-        available = available_for_material(db, material.id)
-        shortfall = max(Decimal("0"), required - available)
+        factor = Decimal(str(material.yarn_kg_per_metre))
+        required = (qty_decimal * factor).quantize(Decimal("0.001"))
+        available = available_for_material(db, material.id).quantize(Decimal("0.001"))
+        shortfall = max(Decimal("0.000"), required - available).quantize(Decimal("0.001"))
 
         options.append(
             MaterialShortfall(
@@ -78,17 +81,20 @@ def calculate_feasibility(
                 required_kg=required,
                 available_kg=available,
                 shortfall_kg=shortfall,
-                feasible=shortfall == 0,
+                feasible=shortfall == Decimal("0.000"),
             )
         )
 
     feasible = any(option.feasible for option in options)
     if feasible:
-        message = "Sufficient compatible yarn is available."
+        message = (
+            "Currently feasible based on warehouse ledger stock. "
+            "Note: Yarn is NOT reserved until an issue movement is recorded."
+        )
     elif options:
-        message = "Insufficient yarn. Review the shortfall or replenish stock."
+        message = "Insufficient yarn in stock. Review shortfall options."
     else:
-        message = "No matching material was found for this fabric type and colour."
+        message = f"No matching material found for fabric type '{fabric_type}' and colour '{colour}'."
 
     return FeasibilityOut(
         feasible=feasible,
@@ -157,6 +163,12 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(order)
         return order
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Database integrity constraint violation during order creation",
+        )
     except Exception:
         db.rollback()
         raise
@@ -185,13 +197,32 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
 
 @router.post("/buyers", response_model=BuyerOut, status_code=201)
 def create_buyer(payload: BuyerCreate, db: Session = Depends(get_db)):
-    buyer = Buyer(**payload.model_dump())
-    db.add(buyer)
-    db.commit()
-    db.refresh(buyer)
-    return buyer
+    try:
+        buyer = Buyer(**payload.model_dump())
+        db.add(buyer)
+        db.commit()
+        db.refresh(buyer)
+        return buyer
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Database integrity constraint violation during buyer creation",
+        )
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.get("/buyers", response_model=list[BuyerOut])
-def list_buyers(db: Session = Depends(get_db)):
-    return db.scalars(select(Buyer).order_by(Buyer.id)).all()
+def list_buyers(
+    offset: int = Query(default=0, ge=0, description="Pagination offset"),
+    limit: int = Query(default=50, ge=1, le=200, description="Pagination limit"),
+    db: Session = Depends(get_db),
+):
+    return db.scalars(
+        select(Buyer)
+        .order_by(Buyer.id)
+        .offset(offset)
+        .limit(limit)
+    ).all()

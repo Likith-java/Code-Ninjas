@@ -68,6 +68,10 @@ class Order(Base):
             "priority IN ('low', 'normal', 'high', 'urgent')",
             name="ck_order_priority",
         ),
+        CheckConstraint(
+            "deadline > order_date",
+            name="ck_order_deadline_after_order_date",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -340,7 +344,14 @@ class InventoryMovement(Base):
             "movement_type IN ('receipt', 'issue', 'adjustment')",
             name="ck_inventory_movement_type",
         ),
-        CheckConstraint("quantity_kg <> 0", name="ck_inventory_quantity_nonzero"),
+        CheckConstraint(
+            "(movement_type IN ('receipt', 'issue') AND quantity_kg > 0) OR (movement_type = 'adjustment' AND quantity_kg <> 0)",
+            name="ck_inventory_movement_quantity_valid",
+        ),
+        CheckConstraint(
+            "movement_type <> 'issue' OR order_id IS NOT NULL",
+            name="ck_inventory_issue_requires_order",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
