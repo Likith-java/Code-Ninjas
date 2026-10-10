@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-body: 'Hanken Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  html {
+    font-family: var(--font-body);
+  }
+
+  body {
+    @apply bg-[#F5F0E3] text-[#181816] antialiased min-w-[1440px] h-screen overflow-hidden;
+  }
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 16px;
+    line-height: 1;
+    display: inline-block;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .bg-dot-grid {
+    background-color: #F5F0E3;
+    background-image: radial-gradient(#CFBE9F 1.4px, transparent 1.4px);
+    background-size: 18px 18px;
+  }
+
+  .pop-shadow-xs { box-shadow: 1.5px 1.5px 0px #181816; }
+  .pop-shadow-sm { box-shadow: 2.5px 2.5px 0px #181816; }
+  .pop-shadow-md { box-shadow: 3.5px 3.5px 0px #181816; }
+  .pop-shadow-lg { box-shadow: 5px 5px 0px #181816; }
+  .pop-shadow-xl { box-shadow: 6px 6px 0px #181816; }
+
+  .stage-card {
+    box-shadow: 3px 3px 0px #181816;
+    transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+  }
+  .stage-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0px #181816;
+  }
+  .stage-card:active {
+    transform: translate(1.5px, 1.5px);
+    box-shadow: 1.5px 1.5px 0px #181816;
+  }
+
+  .btn-pop {
+    box-shadow: 2px 2px 0px #181816;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .btn-pop:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0px #181816;
+  }
+  .btn-pop:active {
+    transform: translate(2px, 2px);
+    box-shadow: 0px 0px 0px #181816;
+  }
+
+  @keyframes pulse-dot {
+    0% { transform: scale(0.9); opacity: 0.8; }
+    50% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0.8; }
+  }
+  .live-dot {
+    animation: pulse-dot 1.8s infinite ease-in-out;
+  }
+
+  @keyframes slide-up {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  .animate-slide-up {
+    animation: slide-up 0.2s ease-out forwards;
+  }
+
+  ::-webkit-scrollbar { width: 7px; height: 7px; }
+  ::-webkit-scrollbar-track { background: #E8E0D0; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb { background: #181816; border-radius: 9999px; border: 1px solid #FAF7F0; }
+  ::-webkit-scrollbar-thumb:hover { background: #0E4B3E; }
+}
