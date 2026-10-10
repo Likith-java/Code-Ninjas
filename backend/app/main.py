@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.routers import (
+    auth,
     dispatches,
     downtimes,
     inventory,
@@ -77,6 +78,7 @@ def readiness(db: Session = Depends(get_db)):
         )
 
 
+app.include_router(auth.router)
 app.include_router(orders.router)
 app.include_router(suppliers.router)
 app.include_router(materials.router)

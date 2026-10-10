@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Code-Ninjas — Textile Manufacturing Intelligence Platform',
+  title: 'Everest Textile Mills — Production Intelligence Platform',
   description: 'Everest Textile Mills - Production Scheduler with CP-SAT Optimization',
 }
 

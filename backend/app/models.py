@@ -13,6 +13,7 @@ from sqlalchemy import (
     Column,
     Text,
     UniqueConstraint,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -499,3 +500,28 @@ class DispatchItem(Base):
 
     dispatch: Mapped["Dispatch"] = relationship(back_populates="items")
     roll: Mapped["FabricRoll"] = relationship(back_populates="dispatch_items")
+
+
+# ============================================================
+# 6. USERS AND AUTHENTICATION
+# ============================================================
+
+class User(Base):
+    __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('owner','planner','storekeeper','supervisor','inspector','accounts','buyer')",
+            name="users_role_check",
+        ),
+        UniqueConstraint("email", name="uq_users_email"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="supervisor")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )

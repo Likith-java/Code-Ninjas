@@ -5,11 +5,13 @@
  * Provides strongly-typed request and response contracts conforming strictly to API_CONTRACT.md.
  */
 
+import { getToken, clearSession } from "./auth-storage";
+
 // Read base URL from environment, defaulting to standard local FastAPI port 8000
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8000'
+  "http://localhost:8000"
 
 // Generic API Response error structure conforming to FastAPI exception handler
 export interface ApiErrorDetail {
@@ -23,7 +25,7 @@ export class ApiClientError extends Error {
 
   constructor(message: string, status: number, detail?: unknown) {
     super(message)
-    this.name = 'ApiClientError'
+    this.name = "ApiClientError"
     this.status = status
     this.detail = detail
   }
@@ -177,12 +179,17 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
   const url = `${API_BASE_URL}${cleanEndpoint}`
 
+  const token = getToken()
   const defaultHeaders: Record<string, string> = {
     Accept: 'application/json',
   }
 
   if (options?.body && !(options.body instanceof FormData)) {
     defaultHeaders['Content-Type'] = 'application/json'
+  }
+
+  if (token) {
+    defaultHeaders['Authorization'] = `Bearer ${token}`
   }
 
   let response: Response
@@ -201,6 +208,12 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
       0,
       { url, error: errorMsg }
     )
+  }
+
+  if (response.status === 401) {
+    clearSession()
+    if (typeof window !== 'undefined') window.location.href = '/'
+    throw new Error('Session expired. Please sign in again.')
   }
 
   if (!response.ok) {
@@ -233,9 +246,32 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 // API CLIENT SERVICE METHODS
 // -------------------------------------------------------------
 
+export interface AuthResponse {
+  token: string
+  user: {
+    id: number
+    name: string
+    email: string
+    role: string
+  }
+}
+
 export const api = {
   // Base configuration
   getBaseUrl: () => API_BASE_URL,
+
+  // Auth
+  register: (input: { name: string; email: string; password: string; role?: string }) =>
+    request<AuthResponse>("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  login: (input: { email: string; password: string }) =>
+    request<AuthResponse>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 
   // System probes
   checkHealth: () => request<SystemHealth>('/health'),
