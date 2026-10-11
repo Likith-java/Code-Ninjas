@@ -269,17 +269,53 @@ export function StartProductionModal({
             {/* 4. Target Operation & Machine Selection */}
             {readiness.target_operation && (
               <div className="p-3 bg-white border border-stone-300 rounded-xl space-y-2.5">
-                <div className="flex justify-between items-center text-[11px]">
-                  <div>
-                    <span className="text-stone-500 text-[10px] block">TARGET OPERATION</span>
-                    <strong className="text-stone-900 font-bold capitalize">
-                      Stage {readiness.target_operation.sequence}: {readiness.target_operation.stage}
-                    </strong>
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-stone-600 text-[10.5px] font-bold">
+                      Target Operation / Stage *
+                    </label>
+                    {readiness.target_operation.planned_duration_minutes && (
+                      <span className="text-[10px] text-stone-500 font-medium">
+                        ~{readiness.target_operation.planned_duration_minutes}m duration
+                      </span>
+                    )}
                   </div>
-                  {readiness.target_operation.planned_duration_minutes && (
-                    <span className="text-[10.5px] text-stone-500">
-                      ~{readiness.target_operation.planned_duration_minutes} min duration
-                    </span>
+                  {readiness.all_operations && readiness.all_operations.length > 0 ? (
+                    <select
+                      value={selectedOperationId}
+                      onChange={async (e) => {
+                        const opId = Number(e.target.value)
+                        setSelectedOperationId(opId)
+                        if (numericId) {
+                          try {
+                            const data = await api.getOrderReadiness(numericId, opId)
+                            setReadiness(data)
+                            if (data.recommended_machine) {
+                              setSelectedMachineId(data.recommended_machine.id)
+                            } else if (data.eligible_machines.length > 0) {
+                              setSelectedMachineId(data.eligible_machines[0].id)
+                            } else {
+                              setSelectedMachineId('')
+                            }
+                          } catch (err) {
+                            console.error('Failed to update readiness for operation:', err)
+                          }
+                        }
+                      }}
+                      className="w-full p-2 border border-stone-300 rounded-lg text-xs font-semibold bg-white focus:outline-hidden focus:ring-1 focus:ring-[#0E4B3E]"
+                    >
+                      {readiness.all_operations.map((op) => (
+                        <option key={op.id} value={op.id}>
+                          Stage {op.sequence}: {op.stage.toUpperCase()} {op.planned_duration_minutes ? `(~${op.planned_duration_minutes} min)` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="flex justify-between items-center text-[11px] p-2 bg-stone-50 border border-stone-200 rounded-lg">
+                      <strong className="text-stone-900 font-bold capitalize">
+                        Stage {readiness.target_operation.sequence}: {readiness.target_operation.stage}
+                      </strong>
+                    </div>
                   )}
                 </div>
 

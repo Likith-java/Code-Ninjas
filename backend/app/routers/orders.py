@@ -478,6 +478,7 @@ def get_order_tracking(
 )
 def get_order_production_readiness(
     order_id: int,
+    operation_id: int | None = Query(None, description="Optional target operation ID to inspect"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -526,13 +527,18 @@ def get_order_production_readiness(
         operations = list(order.operations)
         operations.sort(key=lambda op: op.sequence)
 
-    # Determine target operation (first incomplete operation in sequence)
+    # Determine target operation (either explicitly requested or first incomplete in sequence)
     completed_op_ids = set(
         r.operation_id
         for r in order.production_runs
         if r.run_kind == "actual" and r.status == "completed"
     )
-    target_op = next((op for op in operations if op.id not in completed_op_ids), operations[0])
+    if operation_id:
+        target_op = next((op for op in operations if op.id == operation_id), None)
+        if not target_op:
+            target_op = next((op for op in operations if op.id not in completed_op_ids), operations[0])
+    else:
+        target_op = next((op for op in operations if op.id not in completed_op_ids), operations[0])
 
     # 3. Active run check
     active_run = next(
@@ -627,6 +633,17 @@ def get_order_production_readiness(
         ProductionRunOut.model_validate(r) for r in order.production_runs
     ]
 
+    all_operations_out = [
+        OperationSummary(
+            id=op.id,
+            stage=op.stage,
+            sequence=op.sequence,
+            planned_duration_minutes=op.planned_duration_minutes,
+            eligible_machines=[],
+        )
+        for op in operations
+    ]
+
     return OrderReadinessOut(
         order_id=order.id,
         buyer_id=order.buyer_id,
@@ -655,6 +672,7 @@ def get_order_production_readiness(
         active_run_id=active_run.id if active_run else None,
         active_machine_code=active_machine.machine_code if active_machine else None,
         existing_runs=existing_runs_out,
+        all_operations=all_operations_out,
     )
 
 

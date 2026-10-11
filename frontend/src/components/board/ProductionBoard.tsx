@@ -64,13 +64,13 @@ export function ProductionBoard({
     }
   }, [])
 
-  // Initial fetch and automatic polling interval (every 5 seconds) with cleanup
+  // Initial fetch and automatic polling interval (every 1 second for live floor dynamics) with cleanup
   useEffect(() => {
     fetchFloorData()
 
     const interval = setInterval(() => {
       fetchFloorData(true)
-    }, 5000)
+    }, 1000)
 
     return () => clearInterval(interval)
   }, [fetchFloorData])
@@ -104,15 +104,39 @@ export function ProductionBoard({
     const runOrderMap = new Map<number, BackendOrder>()
     orders.forEach(o => runOrderMap.set(o.id, o))
 
+    // Group runs by order_id to select current stage (prefer running > planned > latest completed)
+    const runsByOrder = new Map<number, BackendProductionRun[]>()
+    for (const r of runs) {
+      if (!runsByOrder.has(r.order_id)) {
+        runsByOrder.set(r.order_id, [])
+      }
+      runsByOrder.get(r.order_id)!.push(r)
+    }
+
+    const representativeRuns: BackendProductionRun[] = []
+    runsByOrder.forEach((orderRuns) => {
+      const runningRun = orderRuns.find(r => r.status === 'running')
+      if (runningRun) {
+        representativeRuns.push(runningRun)
+      } else {
+        const plannedRun = orderRuns.find(r => r.status === 'planned')
+        if (plannedRun) {
+          representativeRuns.push(plannedRun)
+        } else if (orderRuns.length > 0) {
+          representativeRuns.push(orderRuns[0])
+        }
+      }
+    })
+
     // Build items from active and planned runs
     const allFloorItems: Order[] = []
 
-    // 1. Process all Production Runs
-    for (const r of runs) {
+    // 1. Process all Representative Production Runs
+    for (const r of representativeRuns) {
       const ord = runOrderMap.get(r.order_id)
       const targetM = Number(r.target_metres || ord?.quantity_metres || 0)
       const producedM = Number(r.output_metres || 0)
-      const pct = targetM > 0 ? Math.min(100, Math.round((producedM / targetM) * 100)) : (r.status === 'running' ? 30 : r.status === 'completed' ? 100 : 0)
+      const pct = targetM > 0 ? Math.min(100, Math.round((producedM / targetM) * 100)) : (r.status === 'running' ? 10 : r.status === 'completed' ? 100 : 0)
       const stage = (r.stage || 'spinning').toLowerCase() as ProductionStage
       const code = ord?.order_code || `ORD-${String(r.order_id).padStart(3, '0')}`
 

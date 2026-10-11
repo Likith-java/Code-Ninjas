@@ -144,6 +144,7 @@ export interface OrderReadinessOut {
   active_run_id?: number | null
   active_machine_code?: string | null
   existing_runs: BackendProductionRun[]
+  all_operations?: OperationSummary[]
 }
 
 export interface FeasibilityRequest {
@@ -689,8 +690,10 @@ export const api = {
     }),
   getOrderOperations: (orderId: number) =>
     request<OperationOut[]>(`/orders/${orderId}/operations`),
-  getOrderReadiness: (orderId: number) =>
-    request<OrderReadinessOut>(`/orders/${orderId}/readiness`),
+  getOrderReadiness: (orderId: number, operationId?: number) => {
+    const q = operationId ? `?operation_id=${operationId}` : ''
+    return request<OrderReadinessOut>(`/orders/${orderId}/readiness${q}`)
+  },
   startProduction: (orderId: number, payload?: StartProductionRequest) =>
     request<StartProductionOut>(`/orders/${orderId}/start-production`, {
       method: 'POST',

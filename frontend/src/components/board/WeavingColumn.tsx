@@ -1,6 +1,6 @@
 'use client'
 
-import { Card, Badge, MaterialIcon } from '@/components/ui'
+import { Card, Badge, MaterialIcon, Progress } from '@/components/ui'
 import { mockOrders } from '@/lib/mockData'
 import type { Order } from '@/types'
 
@@ -177,7 +177,17 @@ function WeavingOrderCard({
         </div>
       )}
 
-      {!isBreakdown && (
+      {!isBreakdown && order.status === 'weaving' && (
+        <div className="mt-2.5 space-y-1">
+          <div className="flex justify-between text-[10.5px]">
+            <span className="text-stone-500">Loom: <span className="font-mono font-medium text-[#181816]">{order.assignedMachine || 'WEAVE-01'}</span></span>
+            <span className="font-semibold text-[#0E4B3E]">{order.metres ? Math.round((order.metres * (order.progress || 0)) / 100) : 0}m / {order.metres}m</span>
+          </div>
+          <Progress value={order.progress || 0} color="primary" size="sm" />
+        </div>
+      )}
+
+      {!isBreakdown && order.status !== 'weaving' && (
         <div className="mt-2.5 flex items-center justify-between bg-white border border-stone-200 rounded-lg px-2 py-1 text-[10.5px]">
           <span className="font-mono text-stone-700">{order.assignedMachine || order.eligible.weaving[0]} (40 m/hr)</span>
           <span className="text-[#0E4B3E] font-medium">Optimal Schedule</span>

@@ -577,6 +577,7 @@ class OrderReadinessOut(BaseModel):
     active_run_id: int | None = None
     active_machine_code: str | None = None
     existing_runs: list[ProductionRunOut] = []
+    all_operations: list[OperationSummary] = []
 
 
 # -------------------- Dispatches and Invoices --------------------

@@ -1,6 +1,6 @@
 'use client'
 
-import { Card, Badge, MaterialIcon } from '@/components/ui'
+import { Card, Badge, MaterialIcon, Progress } from '@/components/ui'
 import { mockOrders } from '@/lib/mockData'
 import type { Order } from '@/types'
 
@@ -126,6 +126,16 @@ function DyeingOrderCard({
       <div className="text-[11px] text-[#4E4B47] mt-1 font-body">
         Buyer: <span className="font-medium text-[#181816]">{order.buyer}</span> • {order.metres.toLocaleString()}m
       </div>
+
+      {!isInspection && (order.status === 'dyeing' || (order.progress ?? 0) > 0) && (
+        <div className="mt-2.5 space-y-1">
+          <div className="flex justify-between text-[10.5px]">
+            <span className="text-stone-500">Vat: <span className="font-mono font-medium text-[#181816]">{order.assignedMachine || 'DYE-01'}</span></span>
+            <span className="font-semibold text-[#0E4B3E]">{order.metres ? Math.round((order.metres * (order.progress || 0)) / 100) : 0}m / {order.metres}m</span>
+          </div>
+          <Progress value={order.progress || 0} color="primary" size="sm" />
+        </div>
+      )}
 
       <div className="mt-2.5 p-2 bg-white border border-stone-200 rounded-lg text-[10.5px] space-y-0.5">
         <div className="flex justify-between">

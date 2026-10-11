@@ -9,7 +9,7 @@ from typing import Optional
 import asyncio
 import logging
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import SessionLocal
@@ -25,6 +25,7 @@ from app.models import (
     MaterialLot,
     InventoryMovement,
     Material,
+    Downtime,
 )
 from app.services.production import utc_now, sync_machine_state_after_run_change
 from app.services.inventory import lot_balance, issue_yarn
@@ -129,13 +130,15 @@ class SimulationService:
             }
 
     def _ensure_simulation_state(self) -> None:
-        """Ensure simulation state record exists."""
+        """Ensure simulation state record exists and is set to running."""
         with SessionLocal() as db:
             state = db.get(SimulationState, 1)
             if not state:
-                state = SimulationState(id=1, status="stopped", speed=Decimal("1.0"), simulated_time=0)
+                state = SimulationState(id=1, status="running", speed=Decimal("1.0"), simulated_time=0)
                 db.add(state)
-                db.commit()
+            else:
+                state.status = "running"
+            db.commit()
 
     async def _simulation_loop(self) -> None:
         """Main simulation loop - runs every real second."""
@@ -183,30 +186,27 @@ class SimulationService:
                 db.rollback()
 
     async def _advance_run(self, db: Session, run: ProductionRun, sim_minutes_elapsed: float) -> None:
-        """Advance a single production run by the elapsed simulated time."""
-        if not run.operation or not run.operation.planned_duration_minutes:
+        """Advance a single production run dynamically by output metres every second."""
+        if not run.operation or not run.operation.order:
             return
 
-        planned_duration = run.operation.planned_duration_minutes
-        if planned_duration <= 0:
-            return
+        order_quantity = Decimal(str(run.operation.order.quantity_metres or 100.0))
+        target_metres = float(order_quantity)
+        if target_metres <= 0:
+            target_metres = 100.0
 
-        # Calculate elapsed time for this run
-        if run.start_time:
-            real_elapsed = utc_now() - run.start_time
-            # Convert real elapsed to simulated minutes based on simulation speed
-            sim_elapsed = real_elapsed.total_seconds() / 60.0
-        else:
-            sim_elapsed = sim_minutes_elapsed
+        current_metres = float(run.output_metres or Decimal("0.00"))
 
-        progress = min(100, (sim_elapsed / planned_duration) * 100)
+        # Advance dynamic metres: at least 1m/s, tuned so demo runs complete each stage in ~15-20 seconds
+        step = max(1.0, round(target_metres / 15.0, 2))
+        next_metres = current_metres + step
 
-        # Check if run is complete
-        if progress >= 100 or sim_elapsed >= planned_duration:
+        if next_metres >= target_metres:
+            run.output_metres = Decimal(str(round(target_metres, 2)))
             await self._complete_run(db, run)
         else:
-            # Update progress could be stored in a new field if needed
-            pass
+            run.output_metres = Decimal(str(round(next_metres, 2)))
+            db.commit()
 
     async def _complete_run(self, db: Session, run: ProductionRun) -> None:
         """Complete a production run and trigger next stage."""
@@ -232,11 +232,14 @@ class SimulationService:
             assignment.released_at = now
 
         # Consume material for this operation
-        await self._consume_material_for_run(db, run)
+        try:
+            await self._consume_material_for_run(db, run)
+        except Exception as mat_err:
+            logger.warning(f"Material consumption note: {mat_err}")
 
-        # Check if this was the last operation (dyeing)
+        # Check if this was the last operation (dyeing / inspection)
         order = run.operation.order
-        if run.operation.stage == "dyeing":
+        if run.operation.stage in ("dyeing", "inspection"):
             await self._create_fabric_lot(db, order, run)
         else:
             # Advance to next operation
@@ -362,7 +365,7 @@ class SimulationService:
                 select(Downtime).where(
                     Downtime.machine_id == machine.id,
                     Downtime.start_time <= now,
-                    Downtime.end_time.is_(None) | (Downtime.end_time > now),
+                    or_(Downtime.end_time.is_(None), Downtime.end_time > now),
                 ).limit(1)
             )
             if downtime:
@@ -370,6 +373,13 @@ class SimulationService:
 
             selected_machine = machine
             break
+
+        if not selected_machine:
+            # Fallback to any active machine of that stage not in breakdown or maintenance
+            for machine in eligible_machines:
+                if machine.is_active and machine.state not in ("breakdown", "maintenance"):
+                    selected_machine = machine
+                    break
 
         if not selected_machine:
             logger.warning(f"No available machine for operation {next_op.id} ({next_op.stage})")
@@ -391,7 +401,10 @@ class SimulationService:
         selected_machine.state = "running"
 
         # Assign workers
-        await self._assign_workers(db, actual_run, next_op, selected_machine)
+        try:
+            await self._assign_workers(db, actual_run, next_op, selected_machine)
+        except Exception as w_err:
+            logger.warning(f"Worker assignment note: {w_err}")
 
         db.flush()
 
