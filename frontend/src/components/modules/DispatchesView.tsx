@@ -58,11 +58,16 @@ export function DispatchesView() {
   }, [loadData])
 
   const handleConfirmDispatch = async (dispatchId: number) => {
+    const targetDispatch = dispatches.find((d) => d.id === dispatchId)
+    if (targetDispatch?.confirmed) {
+      return
+    }
+
     setConfirmingId(dispatchId)
     try {
       const result = await api.confirmDispatch(dispatchId)
       await loadData()
-      alert(`Dispatch Confirmation Success (Idempotent 200 OK):\n\nInvoice: ${result.invoice_number}\nTotal: $${Number(result.invoice_total).toLocaleString()}\n${result.message}`)
+      alert(`Dispatch Confirmed Successfully:\n\nInvoice: ${result.invoice_number}\nTotal: $${Number(result.invoice_total).toLocaleString()}\n${result.message}`)
     } catch (err: unknown) {
       const msg = err instanceof ApiClientError ? err.message : (err as Error).message
       alert(`Confirmation Error: ${msg}`)
@@ -253,15 +258,17 @@ export function DispatchesView() {
                       >
                         Invoice
                       </Button>
-                      <Button
-                        variant={d.confirmed ? 'ghost' : 'pop'}
-                        size="xs"
-                        disabled={confirmingId === d.id}
-                        onClick={() => handleConfirmDispatch(d.id)}
-                        title={d.confirmed ? "Dispatch is already confirmed. Click to test backend idempotency." : "Confirm buyer delivery"}
-                      >
-                        {confirmingId === d.id ? 'Confirming...' : d.confirmed ? 'Re-Confirm (Idempotent)' : 'Confirm'}
-                      </Button>
+                      {!d.confirmed && (
+                        <Button
+                          variant="pop"
+                          size="xs"
+                          disabled={confirmingId === d.id}
+                          onClick={() => handleConfirmDispatch(d.id)}
+                          title="Confirm buyer delivery"
+                        >
+                          {confirmingId === d.id ? 'Confirming...' : 'Confirm'}
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}

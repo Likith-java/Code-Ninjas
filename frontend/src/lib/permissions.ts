@@ -47,7 +47,7 @@ export const ROLE_PROFILES: Record<UserRole, RoleProfile> = {
     title: 'Logistics & Warehouse Lead',
     initials: 'DM',
     badgeVariant: 'metric',
-    allowedModules: ['dashboard', 'rolls', 'dispatch', 'reports'],
+    allowedModules: ['dashboard', 'rolls', 'dispatch'],
     defaultModule: 'dispatch',
   },
   customer: {
@@ -75,6 +75,8 @@ export interface Permissions {
   canConfirmDispatch: boolean
   canViewAllBuyers: boolean
   isReadOnlyCustomer: boolean
+  canStartProduction: boolean
+  canViewReports: boolean
 }
 
 export function getRolePermissions(role: UserRole): Permissions {
@@ -94,6 +96,8 @@ export function getRolePermissions(role: UserRole): Permissions {
         canConfirmDispatch: true,
         canViewAllBuyers: true,
         isReadOnlyCustomer: false,
+        canStartProduction: true,
+        canViewReports: true,
       }
     case 'production_manager':
       return {
@@ -110,6 +114,8 @@ export function getRolePermissions(role: UserRole): Permissions {
         canConfirmDispatch: false,
         canViewAllBuyers: true,
         isReadOnlyCustomer: false,
+        canStartProduction: true,
+        canViewReports: true,
       }
     case 'dispatch_manager':
       return {
@@ -126,6 +132,8 @@ export function getRolePermissions(role: UserRole): Permissions {
         canConfirmDispatch: true,
         canViewAllBuyers: true,
         isReadOnlyCustomer: false,
+        canStartProduction: false,
+        canViewReports: false,
       }
     case 'customer':
       return {
@@ -142,6 +150,8 @@ export function getRolePermissions(role: UserRole): Permissions {
         canConfirmDispatch: false,
         canViewAllBuyers: false,
         isReadOnlyCustomer: true,
+        canStartProduction: false,
+        canViewReports: true,
       }
   }
 }

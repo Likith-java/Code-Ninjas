@@ -68,6 +68,7 @@ class OrderOut(BaseModel):
     deadline: datetime
     priority: str
     derived_status: str | None = None
+    buyer_name: str | None = None
 
 
 class FeasibilityRequest(BaseModel):
@@ -504,6 +505,68 @@ class ProductionRunOut(BaseModel):
     start_time: datetime | None
     end_time: datetime | None
     output_metres: Decimal | None
+
+
+class StartProductionRequest(BaseModel):
+    operation_id: int | None = Field(default=None, description="Optional target operation ID")
+    machine_id: int | None = Field(default=None, description="Optional target machine ID")
+
+
+class StartProductionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    order_id: int
+    production_run_id: int
+    operation_id: int
+    stage: str
+    machine_id: int
+    machine_code: str
+    status: str
+    start_time: datetime
+    message: str
+
+
+class EligibleMachineSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    machine_code: str
+    machine_type: str
+    state: str
+    is_active: bool
+
+
+class OperationSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    stage: str
+    sequence: int
+    planned_duration_minutes: int | None = None
+    eligible_machines: list[EligibleMachineSummary] = []
+
+
+class OrderReadinessOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    order_id: int
+    buyer_id: int
+    buyer_name: str | None = None
+    fabric_type: str
+    colour: str
+    quantity_metres: Decimal
+    deadline: datetime
+    priority: str
+    derived_status: str
+    yarn_feasible: bool
+    feasibility_message: str
+    target_operation: OperationSummary | None = None
+    recommended_machine: EligibleMachineSummary | None = None
+    eligible_machines: list[EligibleMachineSummary] = []
+    has_active_run: bool = False
+    active_run_id: int | None = None
+    active_machine_code: str | None = None
+    existing_runs: list[ProductionRunOut] = []
 
 
 # -------------------- Dispatches and Invoices --------------------

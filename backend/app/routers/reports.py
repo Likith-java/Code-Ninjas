@@ -63,7 +63,13 @@ def list_report_types(current_user: User = Depends(get_current_user)):
     Returns the catalog of report types accessible by the caller's server-verified role.
     Customer users receive buyer-scoped reports; Production Managers receive operational logs;
     Admins receive factory-wide and executive reports.
+    Dispatch managers are explicitly forbidden from report access.
     """
+    if current_user.role == "dispatch_manager":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: Dispatch Manager role is not permitted to access reports or data export.",
+        )
     return get_authorized_report_types(current_user)
 
 
@@ -84,6 +90,12 @@ def generate_report(
     Generates a professional downloadable PDF or XLSX report from live database records.
     Validates permissions, date bounds, and data ownership scopes before extracting metrics.
     """
+    if current_user.role == "dispatch_manager":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: Dispatch Manager role is not permitted to access reports or data export.",
+        )
+
     # 1. Validate permissions and scope
     scope = validate_and_resolve_scope(
         user=current_user,

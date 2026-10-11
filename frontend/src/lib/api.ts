@@ -75,6 +75,7 @@ export interface BackendOrder {
   id: number
   order_code?: string
   buyer_id: number
+  buyer_name?: string
   fabric_type: string
   colour: string
   quantity_metres: string | number
@@ -85,6 +86,60 @@ export interface BackendOrder {
   priority_weight?: number
   status?: 'pending' | 'in_progress' | 'completed' | 'cancelled' | string
   derived_status?: 'not_started' | 'in_production' | 'ready_to_ship' | 'partly_dispatched' | 'dispatched' | string
+}
+
+export interface StartProductionRequest {
+  operation_id?: number
+  machine_id?: number
+}
+
+export interface StartProductionOut {
+  order_id: number
+  production_run_id: number
+  operation_id: number
+  stage: string
+  machine_id: number
+  machine_code: string
+  status: string
+  start_time: string
+  message: string
+}
+
+export interface EligibleMachineSummary {
+  id: number
+  machine_code: string
+  machine_type: string
+  state: string
+  is_active: boolean
+}
+
+export interface OperationSummary {
+  id: number
+  stage: string
+  sequence: number
+  planned_duration_minutes?: number | null
+  eligible_machines: EligibleMachineSummary[]
+}
+
+export interface OrderReadinessOut {
+  order_id: number
+  buyer_id: number
+  buyer_name?: string | null
+  fabric_type: string
+  colour: string
+  quantity_metres: number | string
+  deadline: string
+  priority: string
+  derived_status: string
+  yarn_feasible: boolean
+  feasibility_message: string
+  target_operation?: OperationSummary | null
+  recommended_machine?: EligibleMachineSummary | null
+  eligible_machines: EligibleMachineSummary[]
+  has_active_run: boolean
+  active_run_id?: number | null
+  active_machine_code?: string | null
+  existing_runs: BackendProductionRun[]
 }
 
 export interface FeasibilityRequest {
@@ -559,6 +614,13 @@ export const api = {
     }),
   getOrderOperations: (orderId: number) =>
     request<OperationOut[]>(`/orders/${orderId}/operations`),
+  getOrderReadiness: (orderId: number) =>
+    request<OrderReadinessOut>(`/orders/${orderId}/readiness`),
+  startProduction: (orderId: number, payload?: StartProductionRequest) =>
+    request<StartProductionOut>(`/orders/${orderId}/start-production`, {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    }),
 
   // Inventory & Materials
   getInventory: (lowStockOnly = false, offset = 0, limit = 100) =>

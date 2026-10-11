@@ -26,9 +26,17 @@ interface OrderDetailsPopoverProps {
   order: OrderDetailsData | null
   anchorRect: DOMRect | null
   onClose: () => void
+  onStartProduction?: (order: OrderDetailsData) => void
+  canStartProduction?: boolean
 }
 
-export function OrderDetailsPopover({ order, anchorRect, onClose }: OrderDetailsPopoverProps) {
+export function OrderDetailsPopover({
+  order,
+  anchorRect,
+  onClose,
+  onStartProduction,
+  canStartProduction,
+}: OrderDetailsPopoverProps) {
   const [mounted, setMounted] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<{ top: number; left: number; placement: 'right' | 'left' | 'below' }>({
@@ -238,7 +246,21 @@ export function OrderDetailsPopover({ order, anchorRect, onClose }: OrderDetails
 
       {/* Popover Footer */}
       <div className="px-3 py-2 bg-stone-100/70 border-t border-stone-200 flex justify-between items-center text-[10px] text-stone-500">
-        <span>Everest Floor Operations</span>
+        {canStartProduction && onStartProduction && !['Completed', 'In Production', 'in_production', 'ready_for_dispatch', 'completed'].includes(order.status || '') ? (
+          <button
+            type="button"
+            onClick={() => {
+              onClose()
+              onStartProduction(order)
+            }}
+            className="px-2 py-1 rounded bg-[#0E4B3E] hover:bg-[#0B382F] text-white font-semibold text-[10.5px] transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+          >
+            <MaterialIcon name="play_arrow" size="xs" color="#FFFFFF" />
+            Start Production
+          </button>
+        ) : (
+          <span>Everest Floor Operations</span>
+        )}
         <button
           type="button"
           onClick={onClose}

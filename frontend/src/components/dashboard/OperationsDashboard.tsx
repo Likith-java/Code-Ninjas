@@ -16,6 +16,7 @@ import { UserRole, getRolePermissions, ROLE_PROFILES } from '@/lib/permissions'
 import { OrderDetailsPopover, OrderDetailsData } from '@/components/board/OrderDetailsPopover'
 import { OrderCreationModal } from '@/components/modules/OrderCreationModal'
 import { NotificationAuditModal } from '@/components/modals/NotificationAuditModal'
+import { StartProductionModal } from '@/components/modules/StartProductionModal'
 import { getUser } from '@/lib/auth-storage'
 
 interface OperationsDashboardProps {
@@ -32,6 +33,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
   const [machineTypeFilter, setMachineTypeFilter] = useState<'all' | 'spinning' | 'weaving' | 'dyeing'>('all')
   const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false)
   const [isEmailAuditOpen, setIsEmailAuditOpen] = useState(false)
+  const [startProdOrder, setStartProdOrder] = useState<DashboardOrder | null>(null)
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null)
 
   // Anchored Floating Order Details Popover
@@ -353,21 +355,23 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
 
         {/* State Simulator Switcher Controls */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              if (typeof window !== 'undefined') {
-                const url = new URL(window.location.href)
-                url.searchParams.set('tab', 'reports')
-                window.history.pushState({}, '', url.toString())
-                window.dispatchEvent(new PopStateEvent('popstate'))
-              }
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-[#0E4B3E] text-white hover:bg-[#0B382F] rounded-lg font-bold text-xs shadow-sm transition-all cursor-pointer"
-            title="Open Role-Based Report Generator"
-          >
-            <MaterialIcon name="description" size="xs" color="#FFFFFF" />
-            <span>Generate Reports</span>
-          </button>
+          {permissions.canViewReports && (
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href)
+                  url.searchParams.set('tab', 'reports')
+                  window.history.pushState({}, '', url.toString())
+                  window.dispatchEvent(new PopStateEvent('popstate'))
+                }
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-[#0E4B3E] text-white hover:bg-[#0B382F] rounded-lg font-bold text-xs shadow-sm transition-all cursor-pointer"
+              title="Open Role-Based Report Generator"
+            >
+              <MaterialIcon name="description" size="xs" color="#FFFFFF" />
+              <span>Generate Reports</span>
+            </button>
+          )}
 
           {(currentRole === 'admin' || currentRole === 'production_manager') && (
             <button
@@ -739,6 +743,19 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
                         </td>
                         <td className="py-2 px-2.5 align-middle text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            {/* Start Production for Admin & Production Manager */}
+                            {permissions.canStartProduction &&
+                              !['Completed', 'In Production', 'in_production', 'ready_for_dispatch', 'completed'].includes(order.status) && (
+                                <button
+                                  onClick={() => setStartProdOrder(order)}
+                                  className="px-2 py-0.5 rounded bg-[#0E4B3E] hover:bg-[#0B382F] text-white text-[10px] font-semibold transition-colors cursor-pointer shadow-2xs flex items-center gap-1"
+                                  title={`Start Production for ${order.id}`}
+                                >
+                                  <MaterialIcon name="play_arrow" size="xs" color="#FFFFFF" />
+                                  Start Production
+                                </button>
+                              )}
+
                             {/* Individual Resolve Action */}
                             {isDisrupted && permissions.canResolveOrder && (
                               <button
@@ -977,6 +994,22 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
           order={popoverOrder}
           anchorRect={popoverRect}
           onClose={() => setPopoverOrder(null)}
+          canStartProduction={permissions.canStartProduction}
+          onStartProduction={(o) => {
+            const matched = masterOrders.find((ord) => ord.id === o.id)
+            setStartProdOrder(matched || (o as any))
+          }}
+        />
+      )}
+
+      {/* START PRODUCTION MODAL */}
+      {startProdOrder && (
+        <StartProductionModal
+          isOpen={!!startProdOrder}
+          orderId={startProdOrder.id}
+          orderSummary={startProdOrder}
+          onClose={() => setStartProdOrder(null)}
+          onProductionStarted={fetchLiveData}
         />
       )}
 
