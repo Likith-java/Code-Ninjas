@@ -17,6 +17,7 @@ import { OrderDetailsPopover, OrderDetailsData } from '@/components/board/OrderD
 import { OrderCreationModal } from '@/components/modules/OrderCreationModal'
 import { NotificationAuditModal } from '@/components/modals/NotificationAuditModal'
 import { StartProductionModal } from '@/components/modules/StartProductionModal'
+import { SimulationControlPanel } from '@/components/modules/SimulationControlPanel'
 import { getUser } from '@/lib/auth-storage'
 
 interface OperationsDashboardProps {
@@ -423,6 +424,9 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
           </div>
         </div>
       </div>
+
+      {/* SIMULATION CONTROL PANEL */}
+      <SimulationControlPanel currentRole={currentRole} />
 
       {/* ERROR FALLBACK ALERT */}
       {(apiStateMode === 'error' || (apiStateMode === 'live' && liveError)) && (

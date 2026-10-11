@@ -2,18 +2,19 @@
 Comprehensive, deterministic synthetic seed data for Textile Manufacturing Intelligence Platform.
 
 Generates realistic factory demonstration data:
-- 5 Buyers
-- 3 Suppliers
-- 5 Yarn Materials (compatible and incompatible options)
-- 8 Yarn Lots (sufficient and insufficient stock scenarios)
-- 12 Orders (various fabrics, colours, quantities, priorities, deadlines)
+- 10 Buyers
+- 5 Suppliers
+- 12 Yarn Materials (compatible and incompatible options)
+- 30+ Yarn Lots (sufficient and insufficient stock scenarios)
+- 600 Orders (various fabrics, colours, quantities, priorities, deadlines)
 - Operations & Machine Eligibility Mappings
-- 10 Machines (3 Spinning, 5 Weaving, 2 Dyeing)
+- 20 Machines (5 Spinning, 8 Weaving, 4 Dyeing, 3 Finishing)
 - Downtimes (maintenance & breakdown windows)
 - Production Runs (planned, in_progress, completed)
 - Fabric Rolls (awaiting_inspection, passed, rework, rejected, dispatched)
 - Quality Inspection history with defect classifications
 - Finished-Goods Dispatches (draft and confirmed with invoice reconciliation)
+- 50 Workers with varied skills and shifts
 
 Idempotent: Re-running does not create duplicates.
 Safe: Does not wipe existing data by default unless --reset is explicitly passed.
@@ -23,6 +24,7 @@ import argparse
 import sys
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
+import random
 
 from sqlalchemy import select, delete
 from app.database import SessionLocal, engine, Base
@@ -41,13 +43,94 @@ from app.models import (
     Inspection,
     Dispatch,
     DispatchItem,
+    Worker,
+    WorkerAssignment,
     operation_eligible_machines,
 )
 
 
-def seed(reset: bool = False):
+# Fixed seed for reproducible results
+random.seed(42)
+
+# Fabric types with their typical material mappings
+FABRIC_MATERIALS = {
+    "Cotton": [
+        ("Navy Blue", "30s combed ring-spun cotton", Decimal("0.220")),
+        ("Bleached White", "40s compact combed cotton", Decimal("0.180")),
+        ("Black", "30s carded cotton", Decimal("0.230")),
+        ("Grey Melange", "24s melange cotton", Decimal("0.210")),
+        ("Olive Green", "30s organic cotton", Decimal("0.225")),
+    ],
+    "Polyester": [
+        ("Charcoal Black", "150D/48F textured polyester filament", Decimal("0.160")),
+        ("Royal Blue", "75D/72F semi-dull polyester", Decimal("0.140")),
+        ("Bright Red", "100D/36F bright polyester", Decimal("0.150")),
+        ("White", "50D/24F microfibre polyester", Decimal("0.130")),
+    ],
+    "Linen": [
+        ("Natural Flax", "60s dry-spun wet-processed flax", Decimal("0.250")),
+        ("Bleached White", "80s fine linen", Decimal("0.200")),
+        ("Stone Washed", "40s stone-washed linen", Decimal("0.230")),
+    ],
+    "Silk": [
+        ("Crimson Red", "20/22 denier mulberry raw silk", Decimal("0.120")),
+        ("Ivory", "22/24 denier organza silk", Decimal("0.110")),
+        ("Champagne Gold", "18/20 denier dupioni silk", Decimal("0.115")),
+    ],
+    "Cotton-Polyester": [
+        ("Heather Grey", "65/35 cotton-poly blend 30s", Decimal("0.190")),
+        ("Navy Blue", "60/40 cotton-poly 24s", Decimal("0.200")),
+        ("Black", "50/50 cotton-poly 20s", Decimal("0.210")),
+    ],
+    "Viscose": [
+        ("Emerald Green", "1.5 denier viscose staple", Decimal("0.170")),
+        ("Deep Purple", "1.2 denier modal", Decimal("0.160")),
+    ],
+}
+
+# Buyer names
+BUYER_NAMES = [
+    ("Nordic Apparels AB", "Elin Larsson", "procurement@nordicapparels.se", "Hamngatan 14, Gothenburg, Sweden"),
+    ("Milan Couture SpA", "Matteo Rossi", "m.rossi@milancouture.it", "Via Montenapoleone 8, Milan, Italy"),
+    ("Beacon Garments Ltd", "Sarah Jenkins", "orders@beacongarments.co.uk", "45 Regent Street, Leeds, United Kingdom"),
+    ("Zenith Fashion Corp", "David Zhao", "d.zhao@zenithfashion.com", "782 Fashion District, New York, NY, USA"),
+    ("Kyoto Weave Co", "Kenji Sato", "sato@kyotoweave.jp", "12-4 Karasuma-dori, Kyoto, Japan"),
+    ("Sao Paulo Textiles SA", "Carlos Mendes", "compras@saopaulotextiles.br", "Rua das Flores 123, Sao Paulo, Brazil"),
+    ("Istanbul Denim Mills", "Ayşe Demir", "ayse.demir@istanbuldenim.tr", "Moda Caddesi 5, Istanbul, Turkey"),
+    ("Shanghai Silk Group", "Wei Chen", "chen@shanghaisilk.cn", "Nanjing Road 88, Shanghai, China"),
+    ("Toronto Knitwear Inc", "Jennifer Park", "j.park@torontoknit.ca", "200 King St W, Toronto, Canada"),
+    ("Melbourne Wool Co", "James O'Connor", "joconnor@melbournewool.au", "Collins Street 10, Melbourne, Australia"),
+]
+
+# Supplier names
+SUPPLIER_NAMES = [
+    ("Apex Fibers & Spinning Mills", "+91-9842100001", "sales@apexfibers.in"),
+    ("Prime Combed Yarns Ltd", "+91-9842100002", "supply@primecombed.in"),
+    ("Global Synthetic & Silk Corp", "+91-9842100003", "orders@globalsynthetic.com"),
+    ("European Flax & Linen Co", "+32-2-555-0100", "sales@euflax.be"),
+    ("Australian Merino Wool", "+61-3-9999-1000", "export@merinowool.au"),
+    ("Turkish Cotton Exporters", "+90-212-555-0200", "export@turkishcotton.tr"),
+]
+
+# Worker skill levels
+SKILL_LEVELS = ["trainee", "operator", "senior", "technician", "supervisor", "quality_inspector"]
+SHIFTS = ["A", "B", "C", "day", "night", "flex"]
+
+# Skills by production stage
+STAGE_SKILLS = {
+    "spinning": ["spinning_operator", "spinning_senior", "spinning_technician"],
+    "weaving": ["weaving_operator", "weaving_senior", "weaving_technician"],
+    "dyeing": ["dyeing_operator", "dyeing_senior", "dyeing_technician"],
+    "inspection": ["quality_inspector", "quality_senior"],
+    "packing": ["packing_operator", "warehouse_operator"],
+    "dispatch": ["dispatch_operator", "logistics_coordinator"],
+}
+
+
+def seed(reset: bool = False, order_count: int = 600, worker_count: int = 50):
     print("=" * 60)
     print("SEEDING TEXTILE MANUFACTURING INTELLIGENCE PLATFORM")
+    print(f"Target Orders: {order_count}, Target Workers: {worker_count}")
     print("=" * 60)
 
     now = datetime.now(timezone.utc)
@@ -55,6 +138,8 @@ def seed(reset: bool = False):
     with SessionLocal() as db:
         if reset:
             print("WARNING: --reset specified. Clearing Member 2 data tables...")
+            db.execute(delete(WorkerAssignment))
+            db.execute(delete(Worker))
             db.execute(delete(DispatchItem))
             db.execute(delete(Dispatch))
             db.execute(delete(Inspection))
@@ -74,128 +159,50 @@ def seed(reset: bool = False):
             print("Reset complete.")
 
         # -------------------------------------------------------------
-        # 1. BUYERS (5 Buyers)
+        # 1. BUYERS (10 Buyers)
         # -------------------------------------------------------------
         print("\n1. Seeding Buyers...")
-        buyers_data = [
-            {
-                "name": "Nordic Apparels AB",
-                "contact": "Elin Larsson",
-                "email": "procurement@nordicapparels.se",
-                "address": "Hamngatan 14, Gothenburg, Sweden",
-            },
-            {
-                "name": "Milan Couture SpA",
-                "contact": "Matteo Rossi",
-                "email": "m.rossi@milancouture.it",
-                "address": "Via Montenapoleone 8, Milan, Italy",
-            },
-            {
-                "name": "Beacon Garments Ltd",
-                "contact": "Sarah Jenkins",
-                "email": "orders@beacongarments.co.uk",
-                "address": "45 Regent Street, Leeds, United Kingdom",
-            },
-            {
-                "name": "Zenith Fashion Corp",
-                "contact": "David Zhao",
-                "email": "d.zhao@zenithfashion.com",
-                "address": "782 Fashion District, New York, NY, USA",
-            },
-            {
-                "name": "Kyoto Weave Co",
-                "contact": "Kenji Sato",
-                "email": "sato@kyotoweave.jp",
-                "address": "12-4 Karasuma-dori, Kyoto, Japan",
-            },
-        ]
-
         buyers = {}
-        for b_data in buyers_data:
-            b = db.scalar(select(Buyer).where(Buyer.name == b_data["name"]))
+        for b_data in BUYER_NAMES:
+            b = db.scalar(select(Buyer).where(Buyer.name == b_data[0]))
             if not b:
-                b = Buyer(**b_data)
+                b = Buyer(name=b_data[0], contact=b_data[1], email=b_data[2], address=b_data[3])
                 db.add(b)
                 db.flush()
-            buyers[b_data["name"]] = b
+            buyers[b_data[0]] = b
         print(f"   Seeded/verified {len(buyers)} buyers.")
 
         # -------------------------------------------------------------
-        # 2. SUPPLIERS (3 Suppliers)
+        # 2. SUPPLIERS (6 Suppliers)
         # -------------------------------------------------------------
         print("\n2. Seeding Suppliers...")
-        suppliers_data = [
-            {
-                "name": "Apex Fibers & Spinning Mills",
-                "contact": "+91-9842100001",
-                "email": "sales@apexfibers.in",
-            },
-            {
-                "name": "Prime Combed Yarns Ltd",
-                "contact": "+91-9842100002",
-                "email": "supply@primecombed.in",
-            },
-            {
-                "name": "Global Synthetic & Silk Corp",
-                "contact": "+91-9842100003",
-                "email": "orders@globalsynthetic.com",
-            },
-        ]
-
         suppliers = {}
-        for s_data in suppliers_data:
-            s = db.scalar(select(Supplier).where(Supplier.name == s_data["name"]))
+        for s_data in SUPPLIER_NAMES:
+            s = db.scalar(select(Supplier).where(Supplier.name == s_data[0]))
             if not s:
-                s = Supplier(**s_data)
+                s = Supplier(name=s_data[0], contact=s_data[1], email=s_data[2])
                 db.add(s)
                 db.flush()
-            suppliers[s_data["name"]] = s
+            suppliers[s_data[0]] = s
         print(f"   Seeded/verified {len(suppliers)} suppliers.")
 
         # -------------------------------------------------------------
-        # 3. MATERIALS (5 Materials: compatible & incompatible)
+        # 3. MATERIALS (30+ Materials)
         # -------------------------------------------------------------
         print("\n3. Seeding Materials...")
-        materials_data = [
-            {
-                "material_type": "Cotton",
-                "colour": "Navy Blue",
-                "specification": "30s combed ring-spun cotton",
-                "reorder_threshold_kg": Decimal("100.00"),
-                "yarn_kg_per_metre": Decimal("0.220"),
-            },
-            {
-                "material_type": "Cotton",
-                "colour": "Bleached White",
-                "specification": "40s compact combed cotton",
-                "reorder_threshold_kg": Decimal("80.00"),
-                "yarn_kg_per_metre": Decimal("0.180"),
-            },
-            {
-                "material_type": "Polyester",
-                "colour": "Charcoal Black",
-                "specification": "150D/48F textured polyester filament",
-                "reorder_threshold_kg": Decimal("60.00"),
-                "yarn_kg_per_metre": Decimal("0.160"),
-            },
-            {
-                "material_type": "Linen",
-                "colour": "Natural Flax",
-                "specification": "60s dry-spun wet-processed flax",
-                "reorder_threshold_kg": Decimal("50.00"),
-                "yarn_kg_per_metre": Decimal("0.250"),
-            },
-            {
-                "material_type": "Silk",
-                "colour": "Crimson Red",
-                "specification": "20/22 denier mulberry raw silk",
-                "reorder_threshold_kg": Decimal("30.00"),
-                "yarn_kg_per_metre": Decimal("0.120"),
-            },
-        ]
-
         materials = {}
-        for m_data in materials_data:
+        material_list = []
+        for fabric_type, variants in FABRIC_MATERIALS.items():
+            for colour, specification, yarn_factor in variants:
+                material_list.append({
+                    "material_type": fabric_type,
+                    "colour": colour,
+                    "specification": specification,
+                    "reorder_threshold_kg": Decimal(str(random.randint(30, 150))),
+                    "yarn_kg_per_metre": yarn_factor,
+                })
+
+        for m_data in material_list:
             m = db.scalar(
                 select(Material).where(
                     Material.material_type == m_data["material_type"],
@@ -212,145 +219,81 @@ def seed(reset: bool = False):
         print(f"   Seeded/verified {len(materials)} yarn materials.")
 
         # -------------------------------------------------------------
-        # 4. YARN LOTS & MOVEMENTS (8 Lots: sufficient & insufficient scenarios)
+        # 4. YARN LOTS (30+ Lots with varying stock levels)
         # -------------------------------------------------------------
         print("\n4. Seeding Yarn Lots & Inventory Movements...")
-        lots_data = [
-            # Sufficient stock for Cotton Navy Blue
-            {
-                "lot_code": "LOT-CTN-BLU-001",
-                "material": materials["Cotton_Navy Blue"],
-                "supplier": suppliers["Apex Fibers & Spinning Mills"],
-                "initial_kg": Decimal("800.000"),
-                "cost": Decimal("4800.00"),
-                "movements": [
-                    {"type": "receipt", "qty": Decimal("800.000"), "note": "Initial delivery Batch A"},
-                ],
-            },
-            {
-                "lot_code": "LOT-CTN-BLU-002",
-                "material": materials["Cotton_Navy Blue"],
-                "supplier": suppliers["Prime Combed Yarns Ltd"],
-                "initial_kg": Decimal("450.000"),
-                "cost": Decimal("2790.00"),
-                "movements": [
-                    {"type": "receipt", "qty": Decimal("450.000"), "note": "Batch B supplementary stock"},
-                ],
-            },
-            # Sufficient stock for Cotton Bleached White
-            {
-                "lot_code": "LOT-CTN-WHT-001",
-                "material": materials["Cotton_Bleached White"],
-                "supplier": suppliers["Prime Combed Yarns Ltd"],
-                "initial_kg": Decimal("600.000"),
-                "cost": Decimal("3900.00"),
-                "movements": [
-                    {"type": "receipt", "qty": Decimal("600.000"), "note": "Primary white cotton lot"},
-                ],
-            },
-            # Polyester stock
-            {
-                "lot_code": "LOT-POLY-BLK-001",
-                "material": materials["Polyester_Charcoal Black"],
-                "supplier": suppliers["Global Synthetic & Silk Corp"],
-                "initial_kg": Decimal("500.000"),
-                "cost": Decimal("2250.00"),
-                "movements": [
-                    {"type": "receipt", "qty": Decimal("500.000"), "note": "Synthetic polyester stock"},
-                ],
-            },
-            # Insufficient stock scenario for Linen (only 40kg received, threshold 50kg)
-            {
-                "lot_code": "LOT-LIN-NAT-001",
-                "material": materials["Linen_Natural Flax"],
-                "supplier": suppliers["Apex Fibers & Spinning Mills"],
-                "initial_kg": Decimal("40.000"),
-                "cost": Decimal("800.00"),
-                "movements": [
-                    {"type": "receipt", "qty": Decimal("40.000"), "note": "Low quantity trial lot"},
-                ],
-            },
-            # Low stock for Silk (reorder threshold 30kg, only 25kg)
-            {
-                "lot_code": "LOT-SLK-RED-001",
-                "material": materials["Silk_Crimson Red"],
-                "supplier": suppliers["Global Synthetic & Silk Corp"],
-                "initial_kg": Decimal("25.000"),
-                "cost": Decimal("1500.00"),
-                "movements": [
-                    {"type": "receipt", "qty": Decimal("25.000"), "note": "Specialty silk lot (low stock)"},
-                ],
-            },
-            # Secondary polyester lot
-            {
-                "lot_code": "LOT-POLY-BLK-002",
-                "material": materials["Polyester_Charcoal Black"],
-                "supplier": suppliers["Global Synthetic & Silk Corp"],
-                "initial_kg": Decimal("300.000"),
-                "cost": Decimal("1350.00"),
-                "movements": [
-                    {"type": "receipt", "qty": Decimal("300.000"), "note": "Buffer stock polyester"},
-                ],
-            },
-            # General reserve cotton
-            {
-                "lot_code": "LOT-CTN-BLU-003",
-                "material": materials["Cotton_Navy Blue"],
-                "supplier": suppliers["Apex Fibers & Spinning Mills"],
-                "initial_kg": Decimal("250.000"),
-                "cost": Decimal("1500.00"),
-                "movements": [
-                    {"type": "receipt", "qty": Decimal("250.000"), "note": "Reserve lot"},
-                ],
-            },
-        ]
-
         lots = {}
-        for l_data in lots_data:
-            lot = db.scalar(select(MaterialLot).where(MaterialLot.lot_code == l_data["lot_code"]))
-            if not lot:
-                lot = MaterialLot(
-                    lot_code=l_data["lot_code"],
-                    material_id=l_data["material"].id,
-                    supplier_id=l_data["supplier"].id,
-                    initial_received_kg=l_data["initial_kg"],
-                    lot_cost=l_data["cost"],
-                    received_at=now - timedelta(days=30),
-                )
-                db.add(lot)
-                db.flush()
+        lot_counter = 0
+        for fabric_type, variants in FABRIC_MATERIALS.items():
+            for colour, specification, yarn_factor in variants:
+                key = f"{fabric_type}_{colour}"
+                material = materials[key]
+                # Create 2-3 lots per material
+                for i in range(random.randint(2, 3)):
+                    lot_counter += 1
+                    lot_code = f"LOT-{fabric_type[:3].upper()}-{colour[:3].upper()}-{lot_counter:03d}"
+                    # Vary stock: some sufficient, some low
+                    if random.random() < 0.3:  # 30% chance of low stock
+                        initial_kg = Decimal(str(random.randint(10, 60)))
+                    else:
+                        initial_kg = Decimal(str(random.randint(200, 1000)))
 
-                for mov in l_data["movements"]:
-                    m_rec = InventoryMovement(
-                        lot_id=lot.id,
-                        movement_type=mov["type"],
-                        quantity_kg=mov["qty"],
-                        movement_date=now - timedelta(days=30),
-                        note=mov["note"],
-                    )
-                    db.add(m_rec)
-                db.flush()
-            lots[l_data["lot_code"]] = lot
+                    lot = db.scalar(select(MaterialLot).where(MaterialLot.lot_code == lot_code))
+                    if not lot:
+                        supplier = random.choice(list(suppliers.values()))
+                        lot = MaterialLot(
+                            lot_code=lot_code,
+                            material_id=material.id,
+                            supplier_id=supplier.id,
+                            initial_received_kg=initial_kg,
+                            lot_cost=Decimal(str(random.randint(500, 5000))),
+                            received_at=now - timedelta(days=random.randint(1, 60)),
+                        )
+                        db.add(lot)
+                        db.flush()
+
+                        # Add receipt movement
+                        m_rec = InventoryMovement(
+                            lot_id=lot.id,
+                            movement_type="receipt",
+                            quantity_kg=initial_kg,
+                            movement_date=now - timedelta(days=random.randint(1, 60)),
+                            note=f"Initial delivery for {material.material_type} {material.colour}",
+                        )
+                        db.add(m_rec)
+                        db.flush()
+                    lots[lot_code] = lot
         print(f"   Seeded/verified {len(lots)} yarn lots with movements.")
 
         # -------------------------------------------------------------
-        # 5. MACHINES (10 Machines: 3 Spinning, 5 Weaving, 2 Dyeing)
+        # 5. MACHINES (20 Machines: 5 Spinning, 8 Weaving, 4 Dyeing, 3 Finishing)
         # -------------------------------------------------------------
-        print("\n5. Seeding Machines (3 Spinning, 5 Weaving, 2 Dyeing)...")
+        print("\n5. Seeding Machines...")
         machines_data = [
-            # 3 Spinning Machines
+            # 5 Spinning Machines
             {"machine_code": "SPIN-01", "machine_type": "spinning", "capacity_rate": Decimal("45.00"), "state": "idle"},
             {"machine_code": "SPIN-02", "machine_type": "spinning", "capacity_rate": Decimal("50.00"), "state": "running"},
             {"machine_code": "SPIN-03", "machine_type": "spinning", "capacity_rate": Decimal("40.00"), "state": "maintenance"},
-            # 5 Weaving Machines
+            {"machine_code": "SPIN-04", "machine_type": "spinning", "capacity_rate": Decimal("55.00"), "state": "idle"},
+            {"machine_code": "SPIN-05", "machine_type": "spinning", "capacity_rate": Decimal("48.00"), "state": "running"},
+            # 8 Weaving Machines
             {"machine_code": "WEAV-01", "machine_type": "weaving", "capacity_rate": Decimal("25.00"), "state": "running"},
             {"machine_code": "WEAV-02", "machine_type": "weaving", "capacity_rate": Decimal("25.00"), "state": "idle"},
             {"machine_code": "WEAV-03", "machine_type": "weaving", "capacity_rate": Decimal("30.00"), "state": "running"},
             {"machine_code": "WEAV-04", "machine_type": "weaving", "capacity_rate": Decimal("28.00"), "state": "breakdown"},
             {"machine_code": "WEAV-05", "machine_type": "weaving", "capacity_rate": Decimal("32.00"), "state": "idle"},
-            # 2 Dyeing Machines
+            {"machine_code": "WEAV-06", "machine_type": "weaving", "capacity_rate": Decimal("27.00"), "state": "running"},
+            {"machine_code": "WEAV-07", "machine_type": "weaving", "capacity_rate": Decimal("30.00"), "state": "idle"},
+            {"machine_code": "WEAV-08", "machine_type": "weaving", "capacity_rate": Decimal("26.00"), "state": "maintenance"},
+            # 4 Dyeing Machines
             {"machine_code": "DYE-01", "machine_type": "dyeing", "capacity_rate": Decimal("60.00"), "state": "idle"},
             {"machine_code": "DYE-02", "machine_type": "dyeing", "capacity_rate": Decimal("75.00"), "state": "running"},
+            {"machine_code": "DYE-03", "machine_type": "dyeing", "capacity_rate": Decimal("70.00"), "state": "idle"},
+            {"machine_code": "DYE-04", "machine_type": "dyeing", "capacity_rate": Decimal("80.00"), "state": "running"},
+            # 3 Finishing Machines (for inspection/packing stages)
+            {"machine_code": "FIN-01", "machine_type": "inspection", "capacity_rate": Decimal("100.00"), "state": "idle"},
+            {"machine_code": "FIN-02", "machine_type": "packing", "capacity_rate": Decimal("120.00"), "state": "idle"},
+            {"machine_code": "FIN-03", "machine_type": "inspection", "capacity_rate": Decimal("90.00"), "state": "running"},
         ]
 
         machines = {}
@@ -370,28 +313,15 @@ def seed(reset: bool = False):
         print(f"   Seeded/verified {len(machines)} machines.")
 
         # -------------------------------------------------------------
-        # 6. DOWNTIMES (Maintenance & Breakdown windows)
+        # 6. DOWNTIMES
         # -------------------------------------------------------------
         print("\n6. Seeding Downtimes...")
         downtimes_data = [
-            {
-                "machine": machines["SPIN-03"],
-                "start": now - timedelta(hours=4),
-                "end": now + timedelta(hours=20),
-                "reason": "Quarterly spindle lubrication and alignment calibration",
-            },
-            {
-                "machine": machines["WEAV-04"],
-                "start": now - timedelta(hours=12),
-                "end": now + timedelta(hours=12),
-                "reason": "Rapier guide ribbon failure; replacement part in transit",
-            },
-            {
-                "machine": machines["WEAV-01"],
-                "start": now - timedelta(days=2),
-                "end": now - timedelta(days=1, hours=20),
-                "reason": "Preventive maintenance warp beam reset",
-            },
+            {"machine": machines["SPIN-03"], "start": now - timedelta(hours=4), "end": now + timedelta(hours=20), "reason": "Quarterly spindle lubrication and alignment calibration"},
+            {"machine": machines["WEAV-04"], "start": now - timedelta(hours=12), "end": now + timedelta(hours=12), "reason": "Rapier guide ribbon failure; replacement part in transit"},
+            {"machine": machines["WEAV-01"], "start": now - timedelta(days=2), "end": now - timedelta(days=1, hours=20), "reason": "Preventive maintenance warp beam reset"},
+            {"machine": machines["WEAV-08"], "start": now - timedelta(hours=6), "end": now + timedelta(hours=18), "reason": "Scheduled gearbox oil change and inspection"},
+            {"machine": machines["DYE-03"], "start": now - timedelta(hours=2), "end": now + timedelta(hours=10), "reason": "Heat exchanger cleaning"},
         ]
 
         downtimes_count = 0
@@ -412,445 +342,394 @@ def seed(reset: bool = False):
                 db.add(dt_obj)
                 downtimes_count += 1
         db.flush()
-        print(f"   Seeded/verified {len(downtimes_data)} downtime intervals.")
+        print(f"   Seeded/verified {downtimes_count} downtime intervals.")
 
         # -------------------------------------------------------------
-        # 7. ORDERS (12 Orders with diverse fabrics, colors, deadlines, priorities)
+        # 7. WORKERS (50 Workers with diverse skills)
         # -------------------------------------------------------------
-        print("\n7. Seeding Orders (12 Orders)...")
-        orders_configs = [
-            # 1. Urgent cotton order (fully dispatched)
-            {
-                "buyer": buyers["Nordic Apparels AB"],
-                "fabric_type": "Cotton",
-                "colour": "Navy Blue",
-                "quantity_metres": Decimal("500.00"),
-                "agreed_rate": Decimal("180.00"),
-                "order_date": now - timedelta(days=25),
-                "deadline": now + timedelta(days=5),
-                "priority": "urgent",
-            },
-            # 2. High priority cotton order (in progress, partially inspected)
-            {
-                "buyer": buyers["Milan Couture SpA"],
-                "fabric_type": "Cotton",
-                "colour": "Bleached White",
-                "quantity_metres": Decimal("1200.00"),
-                "agreed_rate": Decimal("165.00"),
-                "order_date": now - timedelta(days=20),
-                "deadline": now + timedelta(days=15),
-                "priority": "high",
-            },
-            # 3. Polyester order (running production)
-            {
-                "buyer": buyers["Beacon Garments Ltd"],
-                "fabric_type": "Polyester",
-                "colour": "Charcoal Black",
-                "quantity_metres": Decimal("800.00"),
-                "agreed_rate": Decimal("140.00"),
-                "order_date": now - timedelta(days=15),
-                "deadline": now + timedelta(days=20),
-                "priority": "normal",
-            },
-            # 4. Normal cotton order (planned)
-            {
-                "buyer": buyers["Zenith Fashion Corp"],
-                "fabric_type": "Cotton",
-                "colour": "Navy Blue",
-                "quantity_metres": Decimal("650.00"),
-                "agreed_rate": Decimal("175.00"),
-                "order_date": now - timedelta(days=10),
-                "deadline": now + timedelta(days=25),
-                "priority": "normal",
-            },
-            # 5. Low priority silk order (shortage scenario)
-            {
-                "buyer": buyers["Kyoto Weave Co"],
-                "fabric_type": "Silk",
-                "colour": "Crimson Red",
-                "quantity_metres": Decimal("400.00"),
-                "agreed_rate": Decimal("420.00"),
-                "order_date": now - timedelta(days=8),
-                "deadline": now + timedelta(days=40),
-                "priority": "low",
-            },
-            # 6. Urgent linen order (shortage scenario)
-            {
-                "buyer": buyers["Nordic Apparels AB"],
-                "fabric_type": "Linen",
-                "colour": "Natural Flax",
-                "quantity_metres": Decimal("350.00"),
-                "agreed_rate": Decimal("290.00"),
-                "order_date": now - timedelta(days=6),
-                "deadline": now + timedelta(days=12),
-                "priority": "urgent",
-            },
-            # 7. High priority white cotton order
-            {
-                "buyer": buyers["Milan Couture SpA"],
-                "fabric_type": "Cotton",
-                "colour": "Bleached White",
-                "quantity_metres": Decimal("900.00"),
-                "agreed_rate": Decimal("160.00"),
-                "order_date": now - timedelta(days=5),
-                "deadline": now + timedelta(days=30),
-                "priority": "high",
-            },
-            # 8. Normal polyester order
-            {
-                "buyer": buyers["Beacon Garments Ltd"],
-                "fabric_type": "Polyester",
-                "colour": "Charcoal Black",
-                "quantity_metres": Decimal("1500.00"),
-                "agreed_rate": Decimal("135.00"),
-                "order_date": now - timedelta(days=4),
-                "deadline": now + timedelta(days=35),
-                "priority": "normal",
-            },
-            # 9. Low priority navy cotton order
-            {
-                "buyer": buyers["Zenith Fashion Corp"],
-                "fabric_type": "Cotton",
-                "colour": "Navy Blue",
-                "quantity_metres": Decimal("300.00"),
-                "agreed_rate": Decimal("170.00"),
-                "order_date": now - timedelta(days=3),
-                "deadline": now + timedelta(days=45),
-                "priority": "low",
-            },
-            # 10. Urgent fashion silk dress material
-            {
-                "buyer": buyers["Milan Couture SpA"],
-                "fabric_type": "Silk",
-                "colour": "Crimson Red",
-                "quantity_metres": Decimal("150.00"),
-                "agreed_rate": Decimal("450.00"),
-                "order_date": now - timedelta(days=2),
-                "deadline": now + timedelta(days=8),
-                "priority": "urgent",
-            },
-            # 11. Normal linen luxury sheeting
-            {
-                "buyer": buyers["Nordic Apparels AB"],
-                "fabric_type": "Linen",
-                "colour": "Natural Flax",
-                "quantity_metres": Decimal("200.00"),
-                "agreed_rate": Decimal("310.00"),
-                "order_date": now - timedelta(days=2),
-                "deadline": now + timedelta(days=50),
-                "priority": "normal",
-            },
-            # 12. High priority bulk uniform cotton
-            {
-                "buyer": buyers["Beacon Garments Ltd"],
-                "fabric_type": "Cotton",
-                "colour": "Navy Blue",
-                "quantity_metres": Decimal("2000.00"),
-                "agreed_rate": Decimal("155.00"),
-                "order_date": now - timedelta(days=1),
-                "deadline": now + timedelta(days=60),
-                "priority": "high",
-            },
-        ]
+        print("\n7. Seeding Workers...")
+        workers = {}
+        first_names = ["James", "Mary", "Robert", "Patricia", "John", "Jennifer", "Michael", "Linda", "William", "Elizabeth",
+                       "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica", "Thomas", "Sarah", "Charles", "Karen",
+                       "Christopher", "Nancy", "Daniel", "Lisa", "Matthew", "Betty", "Anthony", "Margaret", "Mark", "Sandra",
+                       "Donald", "Ashley", "Steven", "Dorothy", "Paul", "Kimberly", "Andrew", "Emily", "Joshua", "Donna",
+                       "Kenneth", "Michelle", "Kevin", "Carol", "Brian", "Amanda", "George", "Melissa", "Edward", "Deborah"]
+        last_names = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez",
+                      "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin",
+                      "Lee", "Perez", "Thompson", "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson"]
 
+        for i in range(worker_count):
+            emp_code = f"EMP-{i+1:04d}"
+            existing = db.scalar(select(Worker).where(Worker.employee_code == emp_code))
+            if existing:
+                workers[emp_code] = existing
+                continue
+
+            first = random.choice(first_names)
+            last = random.choice(last_names)
+            name = f"{first} {last}"
+            skill_level = random.choices(SKILL_LEVELS, weights=[10, 30, 25, 15, 10, 10])[0]
+            shift = random.choice(SHIFTS)
+            hourly_rate = Decimal(str(round(random.uniform(15.0, 45.0), 2)))
+
+            # Assign skills based on skill level and random selection
+            all_skills = []
+            for stage_skills in STAGE_SKILLS.values():
+                all_skills.extend(stage_skills)
+            num_skills = random.randint(1, 3 if skill_level in ["trainee", "operator"] else 5)
+            worker_skills = random.sample(all_skills, min(num_skills, len(all_skills)))
+
+            worker = Worker(
+                employee_code=emp_code,
+                name=name,
+                skill_level=skill_level,
+                shift=shift,
+                status="active",
+                hourly_rate=hourly_rate,
+                skills=worker_skills,
+            )
+            db.add(worker)
+            db.flush()
+            workers[emp_code] = worker
+
+        print(f"   Seeded/verified {len(workers)} workers.")
+
+        # -------------------------------------------------------------
+        # 8. ORDERS (600 Orders with diverse fabrics, colors, deadlines, priorities)
+        # -------------------------------------------------------------
+        print(f"\n8. Seeding {order_count} Orders...")
+        priority_weights = {"urgent": 15, "high": 25, "normal": 40, "low": 20}
+        priorities = list(priority_weights.keys())
+        weights = list(priority_weights.values())
+
+        buyer_list = list(buyers.values())
         orders = []
-        for idx, o_conf in enumerate(orders_configs, start=1):
+
+        for i in range(order_count):
+            buyer = random.choice(buyer_list)
+            fabric_type = random.choice(list(FABRIC_MATERIALS.keys()))
+            variant = random.choice(FABRIC_MATERIALS[fabric_type])
+            colour = variant[0]
+            specification = variant[1]
+            yarn_factor = variant[2]
+
+            # Generate realistic quantity based on fabric type
+            if fabric_type in ["Silk", "Linen"]:
+                qty = Decimal(str(random.randint(50, 500)))
+            elif fabric_type in ["Polyester", "Cotton-Polyester", "Viscose"]:
+                qty = Decimal(str(random.randint(200, 3000)))
+            else:  # Cotton
+                qty = Decimal(str(random.randint(100, 2500)))
+
+            priority = random.choices(priorities, weights=weights)[0]
+
+            # Deadline based on priority
+            if priority == "urgent":
+                days_ahead = random.randint(3, 14)
+            elif priority == "high":
+                days_ahead = random.randint(10, 30)
+            elif priority == "normal":
+                days_ahead = random.randint(20, 60)
+            else:  # low
+                days_ahead = random.randint(40, 120)
+
+            order_date = now - timedelta(days=random.randint(0, 30))
+            deadline = now + timedelta(days=days_ahead)
+
+            agreed_rate = Decimal(str(round(random.uniform(100.0, 500.0), 2)))
+
+            # Create unique-ish order
             ord_obj = db.scalar(
                 select(Order).where(
-                    Order.buyer_id == o_conf["buyer"].id,
-                    Order.fabric_type == o_conf["fabric_type"],
-                    Order.colour == o_conf["colour"],
-                    Order.quantity_metres == o_conf["quantity_metres"],
-                    Order.priority == o_conf["priority"],
+                    Order.buyer_id == buyer.id,
+                    Order.fabric_type == fabric_type,
+                    Order.colour == colour,
+                    Order.quantity_metres == qty,
+                    Order.priority == priority,
                 )
             )
             if not ord_obj:
                 ord_obj = Order(
-                    buyer_id=o_conf["buyer"].id,
-                    fabric_type=o_conf["fabric_type"],
-                    colour=o_conf["colour"],
-                    quantity_metres=o_conf["quantity_metres"],
-                    agreed_rate=o_conf["agreed_rate"],
-                    order_date=o_conf["order_date"],
-                    deadline=o_conf["deadline"],
-                    priority=o_conf["priority"],
+                    buyer_id=buyer.id,
+                    fabric_type=fabric_type,
+                    colour=colour,
+                    quantity_metres=qty,
+                    agreed_rate=agreed_rate,
+                    order_date=order_date,
+                    deadline=deadline,
+                    priority=priority,
                 )
                 db.add(ord_obj)
                 db.flush()
             orders.append(ord_obj)
+
+            if (i + 1) % 100 == 0:
+                print(f"   Seeded {i + 1}/{order_count} orders...")
+
         print(f"   Seeded/verified {len(orders)} orders.")
 
         # -------------------------------------------------------------
-        # 8. OPERATIONS & ELIGIBILITY MAPPINGS
+        # 9. OPERATIONS & ELIGIBILITY MAPPINGS
         # -------------------------------------------------------------
-        print("\n8. Seeding Operations & Machine Eligibility Mappings...")
+        print("\n9. Seeding Operations & Machine Eligibility Mappings...")
+        stages_sequence = ["spinning", "weaving", "dyeing", "inspection", "packing", "dispatch"]
+        stage_durations = {
+            "spinning": 180,
+            "weaving": 360,
+            "dyeing": 120,
+            "inspection": 60,
+            "packing": 45,
+            "dispatch": 30,
+        }
+
         for ord_obj in orders:
-            # Operation 1: Spinning (spinning machines eligible)
-            op1 = db.scalar(select(Operation).where(Operation.order_id == ord_obj.id, Operation.sequence == 1))
-            if not op1:
-                op1 = Operation(
-                    order_id=ord_obj.id,
-                    stage="spinning",
-                    sequence=1,
-                    planned_duration_minutes=180,
-                )
-                db.add(op1)
-                db.flush()
-                op1.eligible_machines.extend([machines["SPIN-01"], machines["SPIN-02"], machines["SPIN-03"]])
+            for sequence, stage in enumerate(stages_sequence, start=1):
+                op = db.scalar(select(Operation).where(Operation.order_id == ord_obj.id, Operation.sequence == sequence))
+                if not op:
+                    op = Operation(
+                        order_id=ord_obj.id,
+                        stage=stage,
+                        sequence=sequence,
+                        planned_duration_minutes=stage_durations[stage],
+                    )
+                    db.add(op)
+                    db.flush()
 
-            # Operation 2: Weaving (weaving machines eligible)
-            op2 = db.scalar(select(Operation).where(Operation.order_id == ord_obj.id, Operation.sequence == 2))
-            if not op2:
-                op2 = Operation(
-                    order_id=ord_obj.id,
-                    stage="weaving",
-                    sequence=2,
-                    planned_duration_minutes=360,
-                )
-                db.add(op2)
-                db.flush()
-                op2.eligible_machines.extend([
-                    machines["WEAV-01"], machines["WEAV-02"], machines["WEAV-03"],
-                    machines["WEAV-04"], machines["WEAV-05"],
-                ])
+                    # Assign eligible machines
+                    eligible = [m for m in machines.values() if m.machine_type == stage and m.is_active]
+                    if eligible:
+                        op.eligible_machines.extend(eligible)
 
-            # Operation 3: Dyeing (dyeing machines eligible)
-            op3 = db.scalar(select(Operation).where(Operation.order_id == ord_obj.id, Operation.sequence == 3))
-            if not op3:
-                op3 = Operation(
-                    order_id=ord_obj.id,
-                    stage="dyeing",
-                    sequence=3,
-                    planned_duration_minutes=120,
-                )
-                db.add(op3)
-                db.flush()
-                op3.eligible_machines.extend([machines["DYE-01"], machines["DYE-02"]])
         db.flush()
-        print("   Seeded multi-stage operations (spinning -> weaving -> dyeing) with machine eligibility.")
+        print(f"   Seeded multi-stage operations for {len(orders)} orders.")
 
         # -------------------------------------------------------------
-        # 9. PRODUCTION RUNS (completed, in_progress, planned)
+        # 10. WORKER SKILL ASSIGNMENTS (initial eligibility)
         # -------------------------------------------------------------
-        print("\n9. Seeding Production Runs...")
-        # Order 1: Completed weaving run on WEAV-01
-        ord1_weaving_op = db.scalar(select(Operation).where(Operation.order_id == orders[0].id, Operation.stage == "weaving"))
-        run_ord1 = db.scalar(select(ProductionRun).where(ProductionRun.order_id == orders[0].id, ProductionRun.operation_id == ord1_weaving_op.id))
-        if not run_ord1:
-            run_ord1 = ProductionRun(
-                order_id=orders[0].id,
-                operation_id=ord1_weaving_op.id,
-                machine_id=machines["WEAV-01"].id,
-                run_kind="actual",
-                status="completed",
-                start_time=now - timedelta(days=20),
-                end_time=now - timedelta(days=19),
-                output_metres=Decimal("500.00"),
+        print("\n10. Seeding initial worker-operation eligibility (via skills)...")
+        # Skills are already stored in Worker.skills JSONB
+        # Eligibility is checked dynamically via WorkerAssignment during run start
+        print("   Worker skills configured for dynamic assignment.")
+
+        # -------------------------------------------------------------
+        # 11. PRODUCTION RUNS (various states)
+        # -------------------------------------------------------------
+        print("\n11. Seeding Production Runs...")
+        run_states = ["planned", "running", "completed"]
+        run_weights = [0.2, 0.3, 0.5]
+
+        runs_created = 0
+        for ord_obj in orders[:min(200, len(orders))]:  # Create runs for first 200 orders
+            operations = db.scalars(
+                select(Operation).where(Operation.order_id == ord_obj.id).order_by(Operation.sequence)
+            ).all()
+
+            for op in operations:
+                # Only create runs for some operations
+                if random.random() < 0.7:
+                    run_kind = "actual"
+                    status = random.choices(run_states, weights=run_weights)[0]
+
+                    # Find eligible machine
+                    eligible = [m for m in machines.values() if m.machine_type == op.stage and m.is_active]
+                    if not eligible:
+                        continue
+                    machine = random.choice(eligible)
+
+                    start_time = None
+                    end_time = None
+                    output_metres = None
+
+                    if status == "running":
+                        start_time = now - timedelta(hours=random.randint(1, 48))
+                    elif status == "completed":
+                        start_time = now - timedelta(days=random.randint(1, 30))
+                        end_time = start_time + timedelta(hours=random.randint(2, 24))
+                        output_metres = ord_obj.quantity_metres
+                    else:  # planned
+                        start_time = now + timedelta(hours=random.randint(1, 72))
+                        end_time = start_time + timedelta(hours=random.randint(3, 48))
+
+                    existing_run = db.scalar(
+                        select(ProductionRun).where(
+                            ProductionRun.order_id == ord_obj.id,
+                            ProductionRun.operation_id == op.id,
+                            ProductionRun.run_kind == "actual",
+                        )
+                    )
+                    if not existing_run:
+                        run = ProductionRun(
+                            order_id=ord_obj.id,
+                            operation_id=op.id,
+                            machine_id=machine.id,
+                            run_kind=run_kind,
+                            status=status,
+                            start_time=start_time,
+                            end_time=end_time,
+                            output_metres=output_metres,
+                        )
+                        db.add(run)
+                        runs_created += 1
+
+        db.flush()
+        print(f"   Seeded {runs_created} production runs.")
+
+        # -------------------------------------------------------------
+        # 12. FABRIC ROLLS & INSPECTIONS
+        # -------------------------------------------------------------
+        print("\n12. Seeding Fabric Rolls & Inspections...")
+        roll_statuses = ["awaiting_inspection", "passed", "rework", "rejected", "dispatched"]
+        roll_weights = [0.15, 0.55, 0.10, 0.05, 0.15]
+
+        rolls_created = 0
+        for ord_obj in orders[:min(150, len(orders))]:
+            # Only create rolls for orders with completed dyeing runs
+            dyeing_run = db.scalar(
+                select(ProductionRun)
+                .join(Operation)
+                .where(
+                    ProductionRun.order_id == ord_obj.id,
+                    Operation.stage == "dyeing",
+                    ProductionRun.run_kind == "actual",
+                    ProductionRun.status == "completed",
+                )
             )
-            db.add(run_ord1)
-            db.flush()
+            if not dyeing_run:
+                continue
 
-        # Order 2: In-progress run on WEAV-03
-        ord2_weaving_op = db.scalar(select(Operation).where(Operation.order_id == orders[1].id, Operation.stage == "weaving"))
-        run_ord2 = db.scalar(select(ProductionRun).where(ProductionRun.order_id == orders[1].id, ProductionRun.operation_id == ord2_weaving_op.id))
-        if not run_ord2:
-            run_ord2 = ProductionRun(
-                order_id=orders[1].id,
-                operation_id=ord2_weaving_op.id,
-                machine_id=machines["WEAV-03"].id,
-                run_kind="actual",
-                status="running",
-                start_time=now - timedelta(hours=8),
-                end_time=None,
-                output_metres=Decimal("0.00"),
-            )
-            db.add(run_ord2)
-            db.flush()
+            num_rolls = random.randint(1, 4)
+            for r in range(num_rolls):
+                roll_code = f"ROLL-{ord_obj.id:04d}-{r+1:02d}"
+                status = random.choices(roll_statuses, weights=roll_weights)[0]
 
-        # Order 3: Planned scheduled run on WEAV-05
-        ord3_weaving_op = db.scalar(select(Operation).where(Operation.order_id == orders[2].id, Operation.stage == "weaving"))
-        run_ord3 = db.scalar(select(ProductionRun).where(ProductionRun.order_id == orders[2].id, ProductionRun.operation_id == ord3_weaving_op.id))
-        if not run_ord3:
-            run_ord3 = ProductionRun(
-                order_id=orders[2].id,
-                operation_id=ord3_weaving_op.id,
-                machine_id=machines["WEAV-05"].id,
-                run_kind="scheduled",
-                status="planned",
-                start_time=now + timedelta(hours=10),
-                end_time=now + timedelta(hours=34),
-                output_metres=Decimal("0.00"),
-            )
-            db.add(run_ord3)
-            db.flush()
-        print("   Seeded production runs across multiple lifecycle states.")
+                existing = db.scalar(select(FabricRoll).where(FabricRoll.roll_code == roll_code))
+                if existing:
+                    continue
 
-        # -------------------------------------------------------------
-        # 10. FABRIC ROLLS & INSPECTION HISTORY
-        # -------------------------------------------------------------
-        print("\n10. Seeding Fabric Rolls & Inspections...")
-        # Order 1: 3 rolls from run_ord1
-        # - Roll 1: Passed & Dispatched (200m)
-        # - Roll 2: Passed & Dispatched (300m)
-        # - Roll 3: Rejected defect roll (100m)
-        # Order 2: 2 rolls
-        # - Roll 4: Passed (400m)
-        # - Roll 5: Rework (300m)
-        # - Roll 6: Awaiting inspection (250m)
-        rolls_config = [
-            {
-                "code": "ROLL-ORD01-001",
-                "order": orders[0],
-                "run": run_ord1,
-                "metres": Decimal("200.00"),
-                "status": "dispatched",
-                "inspections": [
-                    {"result": "pass", "defect": None, "severity": None, "note": "Uniform weave, pristine finish"},
-                ],
-            },
-            {
-                "code": "ROLL-ORD01-002",
-                "order": orders[0],
-                "run": run_ord1,
-                "metres": Decimal("300.00"),
-                "status": "dispatched",
-                "inspections": [
-                    {"result": "pass", "defect": None, "severity": None, "note": "Passed all dimensional and tension checks"},
-                ],
-            },
-            {
-                "code": "ROLL-ORD01-REJ",
-                "order": orders[0],
-                "run": run_ord1,
-                "metres": Decimal("100.00"),
-                "status": "rejected",
-                "inspections": [
-                    {"result": "rework", "defect": "Warp streak", "severity": "medium", "note": "Attempted steam leveling"},
-                    {"result": "reject", "defect": "Irreparable reed marks", "severity": "critical", "note": "Terminal rejection, scrap lot"},
-                ],
-            },
-            {
-                "code": "ROLL-ORD02-001",
-                "order": orders[1],
-                "run": run_ord2,
-                "metres": Decimal("400.00"),
-                "status": "passed",
-                "inspections": [
-                    {"result": "pass", "defect": None, "severity": None, "note": "Ready for dispatch"},
-                ],
-            },
-            {
-                "code": "ROLL-ORD02-002",
-                "order": orders[1],
-                "run": run_ord2,
-                "metres": Decimal("300.00"),
-                "status": "rework",
-                "inspections": [
-                    {"result": "rework", "defect": "Slub yarn imperfection", "severity": "medium", "note": "Sent back to re-mending station"},
-                ],
-            },
-            {
-                "code": "ROLL-ORD02-003",
-                "order": orders[1],
-                "run": run_ord2,
-                "metres": Decimal("250.00"),
-                "status": "awaiting_inspection",
-                "inspections": [],
-            },
-        ]
-
-        seeded_rolls = {}
-        for r_conf in rolls_config:
-            roll = db.scalar(select(FabricRoll).where(FabricRoll.roll_code == r_conf["code"]))
-            if not roll:
+                metres = ord_obj.quantity_metres / Decimal(str(num_rolls))
                 roll = FabricRoll(
-                    roll_code=r_conf["code"],
-                    order_id=r_conf["order"].id,
-                    production_run_id=r_conf["run"].id,
-                    metres=r_conf["metres"],
-                    status=r_conf["status"],
-                    created_at=now - timedelta(days=15),
+                    roll_code=roll_code,
+                    order_id=ord_obj.id,
+                    production_run_id=dyeing_run.id,
+                    metres=metres.quantize(Decimal("0.01")),
+                    status=status,
+                    created_at=now - timedelta(days=random.randint(1, 20)),
                 )
                 db.add(roll)
                 db.flush()
 
-                for insp in r_conf["inspections"]:
-                    insp_rec = Inspection(
-                        roll_id=roll.id,
-                        result=insp["result"],
-                        defect_type=insp["defect"],
-                        severity=insp["severity"],
-                        disposition=insp["note"],
-                        inspected_at=now - timedelta(days=14),
+                # Add inspections for non-awaiting rolls
+                if status != "awaiting_inspection":
+                    insp_count = random.randint(1, 3)
+                    for ic in range(insp_count):
+                        if status == "passed":
+                            result = "pass"
+                            defect = None
+                            severity = None
+                        elif status == "rework":
+                            result = random.choice(["pass", "rework"])
+                            defect = random.choice(["Slub yarn", "Warp streak", "Weft variation", "Tension irregularity"]) if result == "rework" else None
+                            severity = random.choice(["low", "medium", "high"]) if result == "rework" else None
+                        else:  # rejected
+                            result = "reject"
+                            defect = random.choice(["Irreparable reed marks", "Hole in fabric", "Severe shade variation", "Chemical damage"])
+                            severity = random.choice(["high", "critical"])
+
+                        note = f"Inspection {ic+1}: {defect or 'No defects found'}"
+                        insp_rec = Inspection(
+                            roll_id=roll.id,
+                            result=result,
+                            defect_type=defect,
+                            severity=severity,
+                            disposition=note,
+                            inspected_at=now - timedelta(days=random.randint(1, 15)),
+                        )
+                        db.add(insp_rec)
+                        db.flush()
+
+                rolls_created += 1
+
+        db.flush()
+        print(f"   Seeded {rolls_created} fabric rolls with inspections.")
+
+        # -------------------------------------------------------------
+        # 13. DISPATCHES
+        # -------------------------------------------------------------
+        print("\n13. Seeding Finished Goods Dispatches...")
+        passed_rolls = db.scalars(
+            select(FabricRoll).where(FabricRoll.status == "passed")
+        ).all()
+
+        # Group by order
+        rolls_by_order = {}
+        for roll in passed_rolls:
+            if roll.order_id not in rolls_by_order:
+                rolls_by_order[roll.order_id] = []
+            rolls_by_order[roll.order_id].append(roll)
+
+        dispatches_created = 0
+        for order_id, rolls in rolls_by_order.items():
+            if random.random() < 0.7:  # 70% chance of dispatch
+                invoice_num = f"INV-{now.year}-{order_id:04d}-{random.randint(100,999)}"
+                confirmed = random.random() < 0.6
+
+                disp = db.scalar(select(Dispatch).where(Dispatch.invoice_number == invoice_num))
+                if not disp:
+                    disp = Dispatch(
+                        order_id=order_id,
+                        dispatch_date=now - timedelta(days=random.randint(1, 30)),
+                        vehicle=f"TRK-{random.randint(1000,9999)}",
+                        invoice_number=invoice_num,
+                        confirmed=confirmed,
+                        confirmed_at=now - timedelta(days=random.randint(1, 30)) if confirmed else None,
                     )
-                    db.add(insp_rec)
-                db.flush()
-            seeded_rolls[r_conf["code"]] = roll
-        print(f"   Seeded/verified {len(seeded_rolls)} fabric rolls with full inspection chains.")
+                    db.add(disp)
+                    db.flush()
+
+                    # Add 1-3 rolls to dispatch
+                    selected_rolls = random.sample(rolls, min(len(rolls), random.randint(1, 3)))
+                    for roll in selected_rolls:
+                        item = DispatchItem(
+                            dispatch_id=disp.id,
+                            roll_id=roll.id,
+                            metres=roll.metres,
+                        )
+                        db.add(item)
+                        db.flush()
+
+                        if confirmed:
+                            roll.status = "dispatched"
+
+                    dispatches_created += 1
+
+        db.flush()
+        print(f"   Seeded {dispatches_created} dispatches.")
 
         # -------------------------------------------------------------
-        # 11. FINISHED GOODS DISPATCHES (Draft and Confirmed)
+        # 14. SIMULATION STATE (initialize)
         # -------------------------------------------------------------
-        print("\n11. Seeding Finished Goods Dispatches...")
-        # Confirmed Dispatch for Order 1: 500 metres (Roll 1: 200m + Roll 2: 300m)
-        disp1 = db.scalar(select(Dispatch).where(Dispatch.invoice_number == "INV-2026-NORDIC-001"))
-        if not disp1:
-            disp1 = Dispatch(
-                order_id=orders[0].id,
-                dispatch_date=now - timedelta(days=5),
-                vehicle="KA-04-TR-9988",
-                invoice_number="INV-2026-NORDIC-001",
-                confirmed=True,
-                confirmed_at=now - timedelta(days=5),
+        print("\n14. Initializing Simulation State...")
+        state = db.get(SimulationState, 1)
+        if not state:
+            state = SimulationState(
+                id=1,
+                status="stopped",
+                speed=Decimal("1.0"),
+                simulated_time=0,
             )
-            db.add(disp1)
-            db.flush()
-
-            item1 = DispatchItem(
-                dispatch_id=disp1.id,
-                roll_id=seeded_rolls["ROLL-ORD01-001"].id,
-                metres=Decimal("200.00"),
-            )
-            item2 = DispatchItem(
-                dispatch_id=disp1.id,
-                roll_id=seeded_rolls["ROLL-ORD01-002"].id,
-                metres=Decimal("300.00"),
-            )
-            db.add_all([item1, item2])
-            db.flush()
-
-        # Draft Dispatch for Order 2: Roll 4 (400m)
-        disp2 = db.scalar(select(Dispatch).where(Dispatch.invoice_number == "INV-2026-MILAN-DRAFT"))
-        if not disp2:
-            disp2 = Dispatch(
-                order_id=orders[1].id,
-                dispatch_date=now + timedelta(days=2),
-                vehicle="MH-12-FG-4411",
-                invoice_number="INV-2026-MILAN-DRAFT",
-                confirmed=False,
-                confirmed_at=None,
-            )
-            db.add(disp2)
-            db.flush()
-
-            item3 = DispatchItem(
-                dispatch_id=disp2.id,
-                roll_id=seeded_rolls["ROLL-ORD02-001"].id,
-                metres=Decimal("400.00"),
-            )
-            db.add(item3)
-            db.flush()
-
+            db.add(state)
         db.commit()
-        print("   Seeded dispatches: 1 Confirmed (INV-2026-NORDIC-001) & 1 Draft (INV-2026-MILAN-DRAFT).")
 
-    print("\n" + "=" * 60)
-    print("SEEDING COMPLETED SUCCESSFULLY!")
-    print("=" * 60)
+        print("\n" + "=" * 60)
+        print("SEEDING COMPLETED SUCCESSFULLY!")
+        print(f"Orders: {len(orders)}, Workers: {len(workers)}, Machines: {len(machines)}")
+        print("=" * 60)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Seed database with synthetic textile factory data.")
     parser.add_argument("--reset", action="store_true", help="Clear Member 2 data before seeding.")
+    parser.add_argument("--orders", type=int, default=600, help="Number of orders to generate (default: 600)")
+    parser.add_argument("--workers", type=int, default=50, help="Number of workers to generate (default: 50)")
     args = parser.parse_args()
-    seed(reset=args.reset)
+    seed(reset=args.reset, order_count=args.orders, worker_count=args.workers)

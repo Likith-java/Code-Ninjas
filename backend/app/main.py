@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,13 +22,35 @@ from app.routers import (
     reports,
     rolls,
     scheduler,
+    simulation,
     suppliers,
+    workers,
 )
+from app.services.simulation import start_simulation, stop_simulation
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    try:
+        await start_simulation()
+    except Exception as e:
+        print(f"Warning: Could not start simulation service: {e}")
+
+    yield
+
+    # Shutdown
+    try:
+        await stop_simulation()
+    except Exception as e:
+        print(f"Warning: Could not stop simulation service: {e}")
+
 
 app = FastAPI(
     title="Everest Textile Intelligence API",
     description="Orders, buyers, yarn inventory, machines, production operations, downtime tracking, quality inspection, finished-goods dispatches and traceability",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Configure CORS origins from environment (comma-separated if multiple)
@@ -98,3 +121,5 @@ app.include_router(dispatches.router)
 app.include_router(reports.router)
 app.include_router(notifications.router)
 app.include_router(scheduler.router)
+app.include_router(simulation.router)
+app.include_router(workers.router)

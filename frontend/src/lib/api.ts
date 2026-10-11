@@ -920,6 +920,33 @@ export const api = {
       method: 'POST',
     })
   },
+
+  // Simulation
+  getSimulationStatus: () => request<SimulationStatus>('/simulation/status'),
+  startSimulation: () => request('/simulation/start', { method: 'POST' }),
+  stopSimulation: () => request('/simulation/stop', { method: 'POST' }),
+  pauseSimulation: () => request('/simulation/pause', { method: 'POST' }),
+  resumeSimulation: () => request('/simulation/resume', { method: 'POST' }),
+  setSimulationSpeed: (speed: number) => request('/simulation/speed', { method: 'POST', body: JSON.stringify({ speed }) }),
+  resetSimulation: () => request('/simulation/reset', { method: 'POST' }),
+
+  // Workers
+  getWorkers: (params?: WorkerListParams) => {
+    const searchParams = new URLSearchParams()
+    if (params?.shift) searchParams.set('shift', params.shift)
+    if (params?.status) searchParams.set('status', params.status)
+    if (params?.skill_level) searchParams.set('skill_level', params.skill_level)
+    if (params?.offset !== undefined) searchParams.set('offset', String(params.offset))
+    if (params?.limit !== undefined) searchParams.set('limit', String(params.limit))
+    const qs = searchParams.toString()
+    return request<Worker[]>(`/workers${qs ? `?${qs}` : ''}`)
+  },
+  getWorker: (id: number) => request<Worker>(`/workers/${id}`),
+  createWorker: (worker: WorkerCreate) => request<Worker>('/workers', {
+    method: 'POST',
+    body: JSON.stringify(worker),
+  }),
+  getWorkerAssignments: (workerId: number) => request<WorkerAssignment[]>(`/workers/${workerId}/assignments`),
 }
 
 export interface BackendEmailNotification {
@@ -1194,4 +1221,68 @@ export interface CompareSchedulersResponse {
     validation?: { edf: { status: string; violations: number }; cpsat: { status: string; violations: number } }
     solver_status?: { edf: string; cpsat: string }
   }
+}
+
+// Simulation Types
+export interface SimulationStatus {
+  status: 'stopped' | 'running' | 'paused'
+  speed: number
+  simulated_time: number
+  last_tick_at: string | null
+  active_runs: number
+  blocked_operations: number
+}
+
+export interface SimulationControlRequest {
+  speed?: number
+}
+
+export interface Worker {
+  id: number
+  employee_code: string
+  name: string
+  skill_level: 'trainee' | 'operator' | 'senior' | 'technician' | 'supervisor' | 'quality_inspector'
+  shift: 'A' | 'B' | 'C' | 'day' | 'night' | 'flex'
+  status: 'active' | 'on_leave' | 'inactive'
+  hourly_rate: number
+  skills: string[]
+  created_at: string
+}
+
+export interface WorkerAssignment {
+  id: number
+  worker_id: number
+  operation_id: number
+  production_run_id: number
+  role_in_run: 'operator' | 'assistant' | 'supervisor' | 'quality_check'
+  assigned_at: string
+  released_at: string | null
+  worker?: Worker
+  operation?: {
+    id: number
+    stage: string
+    sequence: number
+  }
+  production_run?: {
+    id: number
+    status: string
+  }
+}
+
+export interface WorkerListParams {
+  shift?: string
+  status?: string
+  skill_level?: string
+  offset?: number
+  limit?: number
+}
+
+export interface WorkerCreate {
+  employee_code: string
+  name: string
+  skill_level: 'trainee' | 'operator' | 'senior' | 'technician' | 'supervisor' | 'quality_inspector'
+  shift: 'A' | 'B' | 'C' | 'day' | 'night' | 'flex'
+  status?: 'active' | 'on_leave' | 'inactive'
+  hourly_rate: number
+  skills: string[]
 }

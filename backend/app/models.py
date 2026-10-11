@@ -1,11 +1,13 @@
 
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -16,6 +18,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import JSONB
 
 from app.database import Base
 
@@ -541,7 +544,88 @@ class User(Base):
 
 
 # ============================================================
-# 7. EMAIL NOTIFICATIONS & DELIVERY AUDIT LOG
+# 6. WORKFORCE
+# ============================================================
+
+class Worker(Base):
+    __tablename__ = "workers"
+    __table_args__ = (
+        CheckConstraint(
+            "skill_level IN ('trainee', 'operator', 'senior', 'technician', 'supervisor', 'quality_inspector')",
+            name="ck_worker_skill_level",
+        ),
+        CheckConstraint(
+            "shift IN ('A', 'B', 'C', 'day', 'night', 'flex')",
+            name="ck_worker_shift",
+        ),
+        CheckConstraint(
+            "status IN ('active', 'on_leave', 'inactive')",
+            name="ck_worker_status",
+        ),
+        Index("ix_workers_shift_status", "shift", "status"),
+        Index("ix_workers_skill_level", "skill_level"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    employee_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    skill_level: Mapped[str] = mapped_column(String(30), default="operator", nullable=False)
+    shift: Mapped[str] = mapped_column(String(20), default="A", nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
+    hourly_rate: Mapped[float] = mapped_column(Numeric(10, 2), default=0, nullable=False)
+    skills: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)  # skill tags
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+    # Many-to-many with operations through assignments
+    assignments: Mapped[list["WorkerAssignment"]] = relationship(back_populates="worker")
+
+
+class WorkerAssignment(Base):
+    __tablename__ = "worker_assignments"
+    __table_args__ = (
+        UniqueConstraint("worker_id", "operation_id", "production_run_id", name="uq_worker_operation_run"),
+        CheckConstraint(
+            "role_in_run IN ('operator', 'assistant', 'supervisor', 'quality_check')",
+            name="ck_worker_role_in_run",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    worker_id: Mapped[int] = mapped_column(ForeignKey("workers.id", ondelete="CASCADE"), nullable=False, index=True)
+    operation_id: Mapped[int] = mapped_column(ForeignKey("operations.id", ondelete="CASCADE"), nullable=False, index=True)
+    production_run_id: Mapped[int] = mapped_column(ForeignKey("production_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    role_in_run: Mapped[str] = mapped_column(String(30), default="operator", nullable=False)
+    assigned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    worker: Mapped["Worker"] = relationship(back_populates="assignments")
+    operation: Mapped["Operation"] = relationship()
+    production_run: Mapped["ProductionRun"] = relationship()
+
+
+# ============================================================
+# 7. SIMULATION STATE
+# ============================================================
+
+class SimulationState(Base):
+    __tablename__ = "simulation_state"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('stopped', 'running', 'paused')",
+            name="ck_simulation_status",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    status: Mapped[str] = mapped_column(String(20), default="stopped", nullable=False)
+    speed: Mapped[float] = mapped_column(Numeric(6, 3), default=Decimal("1.0"), nullable=False)  # simulated minutes per real second
+    simulated_time: Mapped[int] = mapped_column(Integer, default=0, nullable=False)  # total simulated minutes elapsed
+    last_tick_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+
+# ============================================================
+# 8. EMAIL NOTIFICATIONS & DELIVERY AUDIT LOG
 # ============================================================
 
 class EmailNotification(Base):
