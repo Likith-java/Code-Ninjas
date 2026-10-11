@@ -145,3 +145,57 @@ export interface RouteEligibility {
   stage: ProductionStage
   machines: string[]
 }
+
+// Worker types
+export type WorkerSkillLevel = 'trainee' | 'operator' | 'senior' | 'technician' | 'supervisor' | 'quality_inspector'
+export type WorkerShift = 'A' | 'B' | 'C' | 'day' | 'night' | 'flex'
+export type WorkerStatus = 'active' | 'on_leave' | 'inactive'
+export type WorkerRoleInRun = 'operator' | 'assistant' | 'supervisor' | 'quality_check'
+
+export interface Worker {
+  id: number
+  employeeCode: string
+  name: string
+  skillLevel: WorkerSkillLevel
+  shift: WorkerShift
+  status: WorkerStatus
+  hourlyRate: number
+  skills: string[]
+  createdAt: string
+}
+
+export interface WorkerAssignment {
+  id: number
+  workerId: number
+  operationId: number
+  productionRunId: number
+  roleInRun: WorkerRoleInRun
+  assignedAt: string
+  releasedAt: string | null
+  worker?: Worker
+  operation?: {
+    id: number
+    stage: string
+    sequence: number
+  }
+  productionRun?: {
+    id: number
+    status: string
+  }
+}
+
+// Simulation types
+export type SimulationStatus = 'stopped' | 'running' | 'paused'
+
+export interface SimulationState {
+  status: SimulationStatus
+  speed: number
+  simulatedTime: number
+  lastTickAt: string | null
+  activeRuns: number
+  blockedOperations: number
+}
+
+export interface SimulationControlRequest {
+  speed?: number
+}
