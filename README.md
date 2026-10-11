@@ -471,6 +471,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+pip install -e ../production-scheduler
 cp .env.example .env             # Set DATABASE_URL, SOLVER_TIME_LIMIT_SECONDS, SOLVER_RANDOM_SEED, SMTP_*
 python -m scripts.seed           # Load synthetic mill data
 uvicorn app.main:app --reload --port 8000

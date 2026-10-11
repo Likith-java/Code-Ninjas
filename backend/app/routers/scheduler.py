@@ -1,5 +1,11 @@
+import sys
 from typing import Any, Literal, Optional
 from pathlib import Path
+
+# Ensure production-scheduler package is importable if not installed in current env
+_SCHEDULER_SRC = Path(__file__).resolve().parents[3] / "production-scheduler" / "src"
+if _SCHEDULER_SRC.exists() and str(_SCHEDULER_SRC) not in sys.path:
+    sys.path.insert(0, str(_SCHEDULER_SRC))
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field

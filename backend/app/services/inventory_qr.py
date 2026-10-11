@@ -1,12 +1,18 @@
 import io
+import json
 import os
+import re
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 import qrcode
-from qrcode.constants import ERROR_CORRECT_M
+import qrcode.constants
+from qrcode.image.pil import PilImage
+
+ERROR_CORRECT_M = getattr(qrcode.constants, "ERROR_CORRECT_M", 0)
 
 from app.models import MaterialLot, InventoryMovement
 from app.schemas import MaterialLotDetailOut, InventoryMovementOut
@@ -40,7 +46,7 @@ def generate_lot_qr_code(
         base_url = get_application_base_url()
 
     # If lot has no qr_token, assign deterministic fallback
-    token = lot.qr_token or f"lot-{lot.id}-{uuid.uuid4().hex[:8]}"
+    token = lot.qr_token or (f"lot-{lot.id}-{lot.lot_code}" if lot.lot_code else f"lot-{lot.id}")
 
     # Encode stable application route
     if base_url:
@@ -57,9 +63,9 @@ def generate_lot_qr_code(
     qr.add_data(payload)
     qr.make(fit=True)
 
-    img = qr.make_image(fill_color="#181816", back_color="#FFFFFF")
+    img = qr.make_image(image_factory=PilImage, fill_color="#181816", back_color="#FFFFFF")
     buf = io.BytesIO()
-    img.save(buf, format="PNG")
+    img.save(buf, format=image_format.upper())
     return buf.getvalue()
 
 
@@ -68,14 +74,46 @@ def resolve_lot_by_identifier(db: Session, identifier: str | int) -> MaterialLot
     Resolves a lot by numeric ID, qr_token, or lot_code safely.
     Handles scanned URLs, JSON strings, or raw tokens.
     """
-    # 1. If scanned input is a URL or path, extract lot_id or token
     query_str = str(identifier).strip()
-    
-    # Handle /inventory/lots/123 or ?lotId=123 or ?token=abc
-    import re
+
+    # 1. Handle JSON encoded scan payloads (e.g., {"lot_id": 12} or {"token": "..."})
+    if query_str.startswith("{") and query_str.endswith("}"):
+        try:
+            data = json.loads(query_str)
+            if isinstance(data, dict):
+                candidate = (
+                    data.get("lot_id")
+                    or data.get("id")
+                    or data.get("token")
+                    or data.get("qr_token")
+                    or data.get("lot_code")
+                )
+                if candidate is not None:
+                    return resolve_lot_by_identifier(db, candidate)
+        except Exception:
+            pass
+
+    # 2. If scanned input is a URL or path, extract lot_id
     id_match = re.search(r"/inventory/lots/(\d+)", query_str)
     if id_match:
         lot_id = int(id_match.group(1))
+        lot = db.scalar(
+            select(MaterialLot)
+            .options(
+                selectinload(MaterialLot.material),
+                selectinload(MaterialLot.supplier),
+                selectinload(MaterialLot.intended_order),
+                selectinload(MaterialLot.movements),
+            )
+            .where(MaterialLot.id == lot_id)
+        )
+        if lot:
+            return lot
+
+    # Query param match for lotId or id (e.g., ?lotId=123 or &id=123)
+    param_id_match = re.search(r"[?&](?:lotId|lot_id|id)=(\d+)", query_str, re.IGNORECASE)
+    if param_id_match:
+        lot_id = int(param_id_match.group(1))
         lot = db.scalar(
             select(MaterialLot)
             .options(
@@ -106,7 +144,24 @@ def resolve_lot_by_identifier(db: Session, identifier: str | int) -> MaterialLot
         if lot:
             return lot
 
-    # 2. Try integer ID
+    # 3. Handle deterministic token pattern (e.g., lot-12-LOT001 or lot-12)
+    lot_prefix_match = re.match(r"^lot-(\d+)(?:-.*)?$", query_str)
+    if lot_prefix_match:
+        lot_id = int(lot_prefix_match.group(1))
+        lot = db.scalar(
+            select(MaterialLot)
+            .options(
+                selectinload(MaterialLot.material),
+                selectinload(MaterialLot.supplier),
+                selectinload(MaterialLot.intended_order),
+                selectinload(MaterialLot.movements),
+            )
+            .where(MaterialLot.id == lot_id)
+        )
+        if lot:
+            return lot
+
+    # 4. Try integer ID
     if isinstance(identifier, int) or (isinstance(query_str, str) and query_str.isdigit()):
         lot_id = int(query_str)
         lot = db.scalar(
@@ -122,7 +177,7 @@ def resolve_lot_by_identifier(db: Session, identifier: str | int) -> MaterialLot
         if lot:
             return lot
 
-    # 3. Try exact qr_token
+    # 5. Try exact qr_token
     lot = db.scalar(
         select(MaterialLot)
         .options(
@@ -136,7 +191,7 @@ def resolve_lot_by_identifier(db: Session, identifier: str | int) -> MaterialLot
     if lot:
         return lot
 
-    # 4. Try exact lot_code
+    # 6. Try exact lot_code
     lot = db.scalar(
         select(MaterialLot)
         .options(
@@ -162,10 +217,15 @@ def build_lot_detail_dto(db: Session, lot: MaterialLot) -> MaterialLotDetailOut:
     """
     available = lot_balance(db, lot.id)
 
-    # Sort movements descending by movement_date
+    def get_movement_sort_key(m: InventoryMovement) -> datetime:
+        if m.movement_date:
+            return m.movement_date
+        return datetime.min.replace(tzinfo=timezone.utc)
+
+    # Sort movements descending by movement_date safely
     recent_movements = sorted(
         lot.movements,
-        key=lambda m: m.movement_date or m.id,
+        key=get_movement_sort_key,
         reverse=True,
     )[:20]
 
@@ -183,7 +243,7 @@ def build_lot_detail_dto(db: Session, lot: MaterialLot) -> MaterialLotDetailOut:
     ]
 
     base_url = get_application_base_url()
-    qr_code_url = f"/api/inventory/lots/{lot.id}/qr" if not base_url else f"{base_url}/api/inventory/lots/{lot.id}/qr"
+    qr_code_url = f"/inventory/lots/{lot.id}/qr" if not base_url else f"{base_url}/inventory/lots/{lot.id}/qr"
 
     return MaterialLotDetailOut(
         lot_id=lot.id,
