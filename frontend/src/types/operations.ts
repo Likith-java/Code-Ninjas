@@ -11,6 +11,13 @@ export interface DashboardOrder {
   status: 'In Production' | 'Completed' | 'Scheduled' | 'Delayed'
   dueHours: number
   priority: 'P0' | 'P1' | 'P2' | 'P3'
+  unitPrice?: number
+  totalAmount?: number
+  orderDate?: string
+  deadlineDate?: string
+  derivedStatus?: string
+  qualityStatus?: string
+  dispatchStatus?: string
 }
 
 export interface MachineGroupStatus {

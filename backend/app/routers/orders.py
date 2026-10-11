@@ -19,8 +19,10 @@ from app.services.production import (
 )
 from app.models import (
     Buyer,
+    Dispatch,
     DispatchItem,
     Downtime,
+    FabricRoll,
     InventoryMovement,
     Machine,
     Material,
@@ -45,6 +47,8 @@ from app.schemas import (
     StartProductionOut,
     StartProductionRequest,
 )
+from app.schemas_pricing import FabricCatalogueItem, PriceQuoteOut, PriceQuoteRequest
+from app.services.pricing import calculate_authoritative_price, get_supported_fabrics
 
 router = APIRouter(tags=["Orders"])
 
@@ -127,6 +131,29 @@ def calculate_feasibility(
     )
 
 
+@router.get("/fabrics", response_model=list[FabricCatalogueItem], summary="List supported fabric catalogue with base rates")
+@router.get("/orders/pricing/fabrics", response_model=list[FabricCatalogueItem], include_in_schema=False)
+@router.get("/api/pricing/fabrics", response_model=list[FabricCatalogueItem], include_in_schema=False)
+def list_supported_fabrics(
+    db: Session = Depends(get_db),
+):
+    return get_supported_fabrics(db)
+
+
+@router.post("/orders/quote", response_model=PriceQuoteOut, summary="Calculate authoritative price quote")
+@router.post("/api/pricing/quote", response_model=PriceQuoteOut, include_in_schema=False)
+def get_price_quote(
+    payload: PriceQuoteRequest,
+    db: Session = Depends(get_db),
+):
+    return calculate_authoritative_price(
+        fabric_type=payload.fabric_type,
+        colour=payload.colour,
+        quantity_metres=payload.quantity_metres,
+        db=db,
+    )
+
+
 @router.post("/orders/feasibility", response_model=FeasibilityOut)
 def check_feasibility(
     payload: FeasibilityRequest,
@@ -138,6 +165,57 @@ def check_feasibility(
         payload.colour,
         payload.quantity_metres,
     )
+
+
+def populate_order_metrics(db: Session, order: Order, out: OrderOut) -> OrderOut:
+    out.derived_status = derive_order_status(db, order)
+    if order.buyer:
+        out.buyer_name = order.buyer.name
+    
+    qty = Decimal(str(order.quantity_metres))
+    rate = Decimal(str(order.agreed_rate))
+    out.total_amount = (qty * rate).quantize(Decimal("0.01"))
+
+    # Determine current stage from actual runs
+    runs = db.scalars(
+        select(ProductionRun)
+        .options(selectinload(ProductionRun.operation))
+        .where(ProductionRun.order_id == order.id)
+    ).all()
+
+    running_run = next((r for r in runs if r.run_kind == "actual" and r.status == "running"), None)
+    if running_run and running_run.operation:
+        out.current_stage = running_run.operation.stage
+    elif runs:
+        completed_run = next((r for r in runs if r.status == "completed"), None)
+        if completed_run and completed_run.operation:
+            out.current_stage = completed_run.operation.stage
+        else:
+            first_run = runs[0]
+            out.current_stage = first_run.operation.stage if first_run.operation else "spinning"
+    else:
+        out.current_stage = "spinning"
+
+    # Total produced metres from passed rolls or actual run output
+    passed_metres = db.scalar(
+        select(func.coalesce(func.sum(FabricRoll.metres), 0)).where(
+            FabricRoll.order_id == order.id,
+            FabricRoll.status == "passed",
+        )
+    ) or Decimal("0")
+
+    if Decimal(str(passed_metres)) > 0:
+        out.produced_metres = Decimal(str(passed_metres))
+    else:
+        run_output = db.scalar(
+            select(func.coalesce(func.sum(ProductionRun.output_metres), 0)).where(
+                ProductionRun.order_id == order.id,
+                ProductionRun.run_kind == "actual",
+            )
+        ) or Decimal("0")
+        out.produced_metres = Decimal(str(run_output))
+
+    return out
 
 
 @router.post("/orders", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
@@ -166,11 +244,19 @@ def create_order(
     if buyer is None:
         raise HTTPException(status_code=404, detail="Buyer not found")
 
+    # Authoritative server pricing & fabric validation
+    quote = calculate_authoritative_price(
+        fabric_type=payload.fabric_type,
+        colour=payload.colour,
+        quantity_metres=payload.quantity_metres,
+        db=db,
+    )
+
     feasibility = calculate_feasibility(
         db,
-        payload.fabric_type,
-        payload.colour,
-        payload.quantity_metres,
+        quote.fabric_type,
+        quote.colour,
+        quote.quantity_metres,
     )
     if not feasibility.feasible:
         raise HTTPException(
@@ -184,6 +270,19 @@ def create_order(
     try:
         order_dict = payload.model_dump()
         order_dict["buyer_id"] = target_buyer_id
+        order_dict["fabric_type"] = quote.fabric_type
+        order_dict["colour"] = quote.colour
+        # Authoritative pricing: For standard catalogue fabrics, enforce server calculation and ignore tampering
+        # For custom/test contract orders, use negotiated agreed_rate if provided
+        ft_key = (quote.fabric_type.strip().lower(), quote.colour.strip().lower() if quote.colour else "")
+        from app.services.pricing import CONFIGURED_PRICING
+        if ft_key in CONFIGURED_PRICING:
+            order_dict["agreed_rate"] = quote.unit_price  # Enforce authoritative unit price! Ignore client tampering!
+        elif payload.agreed_rate is not None and Decimal(str(payload.agreed_rate)) > 0:
+            order_dict["agreed_rate"] = Decimal(str(payload.agreed_rate))
+        else:
+            order_dict["agreed_rate"] = quote.unit_price
+
         order = Order(**order_dict)
         db.add(order)
         db.flush()
@@ -212,7 +311,8 @@ def create_order(
             order.id,
             current_user.id if current_user else None,
         )
-        return order
+        out = OrderOut.model_validate(order)
+        return populate_order_metrics(db, order, out)
     except IntegrityError:
         db.rollback()
         raise HTTPException(
@@ -246,10 +346,7 @@ def list_orders(
     results: list[OrderOut] = []
     for o in orders:
         out = OrderOut.model_validate(o)
-        out.derived_status = derive_order_status(db, o)
-        if o.buyer:
-            out.buyer_name = o.buyer.name
-        results.append(out)
+        results.append(populate_order_metrics(db, o, out))
     return results
 
 
@@ -275,10 +372,98 @@ def get_order(
             )
 
     out = OrderOut.model_validate(order)
-    out.derived_status = derive_order_status(db, order)
-    if order.buyer:
-        out.buyer_name = order.buyer.name
-    return out
+    return populate_order_metrics(db, order, out)
+
+
+@router.get("/orders/{order_id}/tracking", summary="Get detailed customer order tracking lifecycle timeline")
+def get_order_tracking(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    order = db.scalar(
+        select(Order)
+        .options(
+            selectinload(Order.buyer),
+            selectinload(Order.production_runs).selectinload(ProductionRun.machine),
+            selectinload(Order.rolls),
+            selectinload(Order.dispatches).selectinload(Dispatch.items),
+        )
+        .where(Order.id == order_id)
+    )
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if current_user and current_user.role == "customer":
+        if not current_user.buyer_id or order.buyer_id != current_user.buyer_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access forbidden: you do not have permission to view this order.",
+            )
+
+    derived_status = derive_order_status(db, order)
+    qty = Decimal(str(order.quantity_metres))
+    rate = Decimal(str(order.agreed_rate))
+    total_amount = (qty * rate).quantize(Decimal("0.01"))
+
+    # Active running run
+    running_run = next(
+        (r for r in order.production_runs if r.run_kind == "actual" and r.status == "running"),
+        None,
+    )
+    has_scheduled = any(r.run_kind == "scheduled" and r.status != "cancelled" for r in order.production_runs)
+    has_actual_runs = any(r.run_kind == "actual" for r in order.production_runs)
+
+    passed_rolls = [r for r in order.rolls if r.status == "passed"]
+    passed_metres = sum((Decimal(str(r.metres)) for r in passed_rolls), Decimal("0"))
+
+    dispatches = [d for d in order.dispatches if d.confirmed]
+    dispatched_metres = Decimal("0")
+    for d in dispatches:
+        for it in d.items:
+            dispatched_metres += Decimal(str(it.metres))
+
+    is_order_placed = True
+    is_feasibility_checked = True
+    is_scheduled = has_scheduled or has_actual_runs or derived_status not in ("pending", "not_started")
+    is_in_production = has_actual_runs or derived_status in ("in_production", "ready_for_dispatch", "partially_dispatched", "completed")
+    is_quality_inspection = passed_metres > 0 or len(order.rolls) > 0 or derived_status in ("ready_for_dispatch", "partially_dispatched", "completed")
+    is_ready_for_dispatch = derived_status in ("ready_for_dispatch", "partially_dispatched", "completed")
+    is_dispatched = derived_status in ("partially_dispatched", "completed") or dispatched_metres > 0
+    is_delivered = derived_status == "completed"
+
+    timeline_stages = [
+        {"key": "order_placed", "name": "Order Placed", "completed": is_order_placed, "active": derived_status == "pending"},
+        {"key": "feasibility_checked", "name": "Feasibility Checked", "completed": is_feasibility_checked, "active": False},
+        {"key": "scheduled", "name": "Scheduled", "completed": is_scheduled, "active": derived_status == "scheduled"},
+        {"key": "in_production", "name": "In Production", "completed": is_in_production, "active": derived_status == "in_production"},
+        {"key": "quality_inspection", "name": "Quality Inspection", "completed": is_quality_inspection, "active": is_quality_inspection and not is_ready_for_dispatch},
+        {"key": "ready_for_dispatch", "name": "Ready for Dispatch", "completed": is_ready_for_dispatch, "active": derived_status == "ready_for_dispatch"},
+        {"key": "dispatched", "name": "Dispatched", "completed": is_dispatched, "active": derived_status == "partially_dispatched"},
+        {"key": "delivered", "name": "Delivered", "completed": is_delivered, "active": is_delivered},
+    ]
+
+    return {
+        "order_id": order.id,
+        "buyer_id": order.buyer_id,
+        "buyer_name": order.buyer.name if order.buyer else None,
+        "fabric_type": order.fabric_type,
+        "colour": order.colour,
+        "quantity_metres": float(qty),
+        "agreed_rate": float(rate),
+        "total_amount": float(total_amount),
+        "order_date": order.order_date.isoformat(),
+        "deadline": order.deadline.isoformat(),
+        "priority": order.priority,
+        "derived_status": derived_status,
+        "current_stage": running_run.machine.machine_type if running_run and running_run.machine else ("weaving" if is_in_production else "spinning"),
+        "active_machine": running_run.machine.machine_code if running_run and running_run.machine else None,
+        "passed_rolls_count": len(passed_rolls),
+        "passed_metres": float(passed_metres),
+        "dispatches_count": len(dispatches),
+        "dispatched_metres": float(dispatched_metres),
+        "timeline": timeline_stages,
+    }
 
 
 @router.get(
@@ -355,32 +540,57 @@ def get_order_production_readiness(
         None,
     )
 
-    # 4. Eligible machines for target operation
-    eligible_machines_list: list[Machine] = []
+    # 4. Eligible machines for target operation - only ready and available choices!
+    raw_candidates: list[Machine] = []
     if target_op.eligible_machines:
-        eligible_machines_list = [m for m in target_op.eligible_machines if m.is_active]
+        raw_candidates = [m for m in target_op.eligible_machines if m.is_active]
     else:
-        eligible_machines_list = db.scalars(
+        raw_candidates = db.scalars(
             select(Machine).where(
                 Machine.machine_type == target_op.stage,
                 Machine.is_active.is_(True),
             )
         ).all()
 
-    # Prefer machine from scheduled run if present
+    now = utc_now()
+    eligible_machines_list: list[Machine] = []
+    for m in raw_candidates:
+        if m.state in ("breakdown", "maintenance", "running"):
+            continue
+        has_dt = db.scalar(
+            select(Downtime.id).where(
+                Downtime.machine_id == m.id,
+                Downtime.start_time <= now,
+                or_(Downtime.end_time.is_(None), Downtime.end_time > now),
+            ).limit(1)
+        )
+        if has_dt is not None:
+            continue
+        has_run = db.scalar(
+            select(ProductionRun.id).where(
+                ProductionRun.machine_id == m.id,
+                ProductionRun.run_kind == "actual",
+                ProductionRun.status == "running",
+            ).limit(1)
+        )
+        if has_run is not None:
+            continue
+        eligible_machines_list.append(m)
+
+    # Prefer machine from scheduled run if present and ready
     scheduled_run = next(
         (r for r in order.production_runs if r.operation_id == target_op.id and r.run_kind == "scheduled" and r.status != "cancelled"),
         None,
     )
     recommended_machine = None
     if scheduled_run:
-        recommended_machine = db.get(Machine, scheduled_run.machine_id)
-        if recommended_machine and (not recommended_machine.is_active or recommended_machine.state in ("breakdown", "maintenance")):
-            recommended_machine = None
+        cand = next((m for m in eligible_machines_list if m.id == scheduled_run.machine_id), None)
+        if cand:
+            recommended_machine = cand
 
-    if not recommended_machine:
+    if not recommended_machine and eligible_machines_list:
         idle_eligible = [m for m in eligible_machines_list if m.state == "idle"]
-        recommended_machine = idle_eligible[0] if idle_eligible else (eligible_machines_list[0] if eligible_machines_list else None)
+        recommended_machine = idle_eligible[0] if idle_eligible else eligible_machines_list[0]
 
     active_machine = db.get(Machine, active_run.machine_id) if active_run else None
 

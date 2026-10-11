@@ -1,12 +1,13 @@
 from typing import Any, Literal
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
-from app.models import Machine, Operation, Order, ProductionRun
+from app.models import Downtime, Machine, Operation, Order, ProductionRun
 from app.schemas import (
+    EligibleMachineSummary,
     OperationOut,
     ProductionRunCreate,
     ProductionRunOut,
@@ -268,6 +269,69 @@ def create_production_run(
 
 
 @router.get(
+    "/operations/{operation_id}/eligible-machines",
+    response_model=list[EligibleMachineSummary],
+    summary="Get machines currently eligible and ready for an operation",
+)
+def get_operation_eligible_machines(
+    operation_id: int,
+    db: Session = Depends(get_db),
+):
+    operation = db.scalar(
+        select(Operation)
+        .options(selectinload(Operation.eligible_machines))
+        .where(Operation.id == operation_id)
+    )
+    if operation is None:
+        raise HTTPException(status_code=404, detail="Operation not found")
+
+    candidates = []
+    if operation.eligible_machines:
+        candidates = [m for m in operation.eligible_machines if m.is_active]
+    else:
+        candidates = db.scalars(
+            select(Machine).where(
+                Machine.machine_type == operation.stage,
+                Machine.is_active.is_(True),
+            )
+        ).all()
+
+    now = utc_now()
+    ready: list[EligibleMachineSummary] = []
+    for m in candidates:
+        if m.state in ("breakdown", "maintenance", "running"):
+            continue
+        has_dt = db.scalar(
+            select(Downtime.id).where(
+                Downtime.machine_id == m.id,
+                Downtime.start_time <= now,
+                or_(Downtime.end_time.is_(None), Downtime.end_time > now),
+            ).limit(1)
+        )
+        if has_dt is not None:
+            continue
+        has_run = db.scalar(
+            select(ProductionRun.id).where(
+                ProductionRun.machine_id == m.id,
+                ProductionRun.run_kind == "actual",
+                ProductionRun.status == "running",
+            ).limit(1)
+        )
+        if has_run is not None:
+            continue
+        ready.append(
+            EligibleMachineSummary(
+                id=m.id,
+                machine_code=m.machine_code,
+                machine_type=m.machine_type,
+                state=m.state,
+                is_active=m.is_active,
+            )
+        )
+    return ready
+
+
+@router.get(
     "/production-runs",
     response_model=list[ProductionRunOut],
     summary="List and filter production runs",
@@ -279,14 +343,24 @@ def list_production_runs(
     run_kind: Literal["scheduled", "actual"] | None = Query(
         None, description="Filter by run kind ('scheduled' or 'actual')"
     ),
+    kind: Literal["scheduled", "actual"] | None = Query(
+        None, description="Alias for run_kind"
+    ),
     status_filter: Literal[
         "planned", "running", "completed", "cancelled"
     ] | None = Query(None, alias="status", description="Filter by run status"),
     skip: int = Query(0, ge=0, description="Offset"),
-    limit: int = Query(50, ge=1, le=100, description="Page limit"),
+    limit: int = Query(100, ge=1, le=200, description="Page limit"),
     db: Session = Depends(get_db),
 ):
-    query = select(ProductionRun)
+    query = (
+        select(ProductionRun)
+        .options(
+            selectinload(ProductionRun.operation),
+            selectinload(ProductionRun.machine),
+            selectinload(ProductionRun.order).selectinload(Order.buyer),
+        )
+    )
 
     if order_id is not None:
         query = query.where(ProductionRun.order_id == order_id)
@@ -294,8 +368,10 @@ def list_production_runs(
         query = query.where(ProductionRun.operation_id == operation_id)
     if machine_id is not None:
         query = query.where(ProductionRun.machine_id == machine_id)
-    if run_kind is not None:
-        query = query.where(ProductionRun.run_kind == run_kind)
+    
+    effective_kind = run_kind or kind
+    if effective_kind is not None:
+        query = query.where(ProductionRun.run_kind == effective_kind)
     if status_filter is not None:
         query = query.where(ProductionRun.status == status_filter)
 
@@ -304,7 +380,23 @@ def list_production_runs(
             query.order_by(ProductionRun.id.desc()).offset(skip).limit(limit)
         ).all()
     )
-    return runs
+    
+    results = []
+    for r in runs:
+        out = ProductionRunOut.model_validate(r)
+        if r.operation:
+            out.stage = r.operation.stage
+        if r.machine:
+            out.machine_code = r.machine.machine_code
+            out.machine_type = r.machine.machine_type
+        if r.order:
+            out.fabric_type = r.order.fabric_type
+            out.colour = r.order.colour
+            out.target_metres = r.order.quantity_metres
+            if r.order.buyer:
+                out.buyer_name = r.order.buyer.name
+        results.append(out)
+    return results
 
 
 @router.get(
@@ -316,10 +408,31 @@ def get_production_run(
     run_id: int,
     db: Session = Depends(get_db),
 ):
-    run = db.get(ProductionRun, run_id)
+    run = db.scalar(
+        select(ProductionRun)
+        .options(
+            selectinload(ProductionRun.operation),
+            selectinload(ProductionRun.machine),
+            selectinload(ProductionRun.order).selectinload(Order.buyer),
+        )
+        .where(ProductionRun.id == run_id)
+    )
     if run is None:
         raise HTTPException(status_code=404, detail="Production run not found")
-    return run
+    
+    out = ProductionRunOut.model_validate(run)
+    if run.operation:
+        out.stage = run.operation.stage
+    if run.machine:
+        out.machine_code = run.machine.machine_code
+        out.machine_type = run.machine.machine_type
+    if run.order:
+        out.fabric_type = run.order.fabric_type
+        out.colour = run.order.colour
+        out.target_metres = run.order.quantity_metres
+        if run.order.buyer:
+            out.buyer_name = run.order.buyer.name
+    return out
 
 
 @router.patch(
@@ -498,4 +611,3 @@ def import_schedule_runs(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-

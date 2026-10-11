@@ -9,13 +9,26 @@ interface WeavingColumnProps {
   selectedOrder: string | null
   isResolved: boolean
   onOpenDetails?: (order: Order, anchorRect: DOMRect) => void
+  orders?: Order[]
+  loading?: boolean
+  machineCount?: number
 }
 
-const weavingOrders = mockOrders.filter(o => 
+const defaultWeavingOrders = mockOrders.filter(o => 
   o.currentStage === 'weaving' || (o.status === 'spinning' && o.id !== 'ORD-001' && o.id !== 'ORD-003' && o.id !== 'ORD-005')
 )
 
-export function WeavingColumn({ onOrderSelect, selectedOrder, isResolved, onOpenDetails }: WeavingColumnProps) {
+export function WeavingColumn({
+  onOrderSelect,
+  selectedOrder,
+  isResolved,
+  onOpenDetails,
+  orders,
+  loading = false,
+  machineCount = 5,
+}: WeavingColumnProps) {
+  const displayOrders = orders !== undefined ? orders : defaultWeavingOrders
+
   return (
     <div className="flex-1 min-w-[320px] max-w-2xl flex flex-col bg-[#FAF7F0] border border-stone-200 rounded-2xl h-full shrink-0 shadow-sm">
       <div className="p-3 border-b border-stone-200 flex items-center justify-between bg-[#EFE8D8] rounded-t-2xl">
@@ -23,7 +36,7 @@ export function WeavingColumn({ onOrderSelect, selectedOrder, isResolved, onOpen
           <span className="w-2.5 h-2.5 rounded-full bg-[#E05326]" />
           <span className="font-semibold text-xs text-[#181816]">Stage 2: Weaving</span>
           <Badge variant="metric" size="xs" className="bg-white border border-stone-200 px-2 py-0.5">
-            5 Looms
+            {machineCount} Looms
           </Badge>
         </div>
         <Badge
@@ -37,16 +50,29 @@ export function WeavingColumn({ onOrderSelect, selectedOrder, isResolved, onOpen
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {weavingOrders.map((order) => (
-          <WeavingOrderCard
-            key={order.id}
-            order={order}
-            isSelected={selectedOrder === order.id}
-            onSelect={onOrderSelect}
-            isResolved={isResolved}
-            onOpenDetails={onOpenDetails}
-          />
-        ))}
+        {loading ? (
+          <div className="py-12 text-center text-stone-500 font-mono text-xs space-y-2">
+            <div className="size-5 animate-spin rounded-full border-2 border-[#0E4B3E] border-t-transparent mx-auto" />
+            <p>Loading weaving floor...</p>
+          </div>
+        ) : displayOrders.length === 0 ? (
+          <div className="py-12 text-center text-stone-400 font-mono text-xs space-y-1">
+            <MaterialIcon name="inbox" size="md" color="#A8A29E" />
+            <p className="font-medium text-stone-500">No weaving runs active</p>
+            <p className="text-[10px]">Loom jobs will appear when Stage 1 completes</p>
+          </div>
+        ) : (
+          displayOrders.map((order) => (
+            <WeavingOrderCard
+              key={order.id}
+              order={order}
+              isSelected={selectedOrder === order.id}
+              onSelect={onOrderSelect}
+              isResolved={isResolved}
+              onOpenDetails={onOpenDetails}
+            />
+          ))
+        )}
       </div>
     </div>
   )

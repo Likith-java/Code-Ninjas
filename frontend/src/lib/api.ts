@@ -66,7 +66,7 @@ export interface OrderCreate {
   fabric_type: string
   colour: string
   quantity_metres: number | string
-  agreed_rate: number | string
+  agreed_rate?: number | string
   deadline: string
   priority?: 'low' | 'normal' | 'high' | 'urgent'
 }
@@ -80,6 +80,9 @@ export interface BackendOrder {
   colour: string
   quantity_metres: string | number
   agreed_rate?: string | number
+  total_amount?: string | number
+  current_stage?: string
+  produced_metres?: string | number
   order_date: string
   deadline: string
   priority: 'low' | 'normal' | 'high' | 'urgent' | string
@@ -111,6 +114,7 @@ export interface EligibleMachineSummary {
   machine_type: string
   state: string
   is_active: boolean
+  capacity_rate?: number | string | null
 }
 
 export interface OperationSummary {
@@ -359,6 +363,77 @@ export interface BackendProductionRun {
   end_time?: string | null
   status: 'planned' | 'running' | 'completed' | 'interrupted' | 'cancelled' | string
   output_metres?: string | number | null
+  stage?: string | null
+  machine_code?: string | null
+  machine_type?: string | null
+  fabric_type?: string | null
+  colour?: string | null
+  target_metres?: number | string | null
+  buyer_name?: string | null
+}
+
+// Fabric Catalogue & Pricing
+export interface FabricCatalogueItem {
+  id: string
+  fabric_type: string
+  colour: string
+  specification: string
+  base_rate_per_metre: number | string
+  min_order_metres: number | string
+  tax_rate: number | string
+}
+
+export interface PriceQuoteRequest {
+  fabric_type: string
+  colour?: string | null
+  quantity_metres: number | string
+}
+
+export interface PriceQuoteOut {
+  fabric_type: string
+  colour: string
+  quantity_metres: number | string
+  unit_price: number | string
+  subtotal: number | string
+  tax_rate: number | string
+  tax_amount: number | string
+  total_amount: number | string
+  currency: string
+}
+
+export interface OrderTrackingStage {
+  stage: string
+  status: 'completed' | 'current' | 'pending'
+  timestamp?: string | null
+  details?: string | null
+}
+
+export interface OrderTrackingOut {
+  order_id: number
+  order_code: string
+  order_date: string
+  buyer_id: number
+  buyer_name: string
+  fabric_type: string
+  colour: string
+  quantity_metres: number | string
+  produced_metres: number | string
+  unit_price: number | string
+  total_amount: number | string
+  deadline: string
+  current_status: string
+  current_stage: string
+  stages: OrderTrackingStage[]
+  rolls_count: number
+  passed_rolls_count: number
+  dispatch_status: string
+}
+
+export interface EligibleMachinesOut {
+  operation_id: number
+  order_id: number
+  stage: string
+  eligible_machines: BackendMachine[]
 }
 
 // Fabric Rolls & Quality
@@ -621,6 +696,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload || {}),
     }),
+  getFabrics: () => request<FabricCatalogueItem[]>('/fabrics'),
+  getPriceQuote: (quoteReq: PriceQuoteRequest) =>
+    request<PriceQuoteOut>('/orders/quote', {
+      method: 'POST',
+      body: JSON.stringify(quoteReq),
+    }),
+  getOrderTracking: (orderId: number) =>
+    request<OrderTrackingOut>(`/orders/${orderId}/tracking`),
+  getOperationEligibleMachines: (operationId: number) =>
+    request<EligibleMachinesOut>(`/operations/${operationId}/eligible-machines`),
 
   // Inventory & Materials
   getInventory: (lowStockOnly = false, offset = 0, limit = 100) =>

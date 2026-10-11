@@ -20,6 +20,11 @@ export interface OrderDetailsData {
   status?: string
   priority?: string
   disruptionNote?: string
+  unitPrice?: number
+  totalAmount?: number
+  orderDate?: string
+  qualityStatus?: string
+  dispatchStatus?: string
 }
 
 interface OrderDetailsPopoverProps {
@@ -226,6 +231,74 @@ export function OrderDetailsPopover({
           <div className="p-2 bg-white border border-stone-200 rounded-lg">
             <span className="text-stone-400 text-[10px] block font-medium">PRIORITY</span>
             <span className="font-semibold text-stone-800">{order.priority || 'P1 High'}</span>
+          </div>
+        </div>
+
+        {/* Authoritative Pricing Snapshot */}
+        {(order.unitPrice !== undefined || order.totalAmount !== undefined) && (
+          <div className="p-2 bg-[#FAF7F0] border border-stone-200 rounded-lg text-[11px] space-y-1 font-mono">
+            <div className="flex justify-between text-stone-500 text-[10px] uppercase font-bold">
+              <span>Authoritative Pricing</span>
+              <span>PostgreSQL Snapshot</span>
+            </div>
+            <div className="flex justify-between text-stone-800">
+              <span>Unit Rate:</span>
+              <span className="font-bold">${order.unitPrice ? Number(order.unitPrice).toFixed(2) : '—'} / m</span>
+            </div>
+            <div className="flex justify-between text-[#0E4B3E] font-bold border-t border-stone-200 pt-0.5">
+              <span>Total Contract:</span>
+              <span>${order.totalAmount ? Number(order.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</span>
+            </div>
+          </div>
+        )}
+
+        {/* 7-Stage Order Lifecycle Tracker */}
+        <div className="p-2.5 bg-white border border-stone-200 rounded-lg space-y-2">
+          <div className="flex justify-between items-center text-[10px] font-bold text-stone-500 uppercase">
+            <span>Lifecycle Pipeline</span>
+            <span className="text-[#0E4B3E]">{order.currentStage || 'Active'}</span>
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-center text-[8.5px] font-mono">
+            {[
+              { label: 'Placed', idx: 0 },
+              { label: 'Feasible', idx: 1 },
+              { label: 'Scheduled', idx: 2 },
+              { label: 'Production', idx: 3 },
+              { label: 'Quality', idx: 4 },
+              { label: 'Ready', idx: 5 },
+              { label: 'Dispatched', idx: 6 },
+            ].map((st) => {
+              const currentIdx = (() => {
+                const s = (order.status || '').toLowerCase()
+                const c = (order.currentStage || '').toLowerCase()
+                if (s.includes('dispatch') || order.dispatchStatus === 'Dispatched') return 6
+                if (s.includes('ready_to_ship') || s.includes('ready_for_dispatch') || order.dispatchStatus?.includes('Ready')) return 5
+                if (c === 'inspection' || order.qualityStatus === 'In Inspection') return 4
+                if (s.includes('in production') || s.includes('running') || c === 'spinning' || c === 'weaving' || c === 'dyeing') return 3
+                if (s.includes('scheduled') || s.includes('planned')) return 2
+                return 1
+              })()
+              const isPast = st.idx < currentIdx
+              const isCurr = st.idx === currentIdx
+              return (
+                <div key={st.label} className="flex flex-col items-center">
+                  <div
+                    className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold mb-0.5 ${
+                      isPast
+                        ? 'bg-emerald-600 text-white'
+                        : isCurr
+                        ? 'bg-[#0E4B3E] text-white ring-2 ring-emerald-300'
+                        : 'bg-stone-200 text-stone-400'
+                    }`}
+                  >
+                    {isPast ? '✓' : isCurr ? '•' : ''}
+                  </div>
+                  <span className={isCurr ? 'font-bold text-[#0E4B3E]' : 'text-stone-500'}>
+                    {st.label}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { Card, Badge } from '@/components/ui'
+import { Card, Badge, MaterialIcon } from '@/components/ui'
 import { mockOrders } from '@/lib/mockData'
 import type { Order } from '@/types'
 
@@ -8,11 +8,23 @@ interface DyeingColumnProps {
   onOrderSelect: (orderId: string) => void
   selectedOrder: string | null
   onOpenDetails?: (order: Order, anchorRect: DOMRect) => void
+  orders?: Order[]
+  loading?: boolean
+  machineCount?: number
 }
 
-const dyeingOrders = mockOrders.filter(o => o.currentStage === 'dyeing' || o.currentStage === 'inspection')
+const defaultDyeingOrders = mockOrders.filter(o => o.currentStage === 'dyeing' || o.currentStage === 'inspection')
 
-export function DyeingColumn({ onOrderSelect, selectedOrder, onOpenDetails }: DyeingColumnProps) {
+export function DyeingColumn({
+  onOrderSelect,
+  selectedOrder,
+  onOpenDetails,
+  orders,
+  loading = false,
+  machineCount = 2,
+}: DyeingColumnProps) {
+  const displayOrders = orders !== undefined ? orders : defaultDyeingOrders
+
   return (
     <div className="flex-1 min-w-[320px] max-w-2xl flex flex-col bg-[#FAF7F0] border border-stone-200 rounded-2xl h-full shrink-0 shadow-sm">
       <div className="p-3 border-b border-stone-200 flex items-center justify-between bg-[#EFE8D8] rounded-t-2xl">
@@ -20,24 +32,37 @@ export function DyeingColumn({ onOrderSelect, selectedOrder, onOpenDetails }: Dy
           <span className="w-2.5 h-2.5 rounded-full bg-[#15803D]" />
           <span className="font-semibold text-xs text-[#181816]">Stage 3: Dyeing & QA</span>
           <Badge variant="metric" size="xs" className="bg-white border border-stone-200 px-2 py-0.5">
-            2 Vats
+            {machineCount} Vats
           </Badge>
         </div>
         <Badge variant="success" size="xs" dotColor="#15803D" className="bg-[#D7F4E5] border border-emerald-200 px-2 py-0.5 rounded-md text-[#0B382F] font-semibold">
-          100% On-Time
+          {displayOrders.length} Orders
         </Badge>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {dyeingOrders.map((order) => (
-          <DyeingOrderCard
-            key={order.id}
-            order={order}
-            isSelected={selectedOrder === order.id}
-            onSelect={onOrderSelect}
-            onOpenDetails={onOpenDetails}
-          />
-        ))}
+        {loading ? (
+          <div className="py-12 text-center text-stone-500 font-mono text-xs space-y-2">
+            <div className="size-5 animate-spin rounded-full border-2 border-[#0E4B3E] border-t-transparent mx-auto" />
+            <p>Loading dyeing & QA floor...</p>
+          </div>
+        ) : displayOrders.length === 0 ? (
+          <div className="py-12 text-center text-stone-400 font-mono text-xs space-y-1">
+            <MaterialIcon name="inbox" size="md" color="#A8A29E" />
+            <p className="font-medium text-stone-500">No dyeing runs active</p>
+            <p className="text-[10px]">Fabric vats will appear when Stage 2 completes</p>
+          </div>
+        ) : (
+          displayOrders.map((order) => (
+            <DyeingOrderCard
+              key={order.id}
+              order={order}
+              isSelected={selectedOrder === order.id}
+              onSelect={onOrderSelect}
+              onOpenDetails={onOpenDetails}
+            />
+          ))
+        )}
       </div>
     </div>
   )

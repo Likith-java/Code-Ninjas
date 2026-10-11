@@ -131,7 +131,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
       const inProg =
         o.derived_status === 'in_production' || o.status === 'in_progress'
 
-      const produced = isDone ? target : inProg ? Math.round(target * 0.5) : 0
+      const produced = Number(o.produced_metres !== undefined && o.produced_metres !== null ? o.produced_metres : (isDone ? target : inProg ? Math.round(target * 0.5) : 0))
       const statusStr: 'In Production' | 'Completed' | 'Scheduled' = isDone
         ? 'Completed'
         : inProg
@@ -143,17 +143,28 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
         ? 48
         : Math.max(0, Math.round((deadlineTime - Date.now()) / (1000 * 3600)))
 
+      const stageStr = o.current_stage
+        ? ((o.current_stage.charAt(0).toUpperCase() + o.current_stage.slice(1).toLowerCase()) as any)
+        : (isDone ? 'Finished' : inProg ? 'Weaving' : 'Spinning')
+
       return {
         id: formatCanonicalOrderId(o.id),
-        buyer: `Buyer #${o.buyer_id}`,
+        buyer: o.buyer_name || `Buyer #${o.buyer_id}`,
         fabric: `${o.fabric_type} (${o.colour})`,
         articleCode: `ID #${o.id} · ${o.colour}`,
         targetMeters: target,
         producedMeters: produced,
-        stage: isDone ? 'Finished' : inProg ? 'Weaving' : 'Spinning',
+        stage: stageStr,
         status: statusStr,
         dueHours,
         priority: `P${Math.min(3, Math.max(0, 3 - (o.priority_weight ?? (o.priority === 'urgent' ? 3 : o.priority === 'high' ? 2 : o.priority === 'normal' ? 1 : 0))))}` as 'P0' | 'P1' | 'P2' | 'P3',
+        unitPrice: o.agreed_rate ? Number(o.agreed_rate) : undefined,
+        totalAmount: o.total_amount ? Number(o.total_amount) : (o.agreed_rate ? Number(o.agreed_rate) * target : undefined),
+        orderDate: o.order_date,
+        deadlineDate: o.deadline,
+        derivedStatus: o.derived_status,
+        qualityStatus: isDone ? 'Passed' : inProg ? 'In Inspection' : 'Pending',
+        dispatchStatus: o.derived_status === 'dispatched' ? 'Dispatched' : o.derived_status === 'ready_to_ship' ? 'Ready for Dispatch' : 'In Factory',
       }
     })
   }, [liveOrders])
@@ -296,6 +307,12 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
           : 0,
       currentStage: order.stage,
       status: order.status,
+      unitPrice: order.unitPrice,
+      totalAmount: order.totalAmount,
+      orderDate: order.orderDate,
+      deadline: order.deadlineDate,
+      qualityStatus: order.qualityStatus,
+      dispatchStatus: order.dispatchStatus,
       disruptionNote:
         order.id === 'ETM-ORD-000004' || order.id === 'ORD-004'
           ? 'Mechanical collision halted weaving on WEAVE-03. 1,200m woven passed, 1,800m remaining halted.'

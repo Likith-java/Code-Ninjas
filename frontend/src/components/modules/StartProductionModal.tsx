@@ -121,7 +121,9 @@ export function StartProductionModal({
 
   const selectedMachine = readiness?.eligible_machines.find((m) => m.id === selectedMachineId)
   const isMachineAvailable =
-    selectedMachine && selectedMachine.is_active && !['breakdown', 'maintenance'].includes(selectedMachine.state)
+    selectedMachine &&
+    selectedMachine.is_active &&
+    !['breakdown', 'maintenance', 'running'].includes(selectedMachine.state)
 
   const canStart =
     readiness &&
@@ -283,7 +285,7 @@ export function StartProductionModal({
 
                 <div>
                   <label className="block text-stone-600 text-[10.5px] font-bold mb-1">
-                    Assign Machine / Loom *
+                    Assign Ready Machine / Loom *
                   </label>
                   {readiness.eligible_machines.length > 0 ? (
                     <select
@@ -293,21 +295,28 @@ export function StartProductionModal({
                     >
                       {readiness.eligible_machines.map((m) => (
                         <option key={m.id} value={m.id}>
-                          {m.machine_code} ({m.machine_type}) — State: {m.state}{' '}
-                          {m.state === 'idle' ? '✓ Ready' : `(${m.state})`}
+                          {m.machine_code} ({m.machine_type}) — ✓ Available {m.capacity_rate ? `(${m.capacity_rate} m/h)` : ''}
                         </option>
                       ))}
                     </select>
                   ) : (
-                    <div className="p-2 bg-red-50 border border-red-200 rounded text-red-800 text-[11px]">
-                      No eligible machines configured for stage &lsquo;{readiness.target_operation.stage}&rsquo;.
+                    <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-900 text-[11px] space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <MaterialIcon name="info" size="xs" color="#D97706" />
+                        <span>Machine Capacity Notice</span>
+                      </div>
+                      <p>
+                        {readiness.target_operation.stage.toLowerCase() === 'spinning'
+                          ? 'No eligible spinning machines are currently available. Machines will appear here when they become available.'
+                          : `No eligible ${readiness.target_operation.stage} machines are currently available. Machines will appear here when they become available.`}
+                      </p>
                     </div>
                   )}
 
-                  {selectedMachine && ['breakdown', 'maintenance'].includes(selectedMachine.state) && (
+                  {selectedMachine && ['breakdown', 'maintenance', 'running'].includes(selectedMachine.state) && (
                     <p className="mt-1 text-[10.5px] text-red-700 font-semibold flex items-center gap-1">
                       <MaterialIcon name="warning" size="xs" color="#DC2626" />
-                      Selected machine {selectedMachine.machine_code} is currently under {selectedMachine.state}.
+                      Selected machine {selectedMachine.machine_code} is currently occupied or unavailable ({selectedMachine.state}).
                     </p>
                   )}
                 </div>

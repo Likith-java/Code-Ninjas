@@ -33,7 +33,7 @@ class OrderCreate(BaseModel):
     fabric_type: str = Field(min_length=1, max_length=100)
     colour: str = Field(min_length=1, max_length=100)
     quantity_metres: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
-    agreed_rate: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+    agreed_rate: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
     deadline: datetime
     priority: Literal["low", "normal", "high", "urgent"] = "normal"
 
@@ -69,6 +69,9 @@ class OrderOut(BaseModel):
     priority: str
     derived_status: str | None = None
     buyer_name: str | None = None
+    total_amount: Decimal | None = None
+    current_stage: str | None = None
+    produced_metres: Decimal | None = None
 
 
 class FeasibilityRequest(BaseModel):
@@ -505,6 +508,13 @@ class ProductionRunOut(BaseModel):
     start_time: datetime | None
     end_time: datetime | None
     output_metres: Decimal | None
+    stage: str | None = None
+    machine_code: str | None = None
+    machine_type: str | None = None
+    fabric_type: str | None = None
+    colour: str | None = None
+    target_metres: Decimal | None = None
+    buyer_name: str | None = None
 
 
 class StartProductionRequest(BaseModel):
