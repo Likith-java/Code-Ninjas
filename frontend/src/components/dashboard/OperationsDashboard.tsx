@@ -476,7 +476,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
 
         {/* KPI 3: Loom Utilization or Role-Specific Metric */}
         {permissions.canViewMachines ? (
-          <div className="bg-white border-2 border-[#181816] rounded-xl p-3 pop-shadow-xs space-y-1">
+          <div className="bg-white border border-stone-200/90 rounded-xl p-3 shadow-xs space-y-1">
             <div className="flex items-center justify-between text-stone-500 font-mono text-[10.5px] uppercase font-bold">
               <span>Loom Fleet Capacity</span>
               <MaterialIcon name="precision_manufacturing" size="xs" color="#15803D" />
@@ -492,7 +492,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
             </div>
           </div>
         ) : (
-          <div className="bg-white border-2 border-[#181816] rounded-xl p-3 pop-shadow-xs space-y-1">
+          <div className="bg-white border border-stone-200/90 rounded-xl p-3 shadow-xs space-y-1">
             <div className="flex items-center justify-between text-stone-500 font-mono text-[10.5px] uppercase font-bold">
               <span>{currentRole === 'customer' ? 'Order Fulfillment' : 'Dispatches'}</span>
               <MaterialIcon name="local_shipping" size="xs" color="#0E4B3E" />
@@ -530,8 +530,8 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
         {/* ============================================================== */}
         {/* PANEL A: SEARCHABLE PRODUCTION ORDERS (COL-SPAN 7 / 12) */}
         {/* ============================================================== */}
-        <div className={`${permissions.canViewMachines ? 'xl:col-span-7' : 'xl:col-span-12'} bg-white border-2 border-[#181816] rounded-2xl pop-shadow-md p-3.5 space-y-3`}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-stone-200 pb-2.5">
+        <div className={`${permissions.canViewMachines ? 'xl:col-span-7' : 'xl:col-span-12'} bg-white border border-stone-200/90 rounded-2xl shadow-sm p-3.5 space-y-3`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-2.5">
             <div>
               <h2 className="text-sm font-bold text-[#181816] flex items-center gap-1.5 font-body">
                 <MaterialIcon name="list_alt" size="sm" color="#0E4B3E" />
@@ -578,14 +578,14 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
             </div>
 
             {permissions.canCreateOrder && (
-              <Button
-                variant="primary"
-                size="xs"
-                icon={<MaterialIcon name="add" size="xs" />}
+              <button
+                type="button"
                 onClick={() => setIsCreateOrderOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#0E4B3E] hover:bg-[#0A382E] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
               >
-                + New Order
-              </Button>
+                <MaterialIcon name="add" size="xs" />
+                <span>New Order</span>
+              </button>
             )}
           </div>
 
@@ -667,9 +667,9 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
             )
           ) : (
 
-            <div className="overflow-x-auto border-2 border-[#181816] rounded-xl max-h-[460px] overflow-y-auto">
+            <div className="overflow-x-auto border border-stone-200/90 rounded-xl max-h-[460px] overflow-y-auto shadow-2xs">
               <table className="w-full text-left font-mono text-[11px] border-collapse">
-                <thead className="sticky top-0 bg-[#FAF7F0] border-b-2 border-[#181816] text-stone-700 z-10">
+                <thead className="sticky top-0 bg-[#FAF7F0] border-b border-stone-200 text-stone-700 z-10">
                   <tr>
                     <th className="py-2 px-2.5 font-semibold">Order ID</th>
                     <th className="py-2 px-2.5 font-semibold">Buyer</th>
@@ -778,8 +778,8 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
         {/* PANEL B: SEARCHABLE FACTORY MACHINES (COL-SPAN 5) */}
         {/* ============================================================== */}
         {permissions.canViewMachines && (
-          <div className="xl:col-span-5 bg-white border-2 border-[#181816] rounded-2xl pop-shadow-md p-3.5 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-stone-200 pb-2.5">
+          <div className="xl:col-span-5 bg-white border border-stone-200/90 rounded-2xl shadow-sm p-3.5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-2.5">
               <div>
                 <h2 className="text-base font-black text-[#181816] flex items-center gap-1.5">
                   <MaterialIcon name="precision_manufacturing" size="sm" color="#15803D" />
@@ -792,7 +792,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
               </div>
 
               {/* Division Filter */}
-              <div className="flex border-2 border-[#181816] rounded-xl overflow-hidden text-[10px] font-mono bg-white shrink-0">
+              <div className="flex border border-stone-200/90 rounded-xl overflow-hidden text-[10px] font-mono bg-white shrink-0 shadow-2xs">
                 <button
                   onClick={() => setMachineTypeFilter('all')}
                   className={`px-2 py-1 font-bold ${machineTypeFilter === 'all' ? 'bg-[#0E4B3E] text-white' : 'hover:bg-stone-100 text-stone-700'}`}
@@ -827,7 +827,7 @@ export function OperationsDashboard({ currentRole = 'admin' }: OperationsDashboa
                 placeholder="Search Machine ID (e.g. WEAVE-03, SPIN-01) or status..."
                 value={machineSearch}
                 onChange={(e) => setMachineSearch(e.target.value)}
-                className="w-full px-3 py-1.5 pl-8 text-xs font-mono bg-[#FAF7F0] border-2 border-[#181816] rounded-xl pop-shadow-xs focus:outline-none focus:ring-1 focus:ring-[#0E4B3E]"
+                className="w-full px-3 py-1.5 pl-8 text-xs font-mono bg-[#FAF7F0] border border-stone-200 rounded-xl shadow-2xs focus:outline-none focus:ring-1 focus:ring-[#0E4B3E]"
               />
               <span className="absolute left-2.5 top-2 text-stone-400">
                 <MaterialIcon name="search" size="xs" />

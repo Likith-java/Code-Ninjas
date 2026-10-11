@@ -26,7 +26,7 @@ from textile_scheduler.validator import validate_schedule, ScheduleValidator
 
 router = APIRouter(tags=["Production Scheduling"])
 
-SCENARIOS_DIR = Path(__file__).parent.parent.parent.parent.parent / "production-scheduler" / "scenarios"
+SCENARIOS_DIR = Path(__file__).resolve().parents[3] / "production-scheduler" / "scenarios"
 SCENARIO_FILES = {
     "feasible_load": "feasible_load.json",
     "weaving_breakdown": "weaving_breakdown.json",
@@ -126,6 +126,14 @@ class GanttResponse(BaseModel):
     rows: list[dict[str, Any]]
 
 
+class CompareSchedulersRequest(BaseModel):
+    scenario_id: str | None = None
+    time_limit_seconds: float = Field(default=10.0, ge=1.0, le=300.0)
+    seed: int = Field(default=42, ge=0)
+    workers: int = Field(default=8, ge=1, le=32)
+
+
+
 def _load_scenario(scenario_id: str) -> Scenario:
     """Load a scenario by ID."""
     if scenario_id not in SCENARIO_FILES:
@@ -219,7 +227,7 @@ def _run_scheduler(scenario: Scenario, solver: str, time_limit: float, seed: int
         time_limit_seconds=time_limit,
         random_seed=seed,
         warm_start_ops=warm_start_ops,
-        workers=workers,
+        num_workers=workers,
     )
 
 
@@ -355,7 +363,7 @@ def simulate_disruption(request: DisruptionRequest):
     try:
         result = run_replan(
             scenario=scenario,
-            current_ops=current_ops,
+            operations=current_ops,
             disruption=disruption,
             solver=request.solver,
             time_limit_seconds=request.time_limit_seconds,
@@ -382,6 +390,10 @@ def simulate_disruption(request: DisruptionRequest):
             new_metrics=None,
         )
     
+    moved_order_list = [m["order"] if isinstance(m, dict) and "order" in m else str(m) for m in diff.moved_orders]
+    moved_order_ids = set(moved_order_list)
+    unchanged_orders = getattr(diff, "unchanged", [o.id for o in scenario.orders if o.id not in moved_order_ids])
+
     return DisruptionResponse(
         ok=True,
         schedule=result.schedule.model_dump(mode="json", by_alias=True),
@@ -389,11 +401,11 @@ def simulate_disruption(request: DisruptionRequest):
             "frozen_count": diff.frozen_count,
             "split_count": diff.split_count,
             "interrupted": diff.interrupted,
-            "moved_orders": diff.moved_orders,
+            "moved_orders": moved_order_list,
             "now_late": diff.now_late,
             "now_at_risk": diff.now_at_risk,
             "recovered": diff.recovered,
-            "unchanged": diff.unchanged,
+            "unchanged": unchanged_orders,
         },
         previous_metrics=result.previous_metrics.model_dump() if result.previous_metrics else None,
         new_metrics=result.schedule.metrics.model_dump() if result.schedule.metrics else None,
@@ -442,13 +454,19 @@ def get_gantt_data(
     summary="Compare EDF vs CP-SAT on a scenario",
 )
 def compare_schedulers(
-    scenario_id: str,
-    time_limit_seconds: float = Body(10.0, ge=1.0, le=300.0),
-    seed: int = Body(42, ge=0),
-    workers: int = Body(8, ge=1, le=32),
+    scenario_id: str | None = Query(None, description="Scenario ID to compare"),
+    payload: CompareSchedulersRequest | None = Body(None),
 ):
     """Run both EDF and CP-SAT on a scenario and return comparison."""
-    scenario = _load_scenario(scenario_id)
+    actual_scenario_id = scenario_id or (payload.scenario_id if payload else None)
+    if not actual_scenario_id:
+        raise HTTPException(status_code=422, detail="scenario_id is required")
+
+    time_limit_seconds = payload.time_limit_seconds if payload else 10.0
+    seed = payload.seed if payload else 42
+    workers = payload.workers if payload else 8
+
+    scenario = _load_scenario(actual_scenario_id)
     
     results = {}
     

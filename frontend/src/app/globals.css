@@ -36,11 +36,37 @@
     background-color: #F5F0E3;
   }
 
-  .pop-shadow-xs { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
-  .pop-shadow-sm { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.04); }
-  .pop-shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.04); }
-  .pop-shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.03); }
+  .pop-shadow-xs { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03); }
+  .pop-shadow-sm { box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.06), 0 1px 3px -1px rgba(0, 0, 0, 0.04); }
+  .pop-shadow-md { box-shadow: 0 4px 8px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04); }
+  .pop-shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.03); }
   .pop-shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03); }
+
+  /* Soften dark borders across all pages and add subtle shadow to boxes */
+  .border-\[\#181816\] {
+    border-color: #E2DDD3 !important;
+  }
+  .border-2.border-\[\#181816\] {
+    border-width: 1px !important;
+    border-color: #E2DDD3 !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03) !important;
+  }
+  .border-b-2.border-\[\#181816\] {
+    border-bottom-width: 1px !important;
+    border-bottom-color: #E2DDD3 !important;
+  }
+  .border-t-2.border-\[\#181816\] {
+    border-top-width: 1px !important;
+    border-top-color: #E2DDD3 !important;
+  }
+  .border-l-2.border-\[\#181816\] {
+    border-left-width: 1px !important;
+    border-left-color: #E2DDD3 !important;
+  }
+  .border-r-2.border-\[\#181816\] {
+    border-right-width: 1px !important;
+    border-right-color: #E2DDD3 !important;
+  }
 
   .stage-card {
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);

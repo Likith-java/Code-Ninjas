@@ -10,14 +10,14 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantStyles = {
-  default: 'bg-[#FAF7F0] text-[#4E4B47] border border-[#181816]',
-  priority: 'border-2 border-[#181816]',
-  status: 'border-2 border-[#181816]',
-  stage: 'border-2 border-[#181816]',
-  metric: 'bg-[#FAF7F0] border border-[#181816]',
-  scenario: 'rounded-full border-2 border-[#181816]',
-  warning: 'bg-[#FEF3C7] text-[#92400E] border-2 border-[#181816]',
-  success: 'bg-[#D7F4E5] text-[#0B382F] border-2 border-[#181816]',
+  default: 'bg-[#FAF7F0] text-[#4E4B47] border border-stone-200/90 shadow-2xs',
+  priority: 'border border-stone-200/90 shadow-2xs',
+  status: 'border border-stone-200/90 shadow-2xs',
+  stage: 'border border-stone-200/90 shadow-2xs',
+  metric: 'bg-[#FAF7F0] border border-stone-200/90 shadow-2xs',
+  scenario: 'rounded-full border border-stone-200/90 shadow-2xs',
+  warning: 'bg-[#FEF3C7] text-[#92400E] border border-amber-300/80 shadow-2xs',
+  success: 'bg-[#D7F4E5] text-[#0B382F] border border-emerald-300/80 shadow-2xs',
 }
 
 const sizeStyles = {

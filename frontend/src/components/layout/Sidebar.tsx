@@ -82,28 +82,17 @@ export function Sidebar({
         <div className="p-3 border-b border-[#637d71] bg-[#718D80] shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 bg-white border-2 border-[#181816] rounded-xl pop-shadow-xs flex items-center justify-center text-[#0E4B3E] shrink-0">
+              <div className="w-8 h-8 bg-white border border-[#637d71] rounded-xl shadow-xs flex items-center justify-center text-[#0E4B3E] shrink-0">
                 <MaterialIcon name={currentRole === 'customer' ? 'person' : 'precision_manufacturing'} size="lg" />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="font-bold text-[13px] leading-tight truncate">
+                <span className="font-bold text-sm leading-tight truncate">
                   {currentRole === 'customer' ? 'Buyer Tracking Portal' : 'Production Operations'}
                 </span>
-                <span className="font-mono text-[10px] text-[#1E3A2F] font-semibold truncate">
+                <span className="text-xs text-[#1E3A2F] font-medium truncate">
                   {currentRole === 'customer' ? accountName : 'Operations Navigation'}
                 </span>
               </div>
-
-              {!isCollapsed && (
-                <div className="flex flex-col min-w-0">
-                  <span className="font-semibold text-xs leading-tight truncate">
-                    {currentRole === 'customer' ? 'Buyer Tracking Portal' : 'Operations Nav'}
-                  </span>
-                  <span className="text-[10px] text-[#1E3A2F] truncate">
-                    {currentRole === 'customer' ? 'ZARA Sourcing Orders' : roleProfile.name}
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Close button on mobile */}
@@ -119,14 +108,11 @@ export function Sidebar({
         </div>
 
         {/* Navigation list - independently scrollable vertically */}
-        <div className="flex-1 py-3 px-2 overflow-y-auto overflow-x-hidden space-y-1">
+        <div className="flex-1 py-3 px-2.5 overflow-y-auto overflow-x-hidden space-y-1.5">
           {!isCollapsed && (
-            <div className="px-2 pb-1 flex items-center justify-between">
-              <span className="text-[10px] text-[#1E3A2F] uppercase tracking-wider font-bold">
+            <div className="px-2 pb-1.5 flex items-center justify-between">
+              <span className="text-xs text-[#1E3A2F] uppercase tracking-wider font-bold">
                 {currentRole === 'customer' ? 'Customer Views' : 'Modules'}
-              </span>
-              <span className="text-[9px] bg-[#FAF7F0] px-1.5 py-0.2 rounded border border-stone-300 font-semibold">
-                {visibleModules.length} Active
               </span>
             </div>
           )}
@@ -134,34 +120,22 @@ export function Sidebar({
           {visibleModules.map((module) => {
             const isActive = activeModule === module.id
             return (
-              <Button
+              <button
                 key={module.id}
-                variant={isActive ? 'pop' : 'ghost'}
-                size="sm"
-                className={`w-full rounded-lg transition-colors cursor-pointer ${
+                type="button"
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer text-left ${
                   isCollapsed ? 'justify-center px-0' : 'justify-start'
                 } ${
                   isActive
-                    ? 'bg-white border-stone-200 text-[#0E4B3E] font-semibold shadow-xs'
-                    : 'text-[#181816] hover:bg-white/60 border-transparent'
+                    ? 'bg-white text-[#0E4B3E] font-semibold shadow-xs'
+                    : 'text-[#181816] hover:bg-white/50 font-medium'
                 }`}
-                icon={<MaterialIcon name={module.icon} size="sm" color={module.color || '#181816'} />}
                 onClick={() => handleSelectModule(module.id)}
                 title={module.label}
               >
-                {!isCollapsed && <span className="flex-1 truncate text-left text-xs">{module.label}</span>}
-                {!isCollapsed && module.count && (
-                  <span
-                    className="text-[9.5px] font-semibold px-1.5 py-0.2 rounded border border-stone-300/80 shrink-0"
-                    style={{
-                      backgroundColor: module.badgeBg || '#D7F4E5',
-                      color: module.badgeColor || '#0B382F',
-                    }}
-                  >
-                    {module.count}
-                  </span>
-                )}
-              </Button>
+                <MaterialIcon name={module.icon} size="sm" color={isActive ? '#0E4B3E' : (module.color || '#181816')} />
+                {!isCollapsed && <span className="flex-1 truncate text-sm">{module.label}</span>}
+              </button>
             )
           })}
 
@@ -181,18 +155,6 @@ export function Sidebar({
               </Card>
             </div>
           )}
-        </div>
-
-
-        {/* Clean, compact footer */}
-        <div className="border-t-2 border-[#181816] p-2.5 bg-[#718D80] font-mono text-[10px] space-y-0.5">
-          <div className="flex justify-between items-center text-[#181816] font-bold">
-            <span>FastAPI Server</span>
-            <span className="text-[9.5px] bg-[#D7F4E5] text-[#0B382F] px-1.5 py-0.2 rounded border border-[#181816]">
-              Port 8000
-            </span>
-          </div>
-          <div className="text-[#1E3A2F]">Role: {roleProfile.name}</div>
         </div>
       </aside>
     </>
