@@ -46,6 +46,7 @@ from app.models import (
     Worker,
     WorkerAssignment,
     operation_eligible_machines,
+    SimulationState,
 )
 
 
@@ -290,10 +291,6 @@ def seed(reset: bool = False, order_count: int = 600, worker_count: int = 50):
             {"machine_code": "DYE-02", "machine_type": "dyeing", "capacity_rate": Decimal("75.00"), "state": "running"},
             {"machine_code": "DYE-03", "machine_type": "dyeing", "capacity_rate": Decimal("70.00"), "state": "idle"},
             {"machine_code": "DYE-04", "machine_type": "dyeing", "capacity_rate": Decimal("80.00"), "state": "running"},
-            # 3 Finishing Machines (for inspection/packing stages)
-            {"machine_code": "FIN-01", "machine_type": "inspection", "capacity_rate": Decimal("100.00"), "state": "idle"},
-            {"machine_code": "FIN-02", "machine_type": "packing", "capacity_rate": Decimal("120.00"), "state": "idle"},
-            {"machine_code": "FIN-03", "machine_type": "inspection", "capacity_rate": Decimal("90.00"), "state": "running"},
         ]
 
         machines = {}

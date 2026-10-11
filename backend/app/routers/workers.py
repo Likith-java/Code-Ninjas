@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -7,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import get_current_user
 from app.database import get_db
 from app.models import Worker, WorkerAssignment, Operation, ProductionRun, User
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 router = APIRouter(tags=["Workforce"])
